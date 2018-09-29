@@ -4,7 +4,6 @@ use actix_web::{middleware, App, AsyncResponder, FutureResponse, HttpResponse, J
 use futures::future::Future;
 
 use djangohashers;
-use frank_jwt;
 use time::{now_utc, Duration};
 
 use db::{db_executor, AuthenticateUser, DbExecutor};
@@ -15,12 +14,14 @@ pub enum AuthError {
 }
 
 pub fn create_token(user_id: i32) -> Result<String, AuthError> {
+    use frank_jwt::{encode, Algorithm};
+
     let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
     let payload = json!({ "user_id": user_id });
     let header = json!({ "exp": exp });
     let secret = "secret123".to_string(); // TODO: read from env var
-    frank_jwt::encode(header, &secret, &payload, frank_jwt::Algorithm::HS256)
-        .map_err(|_| AuthError::Token)
+
+    encode(header, &secret, &payload, Algorithm::HS256).map_err(|_| AuthError::Token)
 }
 
 pub fn check_password(password: &str, hash: &str) -> Result<(), AuthError> {

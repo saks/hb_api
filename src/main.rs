@@ -1,6 +1,3 @@
-#![feature(custom_attribute)]
-#![feature(non_modrs_mods)]
-
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
