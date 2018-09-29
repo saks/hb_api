@@ -3,17 +3,31 @@ use actix_web::{middleware, App, AsyncResponder, FutureResponse, HttpResponse, J
 
 use futures::future::Future;
 
+use djangohashers;
 use frank_jwt;
 use time::{now_utc, Duration};
 
 use db::{db_executor, AuthenticateUser, DbExecutor};
 
-pub fn create_token(user_id: i32) -> Result<String, frank_jwt::Error> {
+#[derive(Debug)]
+pub enum AuthError {
+    Token,
+}
+
+pub fn create_token(user_id: i32) -> Result<String, AuthError> {
     let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
     let payload = json!({ "user_id": user_id });
     let header = json!({ "exp": exp });
     let secret = "secret123".to_string(); // TODO: read from env var
     frank_jwt::encode(header, &secret, &payload, frank_jwt::Algorithm::HS256)
+        .map_err(|_| AuthError::Token)
+}
+
+pub fn check_password(password: &str, hash: &str) -> Result<(), AuthError> {
+    match djangohashers::check_password(password, hash) {
+        Ok(true) => Ok(()),
+        _ => Err(AuthError::Token),
+    }
 }
 
 /// State with DbExecutor address
@@ -30,7 +44,7 @@ fn index(
         .from_err()
         .and_then(|res| {
             res.map(|token| HttpResponse::Ok().json(token))
-                .or(Ok(HttpResponse::Unauthorized().into()))
+                .or_else(|_| Ok(HttpResponse::Unauthorized().into()))
         }).responder()
 }
 

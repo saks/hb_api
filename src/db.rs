@@ -1,5 +1,4 @@
 use actix::{Actor, Addr, Handler, Message, SyncArbiter, SyncContext};
-use actix_web::{error, Error};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -11,8 +10,7 @@ pub mod models;
 pub mod schema;
 
 // start of AuthenticateUser
-use auth::create_token;
-use djangohashers;
+use auth::{check_password, create_token, AuthError};
 
 #[derive(Deserialize, Debug)]
 pub struct AuthenticateUser {
@@ -21,14 +19,14 @@ pub struct AuthenticateUser {
 }
 
 impl Message for AuthenticateUser {
-    type Result = Result<String, Error>;
+    type Result = Result<String, AuthError>;
 }
 
 impl Handler<AuthenticateUser> for DbExecutor {
-    type Result = Result<String, Error>;
+    type Result = Result<String, AuthError>;
 
     fn handle(&mut self, msg: AuthenticateUser, _: &mut Self::Context) -> Self::Result {
-        let connection: &PgConnection = &self.0.get().unwrap();
+        let connection: &PgConnection = &self.0.get().expect("Failed to get DB connection");
 
         let mut results = schema::auth_user::table
             .filter(schema::auth_user::username.eq(&msg.username))
@@ -36,12 +34,9 @@ impl Handler<AuthenticateUser> for DbExecutor {
             .load::<models::AuthUser>(connection)
             .expect("Failed to load data from db");
 
-        let user = results.pop().unwrap();
+        let user = results.pop().expect("Failed to find user");
 
-        match djangohashers::check_password(&msg.password, &user.password) {
-            Ok(true) => Ok(create_token(user.id).unwrap()),
-            _ => Err(error::ErrorUnauthorized("foo")),
-        }
+        check_password(&msg.password, &user.password).and_then(|_| create_token(user.id))
     }
 }
 
