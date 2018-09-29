@@ -1,5 +1,5 @@
 use actix::{Actor, Addr, Handler, Message, SyncArbiter, SyncContext};
-use actix_web::Error;
+use actix_web::{error, Error};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -7,25 +7,27 @@ use dotenv::dotenv;
 use r2d2;
 use std::env;
 
-/// This is db executor actor. We are going to run 3 of them in parallel.
-pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
+pub mod models;
+pub mod schema;
 
-impl Actor for DbExecutor {
-    type Context = SyncContext<Self>;
-}
+// start of AuthenticateUser
+use auth::create_token;
+use djangohashers;
 
-pub struct FindUser {
+#[derive(Deserialize, Debug)]
+pub struct AuthenticateUser {
     pub username: String,
+    pub password: String,
 }
 
-impl Message for FindUser {
-    type Result = Result<models::AuthUser, Error>;
+impl Message for AuthenticateUser {
+    type Result = Result<String, Error>;
 }
 
-impl Handler<FindUser> for DbExecutor {
-    type Result = Result<models::AuthUser, Error>;
+impl Handler<AuthenticateUser> for DbExecutor {
+    type Result = Result<String, Error>;
 
-    fn handle(&mut self, msg: FindUser, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: AuthenticateUser, _: &mut Self::Context) -> Self::Result {
         let connection: &PgConnection = &self.0.get().unwrap();
 
         let mut results = schema::auth_user::table
@@ -34,44 +36,22 @@ impl Handler<FindUser> for DbExecutor {
             .load::<models::AuthUser>(connection)
             .expect("Failed to load data from db");
 
-        Ok(results.pop().unwrap())
+        let user = results.pop().unwrap();
+
+        match djangohashers::check_password(&msg.password, &user.password) {
+            Ok(true) => Ok(create_token(user.id).unwrap()),
+            _ => Err(error::ErrorUnauthorized("foo")),
+        }
     }
 }
 
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
+// end of AuthenticateUser
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
-}
+/// This is db executor actor. We are going to run 3 of them in parallel.
+pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
 
-pub mod models;
-pub mod schema;
-
-pub fn print_users() {
-    use djangohashers::check_password;
-
-    let connection = establish_connection();
-    let results = schema::auth_user::table
-        .filter(schema::auth_user::username.eq("we"))
-        .limit(1)
-        .load::<models::AuthUser>(&connection)
-        .expect("Failed to load data from db");
-
-    println!("Displaying {} users", results.len());
-    for user in results {
-        // if user.password.is_empty() {
-        //     continue;
-        // }
-        // let pass = &format!("${}", user.password);
-        println!(
-            "id: {}, email: {}, username: {}, auth: {:?}",
-            user.id,
-            user.email,
-            user.username,
-            check_password("zxcasdqwe123", &user.password),
-        );
-    }
+impl Actor for DbExecutor {
+    type Context = SyncContext<Self>;
 }
 
 pub fn db_executor() -> Addr<DbExecutor> {
