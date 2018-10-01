@@ -1,7 +1,14 @@
+extern crate failure;
+extern crate futures;
 extern crate serde;
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate failure_derive;
 #[macro_use]
 extern crate serde_derive;
-extern crate futures;
 
 #[macro_use]
 extern crate diesel;
@@ -19,31 +26,21 @@ extern crate time;
 #[macro_use]
 extern crate serde_json;
 
-extern crate failure;
-
 use actix_web::server;
 use dotenv::dotenv;
-use std::env;
 
 mod apps;
-pub mod db;
+mod config;
+mod db;
 
 use apps::auth;
 
 fn main() {
-    env::set_var("RUST_LOG", "actix_web=info");
-    env::set_var(
-        "DATABASE_URL",
-        "postgres://postgres:@172.18.0.2:5432/postgres",
-    );
-    dotenv().ok();
-
-    env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
+    dotenv().ok().expect("Failed to parse .env file");
     env_logger::init();
 
     server::new(|| vec![auth::app()])
-        .bind("127.0.0.1:8088")
-        .unwrap()
+        .bind(format!("{}:{}", *config::LISTEN_IP, *config::LISTEN_PORT))
+        .expect("Cannot bind to IP:PORT")
         .run();
 }

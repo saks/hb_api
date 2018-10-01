@@ -1,7 +1,8 @@
 use actix::Addr;
-pub mod auth;
 
 use db::DbExecutor;
+
+pub mod auth;
 
 /// State with DbExecutor address
 pub struct AppState {

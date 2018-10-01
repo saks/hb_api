@@ -1,33 +1,38 @@
 use actix_web::{middleware, App, AsyncResponder, FutureResponse, HttpResponse, Json, State};
-
 use futures::future::Future;
-
-use djangohashers;
-use time::{now_utc, Duration};
 
 use apps::AppState;
 use db::auth::AuthenticateUser;
+use failure::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum AuthError {
-    Token,
+    #[fail(display = "Failed to generate auth token")]
+    EncodeAuthToken,
+    #[fail(display = "Token is not valid")]
+    InvalidToken,
 }
 
-pub fn create_token(user_id: i32) -> Result<String, AuthError> {
+pub fn create_token(user_id: i32) -> Result<String, Error> {
+    use config;
     use frank_jwt::{encode, Algorithm};
+    use time::{now_utc, Duration};
 
     let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
     let payload = json!({ "user_id": user_id });
     let header = json!({ "exp": exp });
-    let secret = "secret123".to_string(); // TODO: read from env var
+    let secret = &config::AUTH_TOKEN_SECRET.to_string();
 
-    encode(header, &secret, &payload, Algorithm::HS256).map_err(|_| AuthError::Token)
+    encode(header, secret, &payload, Algorithm::HS256)
+        .map_err(|_| AuthError::EncodeAuthToken.into())
 }
 
-pub fn check_password(password: &str, hash: &str) -> Result<(), AuthError> {
+pub fn check_password(password: &str, hash: &str) -> Result<(), Error> {
+    use djangohashers;
+
     match djangohashers::check_password(password, hash) {
         Ok(true) => Ok(()),
-        _ => Err(AuthError::Token),
+        _ => Err(AuthError::InvalidToken.into()),
     }
 }
 
