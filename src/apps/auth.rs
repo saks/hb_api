@@ -1,4 +1,3 @@
-use actix::prelude::*;
 use actix_web::{middleware, App, AsyncResponder, FutureResponse, HttpResponse, Json, State};
 
 use futures::future::Future;
@@ -6,7 +5,8 @@ use futures::future::Future;
 use djangohashers;
 use time::{now_utc, Duration};
 
-use db::{db_executor, AuthenticateUser, DbExecutor};
+use apps::AppState;
+use db::auth::AuthenticateUser;
 
 #[derive(Debug)]
 pub enum AuthError {
@@ -31,11 +31,6 @@ pub fn check_password(password: &str, hash: &str) -> Result<(), AuthError> {
     }
 }
 
-/// State with DbExecutor address
-pub struct AppState {
-    db: Addr<DbExecutor>,
-}
-
 fn index(
     (auth_user, state): (Json<AuthenticateUser>, State<AppState>),
 ) -> FutureResponse<HttpResponse> {
@@ -50,7 +45,7 @@ fn index(
 }
 
 pub fn app() -> App<AppState> {
-    App::with_state(AppState { db: db_executor() })
+    App::with_state(AppState::new())
         .prefix("/auth")
         .middleware(middleware::Logger::default())
         .resource("/", |r| {

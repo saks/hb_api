@@ -22,6 +22,8 @@ extern crate serde_json;
 extern crate failure;
 
 use actix_web::server;
+use dotenv::dotenv;
+use std::env;
 
 mod apps;
 pub mod db;
@@ -29,14 +31,16 @@ pub mod db;
 use apps::auth;
 
 fn main() {
-    ::std::env::set_var("RUST_LOG", "actix_web=info");
-    ::std::env::set_var(
+    env::set_var("RUST_LOG", "actix_web=info");
+    env::set_var(
         "DATABASE_URL",
-        "postgres://postgres:@172.18.0.3:5432/postgres",
+        "postgres://postgres:@172.18.0.2:5432/postgres",
     );
-    env_logger::init();
+    dotenv().ok();
 
-    // db::print_users();
+    env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    env_logger::init();
 
     server::new(|| vec![auth::app()])
         .bind("127.0.0.1:8088")
