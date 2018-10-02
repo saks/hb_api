@@ -1,7 +1,10 @@
 use std::convert::Into;
 
 use actix_web::middleware::Logger;
-use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Json, State};
+use actix_web::{
+    App, AsyncResponder, Error as WebError, FutureResponse, HttpResponse, Json, State,
+};
+use failure::Error;
 use futures::future::{ok as fut_ok, Future};
 
 use apps::AppState;
@@ -157,6 +160,7 @@ impl Authenticator {
         match user {
             Some(user) => {
                 let Credentials { password, .. } = credentials;
+                println!("pass: {:?}", &user.password);
                 check_password(&password, &user.password).map(|_| create_token(user.id))
             }
             None => {
@@ -176,22 +180,7 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
             .db
             .send(credentials)
             .from_err()
-            .and_then(|res| match res {
-                Ok((user, credentials)) => {
-                    let auth = Authenticator { user, credentials };
-                    match auth.validate() {
-                        Ok(token) => {
-                            let data = ResponseData::from_token(Some(token));
-                            Ok(HttpResponse::Ok().json(data))
-                        }
-                        Err(err) => {
-                            let data = ResponseData::from(err);
-                            Ok(HttpResponse::BadRequest().json(data))
-                        }
-                    }
-                }
-                Err(_) => Ok(HttpResponse::InternalServerError().json("")),
-            })
+            .and_then(authenticate_user)
             .responder(),
         Err(errors) => {
             let data = ResponseData::from(errors);
@@ -200,12 +189,26 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
     }
 }
 
-// fn xxx(res: Result<Option<UserModel>, Error>) -> Result<HttpResponse, WebError> {
-//     match res {
-//         Ok(maybe_user) => Authenticator::new(),
-//     }
-//     Ok(HttpResponse::Ok().json("from f"))
-// }
+fn authenticate_user(
+    result: Result<(Option<UserModel>, Credentials), Error>,
+) -> Result<HttpResponse, WebError> {
+    match result {
+        Ok((user, credentials)) => {
+            let auth = Authenticator { user, credentials };
+            match auth.validate() {
+                Ok(token) => {
+                    let data = ResponseData::from_token(Some(token));
+                    Ok(HttpResponse::Ok().json(data))
+                }
+                Err(err) => {
+                    let data = ResponseData::from(err);
+                    Ok(HttpResponse::BadRequest().json(data))
+                }
+            }
+        }
+        Err(_) => Ok(HttpResponse::InternalServerError().json("")),
+    }
+}
 
 pub fn build() -> App<AppState> {
     App::with_state(AppState::new())
@@ -216,4 +219,62 @@ pub fn build() -> App<AppState> {
                 cfg.limit(1024); // <- limit size of the payload
             })
         })
+}
+
+#[cfg(test)]
+mod test {
+    extern crate bytes;
+    use super::*;
+
+    fn user_with_pass(password_hash: &'static str) -> UserModel {
+        UserModel {
+            id: 123,
+            username: "".to_string(),
+            password: password_hash.to_string(),
+            email: "".to_string(),
+            is_active: true,
+        }
+    }
+
+    #[test]
+    fn test_authenticate_user() {
+        let user = user_with_pass(
+            "pbkdf2_sha256$100000$Nk15JZg3MdZa$BKvnIMgDEAH1B6/ns9xw9PdQNP8Fq8rSHnrZ+8l0xCo=",
+        );
+        let credentials = Credentials {
+            username: "foo".to_string(),
+            password: "zxcasdqwe123".to_string(),
+        };
+        let find_result = Ok((Some(user), credentials));
+
+        let result = authenticate_user(find_result);
+
+        assert!(result.is_ok());
+        // let body = *result.unwrap().body();
+        // let z: bytes::Bytes = body.into();
+        // println!("{:?}", z);
+        //
+        // assert_eq!(1, 2);
+        // assert_eq!(Body::Binary(Binary::), result.unwrap().body());
+        // let x = HttpResponse::Ok().json("");
+        // assert_eq!(x.body(), result.unwrap().body());
+    }
+
+    #[test]
+    fn test_authenticate_user_no_user() {
+        use actix_web::Body;
+
+        let credentials = Credentials {
+            username: "".to_string(),
+            password: "".to_string(),
+        };
+        let find_result = Ok((None, credentials));
+
+        let result = authenticate_user(find_result);
+
+        assert!(result.is_ok());
+        let response = HttpResponse::Ok()
+            .json(json!({"non_field_errors":["Unable to log in with provided credentials."]}));
+        assert_eq!(response.body(), result.unwrap().body());
+    }
 }
