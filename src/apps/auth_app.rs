@@ -7,7 +7,7 @@ use futures::future::{ok as fut_ok, Future};
 use apps::AppState;
 use db::models::AuthUser as UserModel;
 
-pub fn create_token(user_id: i32) -> Result<String, ValidationError> {
+pub fn create_token(user_id: i32) -> String {
     use config;
     use frank_jwt::{encode, Algorithm};
     use time::{now_utc, Duration};
@@ -17,32 +17,30 @@ pub fn create_token(user_id: i32) -> Result<String, ValidationError> {
     let header = json!({ "exp": exp });
     let secret = &config::AUTH_TOKEN_SECRET.to_string();
 
-    encode(header, secret, &payload, Algorithm::HS256).map_err(|_| ValidationError::UnknownError)
+    encode(header, secret, &payload, Algorithm::HS256).expect("Failed to generate token")
 }
 
-pub fn check_password(password: &str, hash: &str) -> Result<(), ValidationError> {
+pub fn check_password(password: &str, hash: &str) -> Result<(), ValidationErrors> {
     use djangohashers;
 
     match djangohashers::check_password(password, hash) {
         Ok(true) => Ok(()),
-        _ => Err(ValidationError::AuthenticationFailed),
+        _ => {
+            let mut errors = ValidationErrors::default();
+            errors.non_field.push(ValidationError::AuthenticationFailed);
+            Err(errors)
+        }
     }
 }
 
 #[derive(Debug, Fail)]
 pub enum ValidationError {
     #[fail(display = "This field may not be blank.")]
-    UsernameIsEmpty,
+    CannotBeBlank,
     #[fail(display = "This field is required.")]
-    UsernameIsNotPresent,
-    #[fail(display = "This field may not be blank.")]
-    PasswordIsEmpty,
-    #[fail(display = "This field is required.")]
-    PasswordIsNotPresent,
+    MustPresent,
     #[fail(display = "Unable to log in with provided credentials.")]
     AuthenticationFailed,
-    #[fail(display = "Unknown error.")]
-    UnknownError,
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -68,18 +66,28 @@ impl ResponseData {
     }
 }
 
-impl From<ValidationError> for ResponseData {
-    fn from(err: ValidationError) -> ResponseData {
+impl From<ValidationErrors> for ResponseData {
+    fn from(errors: ValidationErrors) -> ResponseData {
         let mut data = ResponseData::default();
-        match err {
-            ValidationError::UsernameIsEmpty => data.username_errors.push(err.to_string()),
-            ValidationError::UsernameIsNotPresent => data.username_errors.push(err.to_string()),
-            ValidationError::PasswordIsEmpty => data.password_errors.push(err.to_string()),
-            ValidationError::PasswordIsNotPresent => data.password_errors.push(err.to_string()),
-            ValidationError::AuthenticationFailed => data.non_field_errors.push(err.to_string()),
-            ValidationError::UnknownError => data.non_field_errors.push(err.to_string()),
-        }
+
+        data.username_errors = errors.username.iter().map(|e| e.to_string()).collect();
+        data.password_errors = errors.password.iter().map(|e| e.to_string()).collect();
+        data.non_field_errors = errors.non_field.iter().map(|e| e.to_string()).collect();
+
         data
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ValidationErrors {
+    username: Vec<ValidationError>,
+    password: Vec<ValidationError>,
+    non_field: Vec<ValidationError>,
+}
+
+impl ValidationErrors {
+    fn is_empty(&self) -> bool {
+        self.username.is_empty() & self.password.is_empty() && self.non_field.is_empty()
     }
 }
 
@@ -90,29 +98,36 @@ pub struct AuthForm {
 }
 
 impl AuthForm {
-    pub fn validate(self) -> Result<Credentials, ValidationError> {
+    pub fn validate(self) -> Result<Credentials, ValidationErrors> {
+        use self::ValidationError::*;
+
         let AuthForm { username, password } = self;
+        let mut errors = ValidationErrors::default();
 
         if username.is_none() {
-            return Err(ValidationError::UsernameIsNotPresent);
+            errors.username.push(MustPresent);
         } else if let Some(val) = username.clone() {
             if val.is_empty() {
-                return Err(ValidationError::UsernameIsEmpty);
+                errors.username.push(CannotBeBlank);
             }
         }
 
         if password.is_none() {
-            return Err(ValidationError::PasswordIsNotPresent);
+            errors.password.push(MustPresent);
         } else if let Some(val) = password.clone() {
             if val.is_empty() {
-                return Err(ValidationError::PasswordIsEmpty);
+                errors.password.push(CannotBeBlank);
             }
         }
 
-        let username = username.unwrap();
-        let password = password.unwrap();
+        if errors.is_empty() {
+            let username = username.unwrap();
+            let password = password.unwrap();
 
-        Ok(Credentials { username, password })
+            Ok(Credentials { username, password })
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -136,15 +151,19 @@ struct Authenticator {
 }
 
 impl Authenticator {
-    fn validate(self) -> Result<String, ValidationError> {
+    fn validate(self) -> Result<String, ValidationErrors> {
         let Authenticator { credentials, user } = self;
 
         match user {
             Some(user) => {
                 let Credentials { password, .. } = credentials;
-                check_password(&password, &user.password).and_then(|_| create_token(user.id))
+                check_password(&password, &user.password).map(|_| create_token(user.id))
             }
-            None => Err(ValidationError::AuthenticationFailed),
+            None => {
+                let mut errors = ValidationErrors::default();
+                errors.non_field.push(ValidationError::AuthenticationFailed);
+                Err(errors)
+            }
         }
     }
 }
@@ -174,8 +193,8 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
                 Err(_) => Ok(HttpResponse::InternalServerError().json("")),
             })
             .responder(),
-        Err(err) => {
-            let data = ResponseData::from(err);
+        Err(errors) => {
+            let data = ResponseData::from(errors);
             Box::new(fut_ok(HttpResponse::BadRequest().json(data)))
         }
     }
