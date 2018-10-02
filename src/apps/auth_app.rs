@@ -160,7 +160,6 @@ impl Authenticator {
         match user {
             Some(user) => {
                 let Credentials { password, .. } = credentials;
-                println!("pass: {:?}", &user.password);
                 check_password(&password, &user.password).map(|_| create_token(user.id))
             }
             None => {
@@ -189,25 +188,39 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
     }
 }
 
-fn authenticate_user(
-    result: Result<(Option<UserModel>, Credentials), Error>,
-) -> Result<HttpResponse, WebError> {
+enum AuthResult2 {
+    Success(ResponseData),
+    Invalid(ResponseData),
+    ServerError,
+}
+
+impl From<AuthResult2> for Result<HttpResponse, WebError> {
+    fn from(res: AuthResult2) -> Result<HttpResponse, WebError> {
+        Ok(match res {
+            AuthResult2::Success(data) => HttpResponse::Ok().json(data),
+            AuthResult2::Invalid(data) => HttpResponse::BadRequest().json(data),
+            AuthResult2::ServerError => HttpResponse::InternalServerError().json(""),
+        })
+    }
+}
+
+fn authenticate_user2(result: Result<(Option<UserModel>, Credentials), Error>) -> AuthResult2 {
     match result {
         Ok((user, credentials)) => {
             let auth = Authenticator { user, credentials };
             match auth.validate() {
-                Ok(token) => {
-                    let data = ResponseData::from_token(Some(token));
-                    Ok(HttpResponse::Ok().json(data))
-                }
-                Err(err) => {
-                    let data = ResponseData::from(err);
-                    Ok(HttpResponse::BadRequest().json(data))
-                }
+                Ok(token) => AuthResult2::Success(ResponseData::from_token(Some(token))),
+                Err(err) => AuthResult2::Invalid(ResponseData::from(err)),
             }
         }
-        Err(_) => Ok(HttpResponse::InternalServerError().json("")),
+        Err(_) => AuthResult2::ServerError,
     }
+}
+
+fn authenticate_user(
+    result: Result<(Option<UserModel>, Credentials), Error>,
+) -> Result<HttpResponse, WebError> {
+    authenticate_user2(result).into()
 }
 
 pub fn build() -> App<AppState> {
@@ -226,7 +239,30 @@ mod test {
     extern crate bytes;
     use super::*;
 
-    fn user_with_pass(password_hash: &'static str) -> UserModel {
+    #[test]
+    fn test_create_token() {
+        use frank_jwt::{decode, validate_signature, Algorithm};
+        use std::env;
+
+        let secret = "foo".to_string();
+        env::set_var("AUTH_TOKEN_SECRET", &secret);
+
+        let token = create_token(123);
+
+        assert_eq!(125, token.len());
+
+        let data = decode(&token, &secret, Algorithm::HS256).unwrap();
+        let (_header, data) = data;
+
+        assert_eq!(123, data["user_id"]);
+
+        let validation_result = validate_signature(&token, &secret, Algorithm::HS256);
+        assert_eq!(Ok(true), validation_result);
+
+        env::remove_var("AUTH_TOKEN_SECRET");
+    }
+
+    fn make_user(password_hash: &'static str) -> UserModel {
         UserModel {
             id: 123,
             username: "".to_string(),
@@ -236,45 +272,44 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_authenticate_user() {
-        let user = user_with_pass(
-            "pbkdf2_sha256$100000$Nk15JZg3MdZa$BKvnIMgDEAH1B6/ns9xw9PdQNP8Fq8rSHnrZ+8l0xCo=",
-        );
-        let credentials = Credentials {
+    fn make_creds(password: &'static str) -> Credentials {
+        Credentials {
             username: "foo".to_string(),
-            password: "zxcasdqwe123".to_string(),
-        };
-        let find_result = Ok((Some(user), credentials));
-
-        let result = authenticate_user(find_result);
-
-        assert!(result.is_ok());
-        // let body = *result.unwrap().body();
-        // let z: bytes::Bytes = body.into();
-        // println!("{:?}", z);
-        //
-        // assert_eq!(1, 2);
-        // assert_eq!(Body::Binary(Binary::), result.unwrap().body());
-        // let x = HttpResponse::Ok().json("");
-        // assert_eq!(x.body(), result.unwrap().body());
+            password: password.to_string(),
+        }
     }
 
     #[test]
-    fn test_authenticate_user_no_user() {
-        use actix_web::Body;
+    fn test_authenticate_user_success() {
+        let user = make_user(
+            "pbkdf2_sha256$100000$Nk15JZg3MdZa$BKvnIMgDEAH1B6/ns9xw9PdQNP8Fq8rSHnrZ+8l0xCo=",
+        );
+        let find_result = Ok((Some(user.clone()), make_creds("zxcasdqwe123")));
 
-        let credentials = Credentials {
-            username: "".to_string(),
-            password: "".to_string(),
-        };
-        let find_result = Ok((None, credentials));
+        let response = authenticate_user(find_result);
+        let expected_response = HttpResponse::Ok().json(json!({"token":create_token(user.id)}));
 
-        let result = authenticate_user(find_result);
+        assert_eq!(expected_response.body(), response.unwrap().body());
+    }
 
-        assert!(result.is_ok());
-        let response = HttpResponse::Ok()
+    #[test]
+    fn test_authenticate_user_no_user_found() {
+        let response = authenticate_user(Ok((None, make_creds(""))));
+        let expeted_response = HttpResponse::Ok()
             .json(json!({"non_field_errors":["Unable to log in with provided credentials."]}));
-        assert_eq!(response.body(), result.unwrap().body());
+
+        assert_eq!(expeted_response.body(), response.unwrap().body());
+    }
+
+    #[test]
+    fn test_authenticate_user_invalid_password() {
+        let user = make_user(
+            "pbkdf2_sha256$100000$Nk15JZg3MdZa$BKvnIMgDEAH1B6/ns9xw9PdQNP8Fq8rSHnrZ+8l0xCo=",
+        );
+        let response = authenticate_user(Ok((Some(user.clone()), make_creds("foo"))));
+        let expected_response = HttpResponse::Ok()
+            .json(json!({"non_field_errors":["Unable to log in with provided credentials."]}));
+
+        assert_eq!(expected_response.body(), response.unwrap().body());
     }
 }
