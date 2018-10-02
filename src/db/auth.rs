@@ -1,30 +1,29 @@
 use actix::{Handler, Message};
 use diesel::prelude::*;
 use failure::Error;
+use std::result;
 
-use apps::auth::{check_password, create_token};
+use apps::auth_app::Credentials;
 use db::{models::AuthUser as UserModel, schema::auth_user, DbExecutor};
 
-#[derive(Deserialize, Debug)]
-pub struct AuthenticateUser {
-    pub username: String,
-    pub password: String,
+type AuthResult = result::Result<(Option<UserModel>, Credentials), Error>;
+
+impl Message for Credentials {
+    type Result = AuthResult;
 }
 
-impl Message for AuthenticateUser {
-    type Result = Result<String, Error>;
-}
+impl Handler<Credentials> for DbExecutor {
+    type Result = AuthResult;
 
-impl Handler<AuthenticateUser> for DbExecutor {
-    type Result = Result<String, Error>;
-
-    fn handle(&mut self, msg: AuthenticateUser, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Credentials, _: &mut Self::Context) -> Self::Result {
         let connection = &self.0.get()?;
+        let username = msg.username.clone();
 
-        let user: UserModel = auth_user::table
-            .filter(auth_user::username.eq(&msg.username))
-            .first(connection)?;
+        let user = auth_user::table
+            .filter(auth_user::username.eq(&username))
+            .first(connection)
+            .ok();
 
-        check_password(&msg.password, &user.password).and_then(|_| create_token(user.id))
+        Ok((user, msg))
     }
 }
