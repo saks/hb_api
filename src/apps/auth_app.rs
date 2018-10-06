@@ -2,12 +2,13 @@ use std::convert::Into;
 
 use actix_web::middleware::Logger;
 use actix_web::{
-    App, AsyncResponder, Error as WebError, FutureResponse, HttpResponse, Json, State,
+    error, http, App, AsyncResponder, Error as WebError, FutureResponse, HttpResponse, Json, State,
 };
 use failure::Error;
 use futures::future::{ok as fut_ok, Future};
 
 use apps::AppState;
+use db::auth::{FindResult, Username};
 use db::models::AuthUser as UserModel;
 
 pub fn create_token(user_id: i32) -> String {
@@ -23,21 +24,8 @@ pub fn create_token(user_id: i32) -> String {
     encode(header, secret, &payload, Algorithm::HS256).expect("Failed to generate token")
 }
 
-pub fn check_password(password: &str, hash: &str) -> Result<(), ValidationErrors> {
-    use djangohashers;
-
-    match djangohashers::check_password(password, hash) {
-        Ok(true) => Ok(()),
-        _ => {
-            let mut errors = ValidationErrors::default();
-            errors.non_field.push(ValidationError::AuthenticationFailed);
-            Err(errors)
-        }
-    }
-}
-
 #[derive(Debug, Fail)]
-pub enum ValidationError {
+pub enum ValidationError2 {
     #[fail(display = "This field may not be blank.")]
     CannotBeBlank,
     #[fail(display = "This field is required.")]
@@ -56,14 +44,19 @@ struct ResponseData {
     username_errors: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     non_field_errors: Vec<String>,
-    #[serde(skip)]
-    form: AuthForm,
 }
 
 impl ResponseData {
-    pub fn from_token(token: Option<String>) -> Self {
+    fn auth_failed_error() -> Self {
         Self {
-            token,
+            non_field_errors: vec!["Unable to log in with provided credentials.".to_string()],
+            ..Self::default()
+        }
+    }
+
+    pub fn from_token(token: String) -> Self {
+        Self {
+            token: Some(token),
             ..Self::default()
         }
     }
@@ -83,9 +76,9 @@ impl From<ValidationErrors> for ResponseData {
 
 #[derive(Debug, Default)]
 pub struct ValidationErrors {
-    username: Vec<ValidationError>,
-    password: Vec<ValidationError>,
-    non_field: Vec<ValidationError>,
+    username: Vec<ValidationError2>,
+    password: Vec<ValidationError2>,
+    non_field: Vec<ValidationError2>,
 }
 
 impl ValidationErrors {
@@ -101,10 +94,12 @@ pub struct AuthForm {
 }
 
 impl AuthForm {
-    pub fn validate(self) -> Result<Credentials, ValidationErrors> {
-        use self::ValidationError::*;
+    pub fn validate2(self) -> Result<(String, String), ValidationErrors> {
+        use self::ValidationError2::*;
 
-        let AuthForm { username, password } = self;
+        let AuthForm {
+            username, password, ..
+        } = self;
         let mut errors = ValidationErrors::default();
 
         if username.is_none() {
@@ -127,65 +122,83 @@ impl AuthForm {
             let username = username.unwrap();
             let password = password.unwrap();
 
-            Ok(Credentials { username, password })
+            Ok((username, password))
         } else {
             Err(errors)
         }
     }
 }
 
-impl Into<ResponseData> for AuthForm {
-    fn into(self) -> ResponseData {
-        let mut result = ResponseData::default();
-        result.form = self;
-        result
+#[derive(Fail, Debug, Clone, Copy)]
+#[fail(display = "my error")]
+enum MyError {
+    #[fail(display = "Unable to log in with provided credentials.")]
+    AuthFailed,
+}
+
+impl From<MyError> for ResponseData {
+    fn from(error: MyError) -> ResponseData {
+        let mut data = ResponseData::default();
+
+        match error {
+            MyError::AuthFailed => data.non_field_errors.push(error.to_string()),
+        }
+
+        data
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Credentials {
-    pub username: String,
-    pub password: String,
-}
+impl error::ResponseError for MyError {
+    fn error_response(&self) -> HttpResponse {
+        let status_code = match self {
+            MyError::AuthFailed => http::StatusCode::UNAUTHORIZED,
+        };
 
-struct Authenticator {
-    user: Option<UserModel>,
-    credentials: Credentials,
-}
-
-impl Authenticator {
-    fn validate(self) -> Result<String, ValidationErrors> {
-        let Authenticator { credentials, user } = self;
-
-        match user {
-            Some(user) => {
-                let Credentials { password, .. } = credentials;
-                check_password(&password, &user.password).map(|_| create_token(user.id))
-            }
-            None => {
-                let mut errors = ValidationErrors::default();
-                errors.non_field.push(ValidationError::AuthenticationFailed);
-                Err(errors)
-            }
-        }
+        let body = ResponseData::from(*self);
+        HttpResponse::build(status_code).json(body)
     }
 }
 
 fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureResponse<HttpResponse> {
     let form = form_json.into_inner();
 
-    match form.validate() {
-        Ok(credentials) => state
+    match form.validate2() {
+        Ok((username, password)) => state
             .db
-            .send(credentials)
+            .send(Username(username))
             .from_err()
-            .and_then(authenticate_user)
+            .and_then(validate_user)
+            .and_then(|result| validate_password(result, password))
+            .and_then(generate_token)
             .responder(),
         Err(errors) => {
             let data = ResponseData::from(errors);
             Box::new(fut_ok(HttpResponse::BadRequest().json(data)))
         }
     }
+}
+
+fn validate_user(find_result: FindResult) -> Result<UserModel, WebError> {
+    find_result.map_err(|e| {
+        println!("E: find user error: {:?}", e);
+        MyError::AuthFailed.into()
+    })
+}
+
+fn validate_password(user: UserModel, password: String) -> Result<UserModel, WebError> {
+    use djangohashers;
+
+    match djangohashers::check_password(&password, &user.password) {
+        Ok(true) => Ok(user),
+        _ => Err(MyError::AuthFailed.into()),
+    }
+}
+
+fn generate_token(user: UserModel) -> Result<HttpResponse, WebError> {
+    let token = create_token(user.id);
+    let data = ResponseData::from_token(token);
+
+    Ok(HttpResponse::Ok().json(data))
 }
 
 enum AuthResult2 {
@@ -202,25 +215,6 @@ impl From<AuthResult2> for Result<HttpResponse, WebError> {
             AuthResult2::ServerError => HttpResponse::InternalServerError().json(""),
         })
     }
-}
-
-fn authenticate_user2(result: Result<(Option<UserModel>, Credentials), Error>) -> AuthResult2 {
-    match result {
-        Ok((user, credentials)) => {
-            let auth = Authenticator { user, credentials };
-            match auth.validate() {
-                Ok(token) => AuthResult2::Success(ResponseData::from_token(Some(token))),
-                Err(err) => AuthResult2::Invalid(ResponseData::from(err)),
-            }
-        }
-        Err(_) => AuthResult2::ServerError,
-    }
-}
-
-fn authenticate_user(
-    result: Result<(Option<UserModel>, Credentials), Error>,
-) -> Result<HttpResponse, WebError> {
-    authenticate_user2(result).into()
 }
 
 pub fn build() -> App<AppState> {
@@ -312,4 +306,15 @@ mod test {
 
         assert_eq!(expected_response.body(), response.unwrap().body());
     }
+
+    // TODO
+    // #[test]
+    // fn test_auth_form_no_password() {
+    //     let form = AuthForm {
+    //         username: Some("foo".to_string()),
+    //         password: None,
+    //     };
+    //     let result = form.validate();
+    //     let expected_result = ResponseData { password_errors: vec![], ...ResponseData::default() };
+    // }
 }

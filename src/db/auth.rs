@@ -3,27 +3,27 @@ use diesel::prelude::*;
 use failure::Error;
 use std::result;
 
-use apps::auth_app::Credentials;
+// use apps::auth_app::Credentials;
 use db::{models::AuthUser as UserModel, schema::auth_user, DbExecutor};
 
-type AuthResult = result::Result<(Option<UserModel>, Credentials), Error>;
+pub type FindResult = result::Result<UserModel, Error>;
 
-impl Message for Credentials {
-    type Result = AuthResult;
+pub struct Username(pub String);
+
+impl Message for Username {
+    type Result = FindResult;
 }
 
-impl Handler<Credentials> for DbExecutor {
-    type Result = AuthResult;
+impl Handler<Username> for DbExecutor {
+    type Result = FindResult;
 
-    fn handle(&mut self, msg: Credentials, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Username, _: &mut Self::Context) -> Self::Result {
         let connection = &self.0.get()?;
-        let username = msg.username.clone();
+        let username = msg.0;
 
-        let user = auth_user::table
+        auth_user::table
             .filter(auth_user::username.eq(&username))
             .first(connection)
-            .ok();
-
-        Ok((user, msg))
+            .map_err(|e| e.into())
     }
 }
