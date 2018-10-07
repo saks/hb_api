@@ -1,4 +1,4 @@
-use actix_web::{Error as WebError, HttpResponse};
+use actix_web::Error as WebError;
 
 use super::auth_error::AuthError;
 use super::ResponseData;
@@ -25,20 +25,18 @@ pub fn validate_user(find_result: FindResult) -> Result<UserModel, WebError> {
     })
 }
 
-pub fn validate_password(user: UserModel, password: String) -> Result<UserModel, WebError> {
+pub fn validate_password(user: UserModel, password: String) -> Result<UserModel, AuthError> {
     use djangohashers;
 
     match djangohashers::check_password(&password, &user.password) {
         Ok(true) => Ok(user),
-        _ => Err(AuthError::AuthFailed.into()),
+        _ => Err(AuthError::AuthFailed)?,
     }
 }
 
-pub fn generate_token(user: UserModel) -> Result<HttpResponse, WebError> {
+pub fn generate_token(user: UserModel) -> ResponseData {
     let token = create_token(user.id);
-    let data = ResponseData::from_token(token);
-
-    Ok(HttpResponse::Ok().json(data))
+    ResponseData::from_token(token)
 }
 
 #[cfg(test)]
@@ -66,5 +64,40 @@ mod test {
         assert_eq!(Ok(true), validation_result);
 
         env::remove_var("AUTH_TOKEN_SECRET");
+    }
+
+    #[test]
+    fn test_validate_password_ok() {
+        let user = make_user("foo");
+        let result = validate_password(user.clone(), "foo".to_string());
+
+        assert_eq!(user, result.unwrap());
+    }
+
+    #[test]
+    fn test_validate_password_err() {
+        let user = make_user("foo");
+        let result = validate_password(user.clone(), "bar".to_string());
+
+        assert_eq!(AuthError::AuthFailed, result.unwrap_err());
+    }
+
+    #[test]
+    fn test_generate_token() {
+        let user = make_user("foo");
+        let data = generate_token(make_user("foo"));
+        assert_eq!(ResponseData::from_token(create_token(user.id)), data);
+    }
+
+    fn make_user(password: &'static str) -> UserModel {
+        use djangohashers;
+
+        UserModel {
+            id: 123,
+            username: "".to_string(),
+            password: djangohashers::make_password(password),
+            email: "".to_string(),
+            is_active: true,
+        }
     }
 }

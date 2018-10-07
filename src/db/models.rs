@@ -1,4 +1,4 @@
-#[derive(Queryable, Serialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Debug, Clone, PartialEq)]
 pub struct AuthUser {
     pub id: i32,
     pub email: String,

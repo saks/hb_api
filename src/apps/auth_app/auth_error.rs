@@ -3,7 +3,7 @@ use serde::{Serialize, Serializer};
 
 use super::ResponseData;
 
-#[derive(Fail, Debug, Clone, Copy)]
+#[derive(Fail, Debug, Clone, Copy, PartialEq)]
 pub enum AuthError {
     #[fail(display = "Unable to log in with provided credentials.")]
     AuthFailed,

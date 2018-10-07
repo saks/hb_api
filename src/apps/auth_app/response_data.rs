@@ -1,6 +1,6 @@
 use super::auth_error::AuthError;
 
-#[derive(Serialize, Debug, Default)]
+#[derive(Serialize, Debug, Default, PartialEq)]
 pub struct ResponseData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
