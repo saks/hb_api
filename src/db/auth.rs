@@ -3,7 +3,6 @@ use diesel::prelude::*;
 use failure::Error;
 use std::result;
 
-// use apps::auth_app::Credentials;
 use db::{models::AuthUser as UserModel, schema::auth_user, DbExecutor};
 
 pub type FindResult = result::Result<UserModel, Error>;
