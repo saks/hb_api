@@ -5,7 +5,7 @@ use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Json, State};
 use futures::{future, future::Future};
 
 use apps::AppState;
-use db::auth::Username;
+use db::auth::FindUserMessage;
 
 mod auth_error;
 mod auth_form;
@@ -22,7 +22,7 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
     match form.validate() {
         Ok((username, password)) => state
             .db
-            .send(Username(username))
+            .send(FindUserMessage(username))
             .from_err()
             .and_then(validate_user)
             .and_then(|user| validate_password(user, password).map_err(Into::into))

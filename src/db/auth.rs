@@ -5,18 +5,18 @@ use std::result;
 
 use db::{models::AuthUser as UserModel, schema::auth_user, DbExecutor};
 
-pub type FindResult = result::Result<UserModel, Error>;
+pub type FindUserResult = result::Result<UserModel, Error>;
 
-pub struct Username(pub String);
+pub struct FindUserMessage(pub String);
 
-impl Message for Username {
-    type Result = FindResult;
+impl Message for FindUserMessage {
+    type Result = FindUserResult;
 }
 
-impl Handler<Username> for DbExecutor {
-    type Result = FindResult;
+impl Handler<FindUserMessage> for DbExecutor {
+    type Result = FindUserResult;
 
-    fn handle(&mut self, msg: Username, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: FindUserMessage, _: &mut Self::Context) -> Self::Result {
         let connection = &self.0.get()?;
         let username = msg.0;
 
@@ -24,5 +24,16 @@ impl Handler<Username> for DbExecutor {
             .filter(auth_user::username.eq(&username))
             .first(connection)
             .map_err(|e| e.into())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_find_existing_user() {
+        // create user
+        // find user
     }
 }
