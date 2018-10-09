@@ -37,12 +37,13 @@ mod config;
 mod db;
 
 use apps::auth_app;
+use apps::records_app;
 
 fn main() {
     dotenv().ok().expect("Failed to parse .env file");
     env_logger::init();
 
-    server::new(|| vec![auth_app::build()])
+    server::new(|| vec![auth_app::build(), records_app::build()])
         .bind(format!("{}:{}", *config::LISTEN_IP, *config::LISTEN_PORT))
         .expect("Cannot bind to IP:PORT")
         .run();

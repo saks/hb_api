@@ -6,3 +6,14 @@ pub struct AuthUser {
     pub password: String,
     pub is_active: bool,
 }
+
+#[derive(Queryable, Serialize, Debug, Clone, PartialEq)]
+pub struct Record {
+    pub id: i32,
+    pub tags: Vec<String>,
+    pub amount: f32,
+    pub amount_currency: String,
+    pub transaction_type: String,
+    pub created_at: String,
+    pub user_id: i32,
+}

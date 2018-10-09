@@ -1,5 +1,5 @@
 use super::auth_error::AuthError;
-use super::ResponseData;
+use super::response_data::ResponseData;
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct AuthForm {

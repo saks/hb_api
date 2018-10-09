@@ -7,3 +7,15 @@ table! {
         is_active -> Bool,
     }
 }
+
+table! {
+    records_record (id) {
+        id -> Integer,
+        tags -> Array<String>,
+        created_at -> Timestamptz,
+        amount_currency -> String,
+        transaction_type -> String,
+        amount -> Float,
+        user_id -> Integer,
+    }
+}

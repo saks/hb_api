@@ -3,6 +3,8 @@ use actix::Addr;
 use db::DbExecutor;
 
 pub mod auth_app;
+pub mod middlewares;
+pub mod records_app;
 
 /// State with DbExecutor address
 pub struct AppState {
