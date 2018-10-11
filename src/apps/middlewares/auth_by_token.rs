@@ -57,10 +57,10 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
 mod test {
     use super::*;
     use std::env;
-    use time::{now_utc, Duration};
 
     fn make_token(hours_from_now: i64, secret_str: &str) -> String {
         use frank_jwt::{encode, Algorithm};
+        use time::{now_utc, Duration};
 
         let exp = (now_utc() + Duration::hours(hours_from_now))
             .to_timespec()

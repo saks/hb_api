@@ -46,15 +46,64 @@ pub fn build() -> App<AppState> {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use actix_web::{http, test};
+    use super::*;
+    use actix_web::{
+        client::ClientRequest,
+        http::{Method, StatusCode},
+        test::TestServer,
+        HttpMessage,
+    };
+    use dotenv::dotenv;
+    use std::str;
 
-    // #[test]
-    // fn test_create() {
-    //     let state = AppState::new();
-    //     let resp = test::TestRequest::with_state(state)
-    //         .run_async(&create)
-    //         .unwrap();
-    //     assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
-    // }
+    fn setup() {
+        dotenv().ok().expect("Failed to parse .env file");
+    }
+
+    #[test]
+    fn test_validation() {
+        setup();
+
+        let mut srv = TestServer::with_factory(build);
+
+        let request = ClientRequest::build()
+            .method(Method::POST)
+            .uri(&srv.url("/auth/jwt/create/"))
+            .json(json!({"username":"bar","password": ""}))
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+        let bytes = srv.execute(response.body()).unwrap();
+        let body = str::from_utf8(&bytes).unwrap();
+
+        assert_eq!(
+            body,
+            json!({"password":["This field may not be blank."]}).to_string()
+        );
+    }
+
+    #[test]
+    fn test_not_json_body() {
+        setup();
+
+        let mut srv = TestServer::with_factory(build);
+
+        let request = ClientRequest::build()
+            .method(Method::POST)
+            .uri(&srv.url("/auth/jwt/create/"))
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+        let bytes = srv.execute(response.body()).unwrap();
+        let body = str::from_utf8(&bytes).unwrap();
+
+        assert_eq!(body, "");
+    }
 }

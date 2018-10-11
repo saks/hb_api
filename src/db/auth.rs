@@ -29,10 +29,18 @@ impl Handler<FindUserMessage> for DbExecutor {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    // use super::*;
+    // use auth_user::dsl::*;
+    // use diesel::insert;
 
     #[test]
     fn test_find_existing_user() {
+        // let user = UserModel { email: "foo@foo.com",  };
+        // use diesel::pg::PgConnection;
+
+        // PgConnection::establish("")
+
+        // auth_user::dsl::insert_into(auth_user::table).values(auth_user::username.eq("john")).execute(connection);
         // create user
         // find user
     }
