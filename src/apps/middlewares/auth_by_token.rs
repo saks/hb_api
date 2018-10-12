@@ -1,6 +1,6 @@
 use actix_web::error::{ErrorUnauthorized, ParseError};
 use actix_web::middleware::{Middleware, Started};
-use actix_web::{HttpRequest, Result};
+use actix_web::{HttpRequest, Result as WebResult};
 
 use config;
 
@@ -16,41 +16,28 @@ impl VerifyAuthToken {
         Self { secret }
     }
 
-    fn verify(&self, auth_header: &str) -> Result<i64> {
+    fn verify(&self, http_header: &str) -> Result<i64, ()> {
         use frank_jwt::{decode, Algorithm};
-        use std::cmp::Ordering;
         use time::now_utc;
 
-        let payload = auth_header.to_string();
+        let payload = http_header.to_string();
+        let (header, data) = decode(&payload, &self.secret, Algorithm::HS256).map_err(|_| ())?;
 
-        decode(&payload, &self.secret, Algorithm::HS256)
-            .map_err(|_| ())
-            .and_then(|(header, data)| match header.get("exp") {
-                Some(exp) => match exp.as_i64() {
-                    Some(exp_time) => {
-                        let now = now_utc().to_timespec().sec;
+        let exp_time: i64 = header.get("exp").and_then(|exp| exp.as_i64()).ok_or(())?;
 
-                        match exp_time.cmp(&now) {
-                            Ordering::Greater => match data.get("user_id") {
-                                Some(id_number) => match id_number.as_i64() {
-                                    Some(user_id) => Ok(user_id),
-                                    _ => Err(()),
-                                },
-                                _ => Err(()),
-                            },
-                            _ => Err(()),
-                        }
-                    }
-                    _ => Err(()),
-                },
-                _ => Err(()),
-            })
-            .map_err(|_| ErrorUnauthorized("TODO"))
+        let now = now_utc().to_timespec().sec;
+        if exp_time < now {
+            return Err(());
+        }
+
+        let user_id: i64 = data.get("user_id").and_then(|id| id.as_i64()).ok_or(())?;
+
+        Ok(user_id)
     }
 }
 
 impl<AppState> Middleware<AppState> for VerifyAuthToken {
-    fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
+    fn start(&self, req: &HttpRequest<AppState>) -> WebResult<Started> {
         let r = req.clone();
 
         let auth_header = r
@@ -60,12 +47,14 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
             .to_str()
             .map_err(ErrorUnauthorized)?;
 
-        self.verify(auth_header).map(|user_id| {
-            let auth_user_id: AuthUserId = Box::new(user_id);
-            req.extensions_mut().insert(auth_user_id);
+        self.verify(auth_header)
+            .map(|user_id| {
+                let auth_user_id: AuthUserId = Box::new(user_id);
+                req.extensions_mut().insert(auth_user_id);
 
-            Started::Done
-        })
+                Started::Done
+            })
+            .map_err(|_| ErrorUnauthorized("TODO: bad token error"))
     }
 }
 
