@@ -1,12 +1,12 @@
 // use std::convert::Into;
 
 use actix_web::middleware::Logger;
-use actix_web::{App, FutureResponse, HttpResponse, Query, State};
+use actix_web::{App, FutureResponse, HttpRequest, HttpResponse, Query, State};
 use futures::future;
 // use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Query, State};
 // use futures::{future, future::Future};
 
-use apps::middlewares::auth_by_token::VerifyAuthToken;
+use apps::middlewares::auth_by_token::{AuthUserId, VerifyAuthToken};
 use apps::AppState;
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -15,9 +15,18 @@ struct Params {
     page: u32,
 }
 
-fn index((params_path, _state): (Query<Params>, State<AppState>)) -> FutureResponse<HttpResponse> {
+fn index(
+    (params_path, _state, _req): (Query<Params>, State<AppState>, HttpRequest<AppState>),
+) -> FutureResponse<HttpResponse> {
     let params = params_path.into_inner();
-    // println!("params: {:?}", params);
+
+    let user_id: AuthUserId = match _req.extensions_mut().remove() {
+        Some(id) => id,
+        None => {
+            return Box::new(future::ok(HttpResponse::Unauthorized().finish()));
+        }
+    };
+    println!("params: {:?}, user_id: {:?}", params, user_id);
     Box::new(future::ok(HttpResponse::Ok().json("TODO")))
 }
 
@@ -27,7 +36,7 @@ pub fn build() -> App<AppState> {
         .middleware(Logger::default())
         .middleware(VerifyAuthToken::new())
         .resource("/", |r| {
-            r.get().with_config(index, |((_cfg, _),)| {
+            r.get().with_config(index, |((_cfg, _, _),)| {
                 // cfg.limit(1024); // <- limit size of the payload
             })
         })
@@ -53,7 +62,7 @@ mod test {
             .to_timespec()
             .sec;
         let header = json!({ "exp": exp });
-        let payload = json!({ "foo": 123 });
+        let payload = json!({ "user_id": 123 });
         let secret = secret_str.to_string();
 
         encode(header, &secret, &payload, Algorithm::HS256).expect("failed to encode token")

@@ -8,13 +8,15 @@ pub struct VerifyAuthToken {
     secret: String,
 }
 
+pub type AuthUserId = Box<i64>;
+
 impl VerifyAuthToken {
     pub fn new() -> Self {
         let secret = config::AUTH_TOKEN_SECRET.to_string();
         Self { secret }
     }
 
-    fn verify(&self, auth_header: &str) -> Result<()> {
+    fn verify(&self, auth_header: &str) -> Result<i64> {
         use frank_jwt::{decode, Algorithm};
         use std::cmp::Ordering;
         use time::now_utc;
@@ -23,17 +25,25 @@ impl VerifyAuthToken {
 
         decode(&payload, &self.secret, Algorithm::HS256)
             .map_err(|_| ())
-            .and_then(|(header, _payload)| {
-                let exp = header.get("exp").ok_or(());
-                exp.and_then(|n| n.as_i64().ok_or(()))
-            })
-            .and_then(|exp| {
-                let now = now_utc().to_timespec().sec;
+            .and_then(|(header, data)| match header.get("exp") {
+                Some(exp) => match exp.as_i64() {
+                    Some(exp_time) => {
+                        let now = now_utc().to_timespec().sec;
 
-                match exp.cmp(&now) {
-                    Ordering::Greater => Ok(()),
+                        match exp_time.cmp(&now) {
+                            Ordering::Greater => match data.get("user_id") {
+                                Some(id_number) => match id_number.as_i64() {
+                                    Some(user_id) => Ok(user_id),
+                                    _ => Err(()),
+                                },
+                                _ => Err(()),
+                            },
+                            _ => Err(()),
+                        }
+                    }
                     _ => Err(()),
-                }
+                },
+                _ => Err(()),
             })
             .map_err(|_| ErrorUnauthorized("TODO"))
     }
@@ -42,6 +52,7 @@ impl VerifyAuthToken {
 impl<AppState> Middleware<AppState> for VerifyAuthToken {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
         let r = req.clone();
+
         let auth_header = r
             .headers()
             .get("Authorization")
@@ -49,7 +60,12 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
             .to_str()
             .map_err(ErrorUnauthorized)?;
 
-        self.verify(auth_header).map(|_| Started::Done)
+        self.verify(auth_header).map(|user_id| {
+            let auth_user_id: AuthUserId = Box::new(user_id);
+            req.extensions_mut().insert(auth_user_id);
+
+            Started::Done
+        })
     }
 }
 
@@ -66,7 +82,7 @@ mod test {
             .to_timespec()
             .sec;
         let header = json!({ "exp": exp });
-        let payload = json!({ "foo": 123 });
+        let payload = json!({ "user_id": 123 });
         let secret = secret_str.to_string();
 
         encode(header, &secret, &payload, Algorithm::HS256).expect("failed to encode token")
