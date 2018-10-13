@@ -1,11 +1,13 @@
 // use std::convert::Into;
 
+use actix::{Handler, Message};
 use actix_web::middleware::Logger;
-use actix_web::{App, FutureResponse, HttpRequest, HttpResponse};
-// use actix_web::{App, FutureResponse, HttpRequest, HttpResponse, Query, State};
-use futures::future;
+use actix_web::{App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, State};
+use diesel::prelude::*;
+use failure::Error;
+use std::result;
 // use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Query, State};
-// use futures::{future, future::Future};
+use futures::{future, future::Future};
 
 use apps::middlewares::auth_by_token::{AuthUserId, VerifyAuthToken};
 use apps::AppState;
@@ -16,17 +18,65 @@ struct Params {
     page: u32,
 }
 
-fn index(_req: &HttpRequest<AppState>) -> FutureResponse<HttpResponse> {
-    // let params = params_path.into_inner();
+use db::{models::Record as RecordModel, schema::records_record, DbExecutor};
+pub type GetRecordsResult = result::Result<Vec<RecordModel>, Error>;
+struct GetRecordsMessage {
+    user_id: i32,
+    page: u32,
+}
 
-    let user_id: AuthUserId = match _req.extensions_mut().remove() {
+impl Message for GetRecordsMessage {
+    type Result = GetRecordsResult;
+}
+
+impl Handler<GetRecordsMessage> for DbExecutor {
+    type Result = GetRecordsResult;
+
+    fn handle(&mut self, msg: GetRecordsMessage, _: &mut Self::Context) -> Self::Result {
+        let connection = &self.0.get()?;
+        let _page = msg.page;
+        let user_id = msg.user_id;
+
+        let results: Vec<RecordModel> = records_record::table
+            .select(records_record::all_columns)
+            .filter(records_record::user_id.eq(user_id))
+            .order(records_record::created_at.desc())
+            .limit(10)
+            .get_results(&*connection)
+            .unwrap();
+
+        Ok(results)
+    }
+}
+
+fn index(
+    (query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
+) -> FutureResponse<HttpResponse> {
+    let _params = query_params.into_inner();
+
+    let user_id: AuthUserId = match request.extensions_mut().remove() {
         Some(id) => id,
         None => {
             return Box::new(future::ok(HttpResponse::Unauthorized().finish()));
         }
     };
-    println!("user_id: {:?}", user_id);
-    Box::new(future::ok(HttpResponse::Ok().json("TODO")))
+
+    state
+        .db
+        .send(GetRecordsMessage {
+            page: _params.page,
+            user_id: *user_id as i32,
+        })
+        .from_err()
+        .and_then(|r| {
+            println!("res: {:?}", r);
+            //
+            Ok(HttpResponse::Ok().json("TODO"))
+        })
+        .responder()
+
+    // println!("user_id: {:?}", user_id);
+    // Box::new(future::ok(HttpResponse::Ok().json("TODO")))
 }
 
 pub fn build() -> App<AppState> {
@@ -34,7 +84,7 @@ pub fn build() -> App<AppState> {
         .prefix("/api/records/record-detail")
         .middleware(Logger::default())
         .middleware(VerifyAuthToken::new())
-        .resource("/", |r| r.get().a(index))
+        .resource("/", |r| r.get().with(index))
 }
 
 #[cfg(test)]

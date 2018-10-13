@@ -11,11 +11,11 @@ table! {
 table! {
     records_record (id) {
         id -> Integer,
-        tags -> Array<String>,
-        created_at -> Timestamptz,
-        amount_currency -> String,
-        transaction_type -> String,
-        amount -> Float,
+        created_at -> Timestamp,
+        tags -> Array<Text>,
+        amount_currency -> Text,
+        transaction_type -> Text,
+        // amount -> Float,
         user_id -> Integer,
     }
 }

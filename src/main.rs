@@ -1,6 +1,7 @@
 // disable warnings from diesel till 1.4 gets released
 #![allow(proc_macro_derive_resolution_fallback)]
 
+extern crate chrono;
 extern crate failure;
 extern crate futures;
 extern crate serde;

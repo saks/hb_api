@@ -1,3 +1,5 @@
+use chrono::NaiveDateTime;
+
 #[derive(Queryable, Serialize, Debug, Clone, PartialEq)]
 pub struct AuthUser {
     pub id: i32,
@@ -10,10 +12,10 @@ pub struct AuthUser {
 #[derive(Queryable, Serialize, Debug, Clone, PartialEq)]
 pub struct Record {
     pub id: i32,
+    pub created_at: NaiveDateTime,
     pub tags: Vec<String>,
-    pub amount: f32,
+    // pub amount: f32,
     pub amount_currency: String,
     pub transaction_type: String,
-    pub created_at: String,
     pub user_id: i32,
 }
