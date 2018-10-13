@@ -32,7 +32,7 @@ pub fn validate_password(user: UserModel, password: String) -> Result<UserModel,
     }
 }
 
-pub fn generate_token(user: UserModel) -> ResponseData {
+pub fn generate_token(user: &UserModel) -> ResponseData {
     let token = create_token(user.id);
     ResponseData::from_token(token)
 }
@@ -47,11 +47,12 @@ mod test {
         use std::env;
 
         let secret = "foo".to_string();
+        env::remove_var("AUTH_TOKEN_SECRET");
         env::set_var("AUTH_TOKEN_SECRET", &secret);
 
         let token = create_token(123);
 
-        assert_eq!(125, token.len());
+        assert_eq!(124, token.len());
 
         let data = decode(&token, &secret, Algorithm::HS256).unwrap();
         let (_header, data) = data;
@@ -83,7 +84,7 @@ mod test {
     #[test]
     fn test_generate_token() {
         let user = make_user_with_pass("foo");
-        let data = generate_token(make_user_with_pass("foo"));
+        let data = generate_token(&make_user_with_pass("foo"));
         assert_eq!(ResponseData::from_token(create_token(user.id)), data);
     }
 

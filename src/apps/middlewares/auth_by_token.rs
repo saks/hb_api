@@ -1,6 +1,6 @@
 use actix_web::error::{ErrorUnauthorized, ParseError};
 use actix_web::middleware::{Middleware, Started};
-use actix_web::{HttpRequest, Result as WebResult};
+use actix_web::{http::header, HttpRequest, Result as WebResult};
 
 use config;
 
@@ -38,12 +38,10 @@ impl VerifyAuthToken {
 
 impl<AppState> Middleware<AppState> for VerifyAuthToken {
     fn start(&self, req: &HttpRequest<AppState>) -> WebResult<Started> {
-        let r = req.clone();
-
-        let auth_header = r
+        let auth_header = req
             .headers()
-            .get("Authorization")
-            .ok_or(ErrorUnauthorized(ParseError::Header))?
+            .get(header::AUTHORIZATION)
+            .ok_or_else(|| ErrorUnauthorized(ParseError::Header))?
             .to_str()
             .map_err(ErrorUnauthorized)?;
 

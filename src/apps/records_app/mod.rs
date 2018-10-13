@@ -1,7 +1,8 @@
 // use std::convert::Into;
 
 use actix_web::middleware::Logger;
-use actix_web::{App, FutureResponse, HttpRequest, HttpResponse, Query, State};
+use actix_web::{App, FutureResponse, HttpRequest, HttpResponse};
+// use actix_web::{App, FutureResponse, HttpRequest, HttpResponse, Query, State};
 use futures::future;
 // use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Query, State};
 // use futures::{future, future::Future};
@@ -15,10 +16,8 @@ struct Params {
     page: u32,
 }
 
-fn index(
-    (params_path, _state, _req): (Query<Params>, State<AppState>, HttpRequest<AppState>),
-) -> FutureResponse<HttpResponse> {
-    let params = params_path.into_inner();
+fn index(_req: &HttpRequest<AppState>) -> FutureResponse<HttpResponse> {
+    // let params = params_path.into_inner();
 
     let user_id: AuthUserId = match _req.extensions_mut().remove() {
         Some(id) => id,
@@ -26,7 +25,7 @@ fn index(
             return Box::new(future::ok(HttpResponse::Unauthorized().finish()));
         }
     };
-    println!("params: {:?}, user_id: {:?}", params, user_id);
+    println!("user_id: {:?}", user_id);
     Box::new(future::ok(HttpResponse::Ok().json("TODO")))
 }
 
@@ -35,11 +34,7 @@ pub fn build() -> App<AppState> {
         .prefix("/api/records/record-detail")
         .middleware(Logger::default())
         .middleware(VerifyAuthToken::new())
-        .resource("/", |r| {
-            r.get().with_config(index, |((_cfg, _, _),)| {
-                // cfg.limit(1024); // <- limit size of the payload
-            })
-        })
+        .resource("/", |r| r.get().a(index))
 }
 
 #[cfg(test)]

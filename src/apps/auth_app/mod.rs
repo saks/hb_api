@@ -26,7 +26,7 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
             .from_err()
             .and_then(validate_user)
             .and_then(|user| validate_password(user, password).map_err(Into::into))
-            .and_then(|user| Ok(generate_token(user)))
+            .and_then(|user| Ok(generate_token(&user)))
             .and_then(|response_data| Ok(HttpResponse::Ok().json(response_data)))
             .responder(),
         Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),

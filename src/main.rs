@@ -1,3 +1,6 @@
+// disable warnings from diesel till 1.4 gets released
+#![allow(proc_macro_derive_resolution_fallback)]
+
 extern crate failure;
 extern crate futures;
 extern crate serde;
@@ -40,7 +43,7 @@ use apps::auth_app;
 use apps::records_app;
 
 fn main() {
-    dotenv().ok().expect("Failed to parse .env file");
+    dotenv().expect("Failed to parse .env file");
     env_logger::init();
 
     server::new(|| vec![auth_app::build(), records_app::build()])
