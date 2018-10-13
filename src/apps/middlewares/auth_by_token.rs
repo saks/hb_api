@@ -23,14 +23,14 @@ impl VerifyAuthToken {
         let payload = http_header.to_string();
         let (header, data) = decode(&payload, &self.secret, Algorithm::HS256).map_err(|_| ())?;
 
-        let exp_time: i64 = header.get("exp").and_then(|exp| exp.as_i64()).ok_or(())?;
+        let exp = header.get("exp").and_then(|exp| exp.as_i64()).ok_or(())?;
 
         let now = now_utc().to_timespec().sec;
-        if exp_time < now {
+        if exp < now {
             return Err(());
         }
 
-        let user_id: i64 = data.get("user_id").and_then(|id| id.as_i64()).ok_or(())?;
+        let user_id = data.get("user_id").and_then(|id| id.as_i64()).ok_or(())?;
 
         Ok(user_id)
     }
