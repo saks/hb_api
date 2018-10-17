@@ -1,72 +1,21 @@
-// use std::convert::Into;
-
-use actix::{Handler, Message};
 use actix_web::middleware::Logger;
 use actix_web::{App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, State};
-use diesel::prelude::*;
-use failure::Error;
-use std::result;
-// use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Query, State};
 use futures::{future, future::Future};
 
 use apps::middlewares::auth_by_token::VerifyAuthToken;
 use apps::AppState;
 use auth_token::AuthToken;
 
-#[derive(Deserialize, Debug, Default, Clone)]
-struct Params {
-    #[serde(default)]
-    page: i64,
-}
+mod db;
+mod params;
+mod response_data;
 
-use db::pagination::*;
-use db::{models::Record as RecordModel, schema::records_record, DbExecutor};
-pub type GetRecordsResult = result::Result<Vec<RecordModel>, Error>;
-struct GetRecordsMessage {
-    user_id: i32,
-    page: i64,
-}
+use self::db::GetRecordsMessage;
+use self::params::Params;
+use self::response_data::ResponseData;
 
-impl Message for GetRecordsMessage {
-    type Result = GetRecordsResult;
-}
-
-impl Handler<GetRecordsMessage> for DbExecutor {
-    type Result = GetRecordsResult;
-
-    fn handle(&mut self, msg: GetRecordsMessage, _: &mut Self::Context) -> Self::Result {
-        let connection = &self.0.get()?;
-        let page = msg.page;
-        let user_id = msg.user_id;
-        let per_page = Some(10);
-
-        let mut query = records_record::table
-            .select(records_record::all_columns)
-            .filter(records_record::user_id.eq(user_id))
-            .order(records_record::created_at.desc())
-            .paginate(page);
-
-        if let Some(per_page) = per_page {
-            use std::cmp::min;
-            query = query.per_page(min(per_page, 25));
-        }
-
-        let results = query.load::<(RecordModel, i64)>(&*connection)?;
-
-        // let (records, total_pages) =
-        //     query.load_and_count_pages::<(Vec<RecordModel>, i64)>(&*connection)?;
-        println!("Results {:?}", results);
-
-        let results: Vec<RecordModel> = records_record::table
-            .select(records_record::all_columns)
-            .filter(records_record::user_id.eq(user_id))
-            .order(records_record::created_at.desc())
-            .limit(10)
-            .get_results(&*connection)
-            .unwrap();
-
-        Ok(results)
-    }
+fn auth_error_response() -> FutureResponse<HttpResponse> {
+    Box::new(future::ok(HttpResponse::Unauthorized().finish()))
 }
 
 fn index(
@@ -74,37 +23,42 @@ fn index(
 ) -> FutureResponse<HttpResponse> {
     let params = query_params.into_inner();
 
-    let token: AuthToken = match request.extensions_mut().remove() {
-        Some(token) => token,
-        None => {
-            return Box::new(future::ok(HttpResponse::Unauthorized().finish()));
+    match params.validate() {
+        Ok(Params { page, per_page }) => {
+            let token: AuthToken = match request.extensions_mut().remove() {
+                Some(token) => token,
+                None => {
+                    return auth_error_response();
+                }
+            };
+            let user_id = token.data.user_id;
+
+            let message = GetRecordsMessage {
+                page,
+                per_page,
+                user_id,
+            };
+
+            state
+                .db
+                .send(message)
+                .from_err()
+                .and_then(|result| {
+                    result
+                        .map(ResponseData::new)
+                        .map(|data| HttpResponse::Ok().json(data))
+                        .map_err(|e| e.into())
+                })
+                .responder()
         }
-    };
-
-    let get_records_message = GetRecordsMessage {
-        page: params.page,
-        user_id: token.data.user_id,
-    };
-
-    state
-        .db
-        .send(get_records_message)
-        .from_err()
-        .and_then(|r| {
-            println!("res: {:?}", r);
-            //
-            Ok(HttpResponse::Ok().json("TODO"))
-        })
-        .responder()
-
-    // println!("user_id: {:?}", user_id);
-    // Box::new(future::ok(HttpResponse::Ok().json("TODO")))
+        Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
+    }
 }
 
 pub fn build() -> App<AppState> {
     App::with_state(AppState::new())
         .prefix("/api/records/record-detail")
-        .middleware(Logger::default())
+        // .middleware(Logger::default())
         .middleware(VerifyAuthToken::new())
         .resource("/", |r| r.get().with(index))
 }
