@@ -1,9 +1,10 @@
 use super::auth_error::AuthError;
+use auth_token::AuthToken;
 
 #[derive(Serialize, Debug, Default, PartialEq)]
 pub struct ResponseData {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub token: Option<String>,
+    pub token: Option<AuthToken>,
     #[serde(skip_serializing_if = "Vec::is_empty", rename = "password")]
     pub password_errors: Vec<AuthError>,
     #[serde(skip_serializing_if = "Vec::is_empty", rename = "username")]
@@ -13,7 +14,7 @@ pub struct ResponseData {
 }
 
 impl ResponseData {
-    pub fn from_token(token: String) -> Self {
+    pub fn from_token(token: AuthToken) -> Self {
         Self {
             token: Some(token),
             ..Self::default()

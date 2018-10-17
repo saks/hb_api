@@ -9,8 +9,9 @@ use std::result;
 // use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Query, State};
 use futures::{future, future::Future};
 
-use apps::middlewares::auth_by_token::{AuthTokenData, VerifyAuthToken};
+use apps::middlewares::auth_by_token::VerifyAuthToken;
 use apps::AppState;
+use auth_token::AuthToken;
 
 #[derive(Deserialize, Debug, Default, Clone)]
 struct Params {
@@ -73,8 +74,8 @@ fn index(
 ) -> FutureResponse<HttpResponse> {
     let params = query_params.into_inner();
 
-    let token_data: AuthTokenData = match request.extensions_mut().remove() {
-        Some(data) => data,
+    let token: AuthToken = match request.extensions_mut().remove() {
+        Some(token) => token,
         None => {
             return Box::new(future::ok(HttpResponse::Unauthorized().finish()));
         }
@@ -82,7 +83,7 @@ fn index(
 
     let get_records_message = GetRecordsMessage {
         page: params.page,
-        user_id: token_data.user_id,
+        user_id: token.data.user_id,
     };
 
     state

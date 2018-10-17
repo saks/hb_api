@@ -37,6 +37,7 @@ use actix_web::server;
 use dotenv::dotenv;
 
 mod apps;
+mod auth_token;
 mod config;
 mod db;
 
