@@ -5,6 +5,7 @@ use r2d2;
 
 pub mod auth;
 pub mod models;
+pub mod pagination;
 pub mod schema;
 
 use config;

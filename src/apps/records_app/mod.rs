@@ -9,20 +9,21 @@ use std::result;
 // use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Query, State};
 use futures::{future, future::Future};
 
-use apps::middlewares::auth_by_token::{AuthUserId, VerifyAuthToken};
+use apps::middlewares::auth_by_token::{AuthTokenData, VerifyAuthToken};
 use apps::AppState;
 
 #[derive(Deserialize, Debug, Default, Clone)]
 struct Params {
     #[serde(default)]
-    page: u32,
+    page: i64,
 }
 
+use db::pagination::*;
 use db::{models::Record as RecordModel, schema::records_record, DbExecutor};
 pub type GetRecordsResult = result::Result<Vec<RecordModel>, Error>;
 struct GetRecordsMessage {
     user_id: i32,
-    page: u32,
+    page: i64,
 }
 
 impl Message for GetRecordsMessage {
@@ -34,8 +35,26 @@ impl Handler<GetRecordsMessage> for DbExecutor {
 
     fn handle(&mut self, msg: GetRecordsMessage, _: &mut Self::Context) -> Self::Result {
         let connection = &self.0.get()?;
-        let _page = msg.page;
+        let page = msg.page;
         let user_id = msg.user_id;
+        let per_page = Some(10);
+
+        let mut query = records_record::table
+            .select(records_record::all_columns)
+            .filter(records_record::user_id.eq(user_id))
+            .order(records_record::created_at.desc())
+            .paginate(page);
+
+        if let Some(per_page) = per_page {
+            use std::cmp::min;
+            query = query.per_page(min(per_page, 25));
+        }
+
+        let results = query.load::<(RecordModel, i64)>(&*connection)?;
+
+        // let (records, total_pages) =
+        //     query.load_and_count_pages::<(Vec<RecordModel>, i64)>(&*connection)?;
+        println!("Results {:?}", results);
 
         let results: Vec<RecordModel> = records_record::table
             .select(records_record::all_columns)
@@ -52,21 +71,23 @@ impl Handler<GetRecordsMessage> for DbExecutor {
 fn index(
     (query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
 ) -> FutureResponse<HttpResponse> {
-    let _params = query_params.into_inner();
+    let params = query_params.into_inner();
 
-    let user_id: AuthUserId = match request.extensions_mut().remove() {
-        Some(id) => id,
+    let token_data: AuthTokenData = match request.extensions_mut().remove() {
+        Some(data) => data,
         None => {
             return Box::new(future::ok(HttpResponse::Unauthorized().finish()));
         }
     };
 
+    let get_records_message = GetRecordsMessage {
+        page: params.page,
+        user_id: token_data.user_id,
+    };
+
     state
         .db
-        .send(GetRecordsMessage {
-            page: _params.page,
-            user_id: *user_id as i32,
-        })
+        .send(get_records_message)
         .from_err()
         .and_then(|r| {
             println!("res: {:?}", r);

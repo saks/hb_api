@@ -1,6 +1,7 @@
 use actix_web::Error;
 
 use super::{auth_error::AuthError, response_data::ResponseData};
+use apps::middlewares::auth_by_token::AuthTokenData;
 use db::{auth::FindUserResult, models::AuthUser as UserModel};
 
 pub fn create_token(user_id: i32) -> String {
@@ -9,7 +10,7 @@ pub fn create_token(user_id: i32) -> String {
     use time::{now_utc, Duration};
 
     let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
-    let payload = json!({ "user_id": user_id });
+    let payload = json!(AuthTokenData { user_id });
     let header = json!({ "exp": exp });
     let secret = &config::AUTH_TOKEN_SECRET.to_string();
 

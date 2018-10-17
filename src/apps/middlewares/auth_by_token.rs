@@ -1,6 +1,7 @@
 use actix_web::error::{ErrorUnauthorized, ParseError};
 use actix_web::middleware::{Middleware, Started};
 use actix_web::{http::header, HttpRequest, Result as WebResult};
+use serde_json;
 
 use config;
 
@@ -8,7 +9,10 @@ pub struct VerifyAuthToken {
     secret: String,
 }
 
-pub type AuthUserId = Box<i64>;
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct AuthTokenData {
+    pub user_id: i32,
+}
 
 impl VerifyAuthToken {
     pub fn new() -> Self {
@@ -16,7 +20,7 @@ impl VerifyAuthToken {
         Self { secret }
     }
 
-    fn verify(&self, http_header: &str) -> Result<i64, ()> {
+    fn verify(&self, http_header: &str) -> Result<AuthTokenData, ()> {
         use frank_jwt::{decode, Algorithm};
         use time::now_utc;
 
@@ -30,9 +34,7 @@ impl VerifyAuthToken {
             return Err(());
         }
 
-        let user_id = data.get("user_id").and_then(|id| id.as_i64()).ok_or(())?;
-
-        Ok(user_id)
+        serde_json::from_value(data).map_err(|_| ())
     }
 }
 
@@ -46,9 +48,9 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
             .map_err(ErrorUnauthorized)?;
 
         self.verify(auth_header)
-            .map(|user_id| {
-                let auth_user_id: AuthUserId = Box::new(user_id);
-                req.extensions_mut().insert(auth_user_id);
+            .map(|token_data| {
+                // let auth_user_id: AuthUserId = Box::new(user_id);
+                req.extensions_mut().insert(token_data);
 
                 Started::Done
             })
@@ -90,7 +92,10 @@ mod test {
         let middleware = VerifyAuthToken::new();
         let valid_token = make_token(33, "foo");
 
-        assert!(middleware.verify(&valid_token).is_ok());
+        let result = middleware.verify(&valid_token);
+
+        assert!(result.is_ok());
+        assert_eq!(AuthTokenData { user_id: 123 }, result.unwrap());
 
         teardown()
     }
