@@ -1,6 +1,7 @@
 // disable warnings from diesel till 1.4 gets released
 #![allow(proc_macro_derive_resolution_fallback)]
 
+extern crate bigdecimal;
 extern crate chrono;
 extern crate failure;
 extern crate futures;
@@ -15,10 +16,13 @@ extern crate failure_derive;
 extern crate serde_derive;
 // #[macro_use]
 // extern crate validator_derive;
-extern crate validator;
+// extern crate validator;
 
+// #[macro_use]
+// extern crate diesel_codegen;
 #[macro_use]
 extern crate diesel;
+
 extern crate dotenv;
 
 extern crate djangohashers;

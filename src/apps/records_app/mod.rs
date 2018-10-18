@@ -12,7 +12,6 @@ mod response_data;
 
 use self::db::GetRecordsMessage;
 use self::params::Params;
-use self::response_data::ResponseData;
 
 fn auth_error_response() -> FutureResponse<HttpResponse> {
     Box::new(future::ok(HttpResponse::Unauthorized().finish()))
@@ -45,7 +44,6 @@ fn index(
                 .from_err()
                 .and_then(|result| {
                     result
-                        .map(ResponseData::new)
                         .map(|data| HttpResponse::Ok().json(data))
                         .map_err(|e| e.into())
                 })
@@ -58,7 +56,7 @@ fn index(
 pub fn build() -> App<AppState> {
     App::with_state(AppState::new())
         .prefix("/api/records/record-detail")
-        // .middleware(Logger::default())
+        .middleware(Logger::default())
         .middleware(VerifyAuthToken::new())
         .resource("/", |r| r.get().with(index))
 }

@@ -4,10 +4,11 @@ use actix::{Handler, Message};
 use diesel::prelude::*;
 use failure::Error;
 
+use super::response_data::ResponseData;
 use db::pagination::*;
 use db::{models::Record as RecordModel, schema::records_record, DbExecutor};
 
-pub type GetRecordsResult = result::Result<(Vec<RecordModel>, i64), Error>;
+pub type GetRecordsResult = result::Result<ResponseData, Error>;
 
 pub struct GetRecordsMessage {
     pub user_id: i32,
@@ -32,10 +33,21 @@ impl Handler<GetRecordsMessage> for DbExecutor {
             .paginate(msg.page)
             .per_page(msg.per_page);
 
-        let results = query.load::<(RecordModel, i64)>(&*connection)?;
-        let total = results.get(0).map(|x| x.1).unwrap_or(0);
-        let records: Vec<RecordModel> = results.into_iter().map(|x| x.0).collect();
+        let query_results = query.load::<(RecordModel, i64)>(&*connection)?;
 
-        Ok((records, total))
+        let total = query_results.get(0).map(|x| x.1).unwrap_or(0);
+        let total_pages = (total as f64 / msg.per_page as f64).ceil() as i64;
+
+        let results: Vec<RecordModel> = query_results.into_iter().map(|x| x.0).collect();
+
+        let previous = msg.page > 1;
+        let next = msg.page < total_pages;
+
+        Ok(ResponseData {
+            total,
+            results,
+            next,
+            previous,
+        })
     }
 }
