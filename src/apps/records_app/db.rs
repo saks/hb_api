@@ -38,7 +38,7 @@ impl Handler<GetRecordsMessage> for DbExecutor {
         let total = query_results.get(0).map(|x| x.1).unwrap_or(0);
         let total_pages = (total as f64 / msg.per_page as f64).ceil() as i64;
 
-        let results: Vec<RecordModel> = query_results.into_iter().map(|x| x.0).collect();
+        let results = query_results.into_iter().map(|x| x.0).collect();
 
         let previous = msg.page > 1;
         let next = msg.page < total_pages;
