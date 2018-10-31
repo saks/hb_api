@@ -14,7 +14,7 @@ export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES
 until docker-compose exec -e PGPASSWORD=$POSTGRES_PASSWORD db sh -c 'psql -U $POSTGRES_USER -d postgres -c "\q"'; do
 
   >&2 echo "Postgres is unavailable - sleeping"
-  sleep 0.5
+  sleep 1
 done
 
 exec "$@"

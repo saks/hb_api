@@ -51,3 +51,13 @@ impl Handler<GetRecordsMessage> for DbExecutor {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_foo() {
+        //
+    }
+}
