@@ -8,7 +8,7 @@ pub mod models;
 pub mod pagination;
 pub mod schema;
 
-use config;
+use crate::config;
 
 /// This is db executor actor. We are going to run 3 of them in parallel.
 pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);

@@ -1,8 +1,8 @@
 use actix_web::Error;
 
 use super::{auth_error::AuthError, response_data::ResponseData};
-use auth_token::AuthToken;
-use db::{auth::FindUserResult, models::AuthUser as UserModel};
+use crate::auth_token::AuthToken;
+use crate::db::{auth::FindUserResult, models::AuthUser as UserModel};
 
 pub fn validate_user(find_result: FindUserResult) -> Result<UserModel, Error> {
     find_result.map_err(|e| {

@@ -5,8 +5,8 @@ use diesel::prelude::*;
 use failure::Error;
 
 use super::response_data::ResponseData;
-use db::pagination::*;
-use db::{models::Record as RecordModel, schema::records_record, DbExecutor};
+use crate::db::pagination::*;
+use crate::db::{models::Record as RecordModel, schema::records_record, DbExecutor};
 
 pub type GetRecordsResult = result::Result<ResponseData, Error>;
 

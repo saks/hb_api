@@ -1,4 +1,4 @@
-use db::models::Record as RecordModel;
+use crate::db::models::Record as RecordModel;
 
 #[derive(Serialize, Debug)]
 pub struct ResponseData {

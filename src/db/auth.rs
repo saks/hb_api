@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use failure::Error;
 use std::result;
 
-use db::{models::AuthUser as UserModel, schema::auth_user, DbExecutor};
+use crate::db::{models::AuthUser as UserModel, schema::auth_user, DbExecutor};
 
 pub type FindUserResult = result::Result<UserModel, Error>;
 

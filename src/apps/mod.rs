@@ -1,6 +1,6 @@
 use actix::Addr;
 
-use db::DbExecutor;
+use crate::db::DbExecutor;
 
 pub mod auth_app;
 pub mod middlewares;

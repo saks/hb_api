@@ -1,5 +1,5 @@
 use super::auth_error::AuthError;
-use auth_token::AuthToken;
+use crate::auth_token::AuthToken;
 
 #[derive(Serialize, Debug, Default, PartialEq)]
 pub struct ResponseData {

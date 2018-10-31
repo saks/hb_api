@@ -4,8 +4,8 @@ use actix_web::middleware::Logger;
 use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Json, State};
 use futures::{future, future::Future};
 
-use apps::AppState;
-use db::auth::FindUserMessage;
+use crate::apps::AppState;
+use crate::db::auth::FindUserMessage;
 
 mod auth_error;
 mod auth_form;

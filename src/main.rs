@@ -45,8 +45,8 @@ mod auth_token;
 mod config;
 mod db;
 
-use apps::auth_app;
-use apps::records_app;
+use crate::apps::auth_app;
+use crate::apps::records_app;
 
 fn main() {
     dotenv().expect("Failed to parse .env file");

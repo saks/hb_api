@@ -2,9 +2,9 @@ use actix_web::middleware::Logger;
 use actix_web::{App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, State};
 use futures::{future, future::Future};
 
-use apps::middlewares::auth_by_token::VerifyAuthToken;
-use apps::AppState;
-use auth_token::AuthToken;
+use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
+use crate::apps::AppState;
+use crate::auth_token::AuthToken;
 
 mod db;
 mod params;

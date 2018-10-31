@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 use serde_json;
 
-use config;
+use crate::config;
 
 #[derive(Debug, PartialEq)]
 pub struct AuthToken {
@@ -40,7 +40,7 @@ impl AuthToken {
     }
 
     fn to_string(&self) -> String {
-        use config;
+        use crate::config;
         use frank_jwt::{encode, Algorithm};
         use time::{now_utc, Duration};
 

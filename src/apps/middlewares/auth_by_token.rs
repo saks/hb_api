@@ -2,7 +2,7 @@ use actix_web::error::{ErrorUnauthorized, ParseError};
 use actix_web::middleware::{Middleware, Started};
 use actix_web::{http::header, HttpRequest, Result as WebResult};
 
-use auth_token::AuthToken;
+use crate::auth_token::AuthToken;
 
 pub struct VerifyAuthToken;
 
