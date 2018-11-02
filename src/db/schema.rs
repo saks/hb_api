@@ -24,23 +24,18 @@
 
 table! {
     auth_user (id) {
-        id -> Integer,
-        email -> Text,
-        username -> Text,
-        password -> Text,
+        date_joined -> Timestamptz,
+        email -> Varchar,
+        first_name -> Varchar,
+        id -> Int4,
         is_active -> Bool,
+        is_staff -> Bool,
+        is_superuser -> Bool,
+        last_name -> Varchar,
+        password -> Varchar,
+        username -> Varchar,
 
-        // id -> Int4,
-        // password -> Varchar,
         // last_login -> Nullable<Timestamptz>,
-        // is_superuser -> Bool,
-        // username -> Varchar,
-        // first_name -> Varchar,
-        // last_name -> Varchar,
-        // email -> Varchar,
-        // is_staff -> Bool,
-        // is_active -> Bool,
-        // date_joined -> Timestamptz,
         // tags -> Nullable<Array<Varchar>>,
     }
 }

@@ -2,13 +2,13 @@ version: "3.7"
 services:
   db:
     image: "postgres:alpine"
-    command: "-c 'max_connections=200'"
+    command: "-c 'max_connections=200' -c 'log_min_error_statement=DEBUG5' -c 'log_connections=true' -c 'log_disconnections=true' -c 'log_statement=all'"
     volumes:
       - "pg_data:/var/lib/postgresql/data"
     environment:
       POSTGRES_PASSWORD: "mysecretpassword"
       POSTGRES_USER: "rustapp"
-      POSTGRES_DB: "octo-budget-api"
+      POSTGRES_DB: "test"
     ports:
       - 5432
 volumes:

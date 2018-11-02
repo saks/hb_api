@@ -1,14 +1,23 @@
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::NaiveDateTime;
+use diesel::Insertable;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
-#[derive(Queryable, Serialize, Debug, Clone, PartialEq)]
+use crate::db::schema::auth_user;
+
+#[derive(Queryable, Serialize, Debug, Clone, PartialEq, Insertable)]
+#[table_name = "auth_user"]
 pub struct AuthUser {
-    pub id: i32,
+    pub date_joined: NaiveDateTime,
     pub email: String,
-    pub username: String,
-    pub password: String,
+    pub first_name: String,
+    pub id: i32,
     pub is_active: bool,
+    pub is_staff: bool,
+    pub is_superuser: bool,
+    pub last_name: String,
+    pub password: String,
+    pub username: String,
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq)]

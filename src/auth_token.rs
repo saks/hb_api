@@ -3,7 +3,7 @@ use serde_json;
 
 use crate::config;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct AuthToken {
     pub data: Data,
 }

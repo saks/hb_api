@@ -18,12 +18,11 @@ impl DbExecutor {
         let manager = ConnectionManager::<PgConnection>::new(config::DATABASE_URL.to_string());
 
         let pool = r2d2::Pool::builder()
+            .max_size(1) // max pool size
             .build(manager)
             .expect("Failed to create database connection pool.");
 
-        SyncArbiter::start(*config::DATABASE_POOL_SIZE, move || {
-            DbExecutor(pool.clone())
-        })
+        SyncArbiter::start(1, move || DbExecutor(pool.clone()))
     }
 }
 

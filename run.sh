@@ -4,7 +4,7 @@ docker-compose up -d db
 
 POSTGRES_PASSWORD="mysecretpassword"
 POSTGRES_USER="rustapp"
-POSTGRES_DB="octo-budget-api"
+POSTGRES_DB="test"
 
 
 POSTGRES_HOST=$(docker-compose port db 5432)

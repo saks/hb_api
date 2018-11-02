@@ -13,7 +13,7 @@ mod response_data;
 mod utils;
 
 use self::auth_form::AuthForm;
-use self::response_data::ResponseData;
+pub use self::response_data::ResponseData;
 use self::utils::{generate_token, validate_password, validate_user};
 
 fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureResponse<HttpResponse> {

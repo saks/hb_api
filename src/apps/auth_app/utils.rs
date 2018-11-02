@@ -53,6 +53,7 @@ mod test {
     }
 
     fn make_user_with_pass(password: &'static str) -> UserModel {
+        use chrono::naive::NaiveDateTime;
         use djangohashers;
 
         UserModel {
@@ -61,6 +62,11 @@ mod test {
             password: djangohashers::make_password(password),
             email: "".to_string(),
             is_active: true,
+            is_superuser: true,
+            first_name: "".to_string(),
+            last_name: "".to_string(),
+            is_staff: false,
+            date_joined: NaiveDateTime::from_timestamp(0, 0),
         }
     }
 }
