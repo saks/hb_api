@@ -7,7 +7,6 @@ authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
 actix-web = "0.7"
 actix = "*"
 env_logger = "0.5"
-frank_jwt = "3.0"
 serde_json = { version = "1.0" }
 failure = "0.1"
 failure_derive = "0.1"
@@ -23,3 +22,4 @@ lazy_static = "1.1"
 bytes = "*"
 chrono = { version = "*", features = ["serde"] }
 bigdecimal = "0.0.11" # must match version of diesel dependency
+jsonwebtoken = "5"

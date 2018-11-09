@@ -17,4 +17,6 @@ until docker-compose exec -e PGPASSWORD=$POSTGRES_PASSWORD db sh -c 'psql -U $PO
   sleep 1
 done
 
+export RUST_TEST_THREADS=1
+
 exec "$@"

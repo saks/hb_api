@@ -73,18 +73,18 @@ mod test {
         dotenv().ok().expect("Failed to parse .env file");
     }
 
-    fn make_token(hours_from_now: i64, secret_str: &str) -> String {
-        use frank_jwt::{encode, Algorithm};
+    fn make_token(hours_from_now: i64, secret: &[u8]) -> String {
+        use crate::auth_token::Claims;
+        use jsonwebtoken::{encode, Header};
         use time::{now_utc, Duration};
 
         let exp = (now_utc() + Duration::hours(hours_from_now))
             .to_timespec()
             .sec;
-        let header = json!({ "exp": exp });
-        let payload = json!({ "user_id": 123 });
-        let secret = secret_str.to_string();
+        let user_id = 123;
+        let my_claims = Claims { user_id, exp };
 
-        encode(header, &secret, &payload, Algorithm::HS256).expect("failed to encode token")
+        encode(&Header::default(), &my_claims, secret).expect("Failed to generate token")
     }
 
     #[test]
@@ -106,9 +106,11 @@ mod test {
     #[test]
     fn test_auth_success_for_records_app() {
         setup();
+        use std::env;
+        env::set_var("AUTH_TOKEN_SECRET", "foo-bar-secret");
 
         let mut srv = TestServer::with_factory(build);
-        let token = make_token(12, "foo");
+        let token = make_token(12, b"foo-bar-secret");
 
         let request = ClientRequest::build()
             .header("Authorization", token)

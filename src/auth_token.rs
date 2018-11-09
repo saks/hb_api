@@ -1,5 +1,4 @@
 use serde::{Serialize, Serializer};
-use serde_json;
 
 use crate::config;
 
@@ -13,43 +12,43 @@ pub struct Data {
     pub user_id: i32,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub user_id: i32,
+    pub exp: i64,
+    //     username: String,
+    //     email: String,
+}
+
 impl AuthToken {
     pub fn new(user_id: i32) -> Self {
         let data = Data { user_id };
         Self { data }
     }
 
-    pub fn verify(header_str: &str) -> Result<Self, ()> {
-        use frank_jwt::{decode, Algorithm};
-        use time::now_utc;
+    pub fn verify(token: &str) -> Result<Self, ()> {
+        use jsonwebtoken::{decode, Validation};
+        let secret = (&**config::AUTH_TOKEN_SECRET).as_ref();
 
-        let payload = header_str.to_string();
-        let secret = config::AUTH_TOKEN_SECRET.to_string();
-        let (header, data) = decode(&payload, &secret, Algorithm::HS256).map_err(|_| ())?;
+        let token_data = decode::<Claims>(token, secret, &Validation::default()).map_err(|_| ())?;
 
-        let exp = header.get("exp").and_then(|exp| exp.as_i64()).ok_or(())?;
-
-        let now = now_utc().to_timespec().sec;
-        if exp < now {
-            return Err(());
-        }
-
-        let data = serde_json::from_value(data).map_err(|_| ())?;
+        let user_id = token_data.claims.user_id;
+        let data = Data { user_id };
 
         Ok(Self { data })
     }
 
     fn to_string(&self) -> String {
         use crate::config;
-        use frank_jwt::{encode, Algorithm};
+        use jsonwebtoken::{encode, Header};
         use time::{now_utc, Duration};
 
         let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
-        let payload = json!(self.data);
-        let header = json!({ "exp": exp });
-        let secret = &config::AUTH_TOKEN_SECRET.to_string();
+        let user_id = self.data.user_id;
+        let my_claims = Claims { user_id, exp };
+        let secret = &**config::AUTH_TOKEN_SECRET;
 
-        encode(header, secret, &payload, Algorithm::HS256).expect("Failed to generate token")
+        encode(&Header::default(), &my_claims, secret.as_ref()).expect("Failed to generate token")
     }
 }
 
@@ -66,64 +65,46 @@ impl Serialize for AuthToken {
 #[cfg(test)]
 mod test {
     use super::*;
+    use jsonwebtoken::{decode, Validation};
     use std::env;
+
+    const TEST_SECRET: &[u8] = b"foo-bar-secret";
+    const TEST_USER_ID: i32 = 112233;
 
     #[test]
     fn test_create_token() {
-        use frank_jwt::{decode, validate_signature, Algorithm};
-        use std::env;
+        setup();
 
-        let secret = "foo".to_string();
-        env::remove_var("AUTH_TOKEN_SECRET");
-        env::set_var("AUTH_TOKEN_SECRET", &secret);
+        let token = AuthToken::new(TEST_USER_ID).to_string();
+        assert_eq!(128, token.len());
 
-        let token = AuthToken::new(123).to_string();
+        let decoded = decode::<Claims>(&token, TEST_SECRET, &Validation::default()).unwrap();
+        assert_eq!(TEST_USER_ID, decoded.claims.user_id);
 
-        assert_eq!(124, token.len());
-
-        let data = decode(&token, &secret, Algorithm::HS256).unwrap();
-        let (_header, data) = data;
-
-        assert_eq!(123, data["user_id"]);
-
-        let validation_result = validate_signature(&token, &secret, Algorithm::HS256);
-        assert_eq!(Ok(true), validation_result);
-
-        env::remove_var("AUTH_TOKEN_SECRET");
+        teardown();
     }
 
-    fn make_token(hours_from_now: i64, secret_str: &str) -> String {
-        use frank_jwt::{encode, Algorithm};
-        use time::{now_utc, Duration};
+    #[test]
+    #[should_panic(expected = "InvalidSignature")]
+    fn test_create_token_with_invalid_secret() {
+        setup();
 
-        let exp = (now_utc() + Duration::hours(hours_from_now))
-            .to_timespec()
-            .sec;
-        let header = json!({ "exp": exp });
-        let payload = json!({ "user_id": 123 });
-        let secret = secret_str.to_string();
+        let token = AuthToken::new(TEST_USER_ID).to_string();
+        teardown(); // cleanup state before panic
 
-        encode(header, &secret, &payload, Algorithm::HS256).expect("failed to encode token")
-    }
-
-    fn setup() {
-        env::set_var("AUTH_TOKEN_SECRET", "foo");
-    }
-
-    fn teardown() {
-        env::remove_var("AUTH_TOKEN_SECRET");
+        decode::<Claims>(&token, b"secret", &Validation::default()).unwrap();
     }
 
     #[test]
     fn test_verify_token() {
         setup();
 
-        let valid_token = make_token(33, "foo");
+        let valid_token = make_token(33, TEST_SECRET);
 
         let result = AuthToken::verify(&valid_token);
 
-        assert!(result.is_ok());
-        assert_eq!(AuthToken::new(123), result.unwrap());
+        // assert!(result.is_ok());
+        assert_eq!(AuthToken::new(TEST_USER_ID), result.unwrap());
 
         teardown()
     }
@@ -132,7 +113,7 @@ mod test {
     fn test_verify_expired_token() {
         setup();
 
-        let valid_token = make_token(-33, "foo");
+        let valid_token = make_token(-33, TEST_SECRET);
 
         assert!(AuthToken::verify(&valid_token).is_err());
 
@@ -143,10 +124,34 @@ mod test {
     fn test_verify_token_with_wrong_signature() {
         setup();
 
-        let valid_token = make_token(33, "bar");
+        let valid_token = make_token(33, b"bar");
 
         assert!(AuthToken::verify(&valid_token).is_err());
 
         teardown();
+    }
+
+    fn make_token(hours_from_now: i64, secret: &[u8]) -> String {
+        use jsonwebtoken::{encode, Header};
+        use time::{now_utc, Duration};
+
+        let exp = (now_utc() + Duration::hours(hours_from_now))
+            .to_timespec()
+            .sec;
+        let user_id = TEST_USER_ID;
+        let my_claims = Claims { user_id, exp };
+
+        encode(&Header::default(), &my_claims, secret).expect("Failed to generate token")
+    }
+
+    fn setup() {
+        env::set_var(
+            "AUTH_TOKEN_SECRET",
+            String::from_utf8(TEST_SECRET.to_vec()).unwrap(),
+        );
+    }
+
+    fn teardown() {
+        env::remove_var("AUTH_TOKEN_SECRET");
     }
 }

@@ -15,7 +15,7 @@ pub struct DbExecutor(pub Pool<ConnectionManager<PgConnection>>);
 
 impl DbExecutor {
     pub fn new() -> Addr<Self> {
-        let manager = ConnectionManager::<PgConnection>::new(config::DATABASE_URL.to_string());
+        let manager = ConnectionManager::<PgConnection>::new(&**config::DATABASE_URL);
 
         let pool = r2d2::Pool::builder()
             .max_size(1) // max pool size
