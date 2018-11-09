@@ -7,7 +7,7 @@ pub struct AuthToken {
     pub data: Data,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Data {
     pub user_id: i32,
 }
@@ -18,6 +18,17 @@ pub struct Claims {
     pub exp: i64,
     //     username: String,
     //     email: String,
+}
+
+impl From<Data> for Claims {
+    fn from(data: Data) -> Self {
+        use time::{now_utc, Duration};
+
+        let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
+        let user_id = data.user_id;
+
+        Self { user_id, exp }
+    }
 }
 
 impl AuthToken {
@@ -41,14 +52,11 @@ impl AuthToken {
     fn to_string(&self) -> String {
         use crate::config;
         use jsonwebtoken::{encode, Header};
-        use time::{now_utc, Duration};
 
-        let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
-        let user_id = self.data.user_id;
-        let my_claims = Claims { user_id, exp };
-        let secret = &**config::AUTH_TOKEN_SECRET;
+        let my_claims: Claims = self.data.clone().into();
+        let secret = (&**config::AUTH_TOKEN_SECRET).as_ref();
 
-        encode(&Header::default(), &my_claims, secret.as_ref()).expect("Failed to generate token")
+        encode(&Header::default(), &my_claims, secret).expect("Failed to generate token")
     }
 }
 

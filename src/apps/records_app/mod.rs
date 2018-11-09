@@ -110,7 +110,7 @@ mod test {
         env::set_var("AUTH_TOKEN_SECRET", "foo-bar-secret");
 
         let mut srv = TestServer::with_factory(build);
-        let token = make_token(12, b"foo-bar-secret");
+        let token = format!("JWT {}", make_token(12, b"foo-bar-secret"));
 
         let request = ClientRequest::build()
             .header("Authorization", token)
