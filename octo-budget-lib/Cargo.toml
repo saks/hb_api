@@ -6,7 +6,7 @@ authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
 [dependencies]
 serde = "*"
 serde_derive = "*"
+serde_json = "*"
 jsonwebtoken = "5"
-lazy_static = "1.1"
-chrono = { version = "*", features = ["serde"] }
 time = "0.1"
+failure = "0.1"

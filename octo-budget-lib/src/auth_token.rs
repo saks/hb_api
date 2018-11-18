@@ -1,165 +1,130 @@
+use failure::Error;
 use serde::{Serialize, Serializer};
 
-use crate::config;
+const DEFAULT_EXPIRE_IN_HOURS: i64 = 24;
 
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct AuthToken {
-    pub data: Data,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Data {
+pub struct AuthToken<'a> {
     pub user_id: i32,
+    secret: &'a [u8],
+    expire_in_hours: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub user_id: i32,
-    pub exp: i64,
-    //     username: String,
-    //     email: String,
-}
+impl<'a> AuthToken<'a> {
+    pub fn new(user_id: i32, secret: &'a [u8]) -> Self {
+        let expire_in_hours = DEFAULT_EXPIRE_IN_HOURS;
 
-impl From<Data> for Claims {
-    fn from(data: Data) -> Self {
-        use time::{now_utc, Duration};
-
-        let exp = (now_utc() + Duration::days(1)).to_timespec().sec;
-        let user_id = data.user_id;
-
-        Self { user_id, exp }
-    }
-}
-
-impl AuthToken {
-    pub fn new(user_id: i32) -> Self {
-        let data = Data { user_id };
-        Self { data }
+        Self {
+            user_id,
+            expire_in_hours,
+            secret,
+        }
     }
 
-    pub fn verify(token: &str) -> Result<Self, ()> {
-        use jsonwebtoken::{decode, Validation};
-        let secret = (&**config::AUTH_TOKEN_SECRET).as_ref();
-
-        let token_data = decode::<Claims>(token, secret, &Validation::default()).map_err(|_| ())?;
-
-        let user_id = token_data.claims.user_id;
-        let data = Data { user_id };
-
-        Ok(Self { data })
-    }
-
-    fn to_string(&self) -> String {
-        use crate::config;
+    pub fn to_string(&self) -> String {
         use jsonwebtoken::{encode, Header};
 
-        let my_claims: Claims = self.data.clone().into();
-        let secret = (&**config::AUTH_TOKEN_SECRET).as_ref();
+        let headers = &Header::default();
+        let secret = self.secret;
+        let data = self.data();
 
-        encode(&Header::default(), &my_claims, secret).expect("Failed to generate token")
+        encode(headers, &data, secret).expect("Failed to generate token")
+    }
+
+    pub fn expire_in_hours(mut self, n: i64) -> Self {
+        self.expire_in_hours = n;
+        self
+    }
+
+    pub fn from(token: &str, secret: &'a [u8]) -> Result<Self, Error> {
+        use jsonwebtoken::{decode, Validation};
+
+        let token_data = decode::<Data>(token, secret, &Validation::default())?;
+        let user_id = token_data.claims.user_id;
+
+        Ok(Self::new(user_id, secret))
+    }
+
+    pub fn data(&self) -> Data {
+        use time::{now_utc, Duration};
+
+        let exp = (now_utc() + Duration::days(self.expire_in_hours))
+            .to_timespec()
+            .sec;
+
+        Data {
+            exp,
+            user_id: self.user_id,
+        }
     }
 }
 
-impl Serialize for AuthToken {
+impl<'a> Serialize for AuthToken<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let string = self.to_string();
-        serializer.serialize_str(&string)
+        serializer.serialize_str(&self.to_string())
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+pub struct Data {
+    pub user_id: i32,
+    pub exp: i64,
+    // pub username: &'a str,
+    // pub email: &'a str,
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use jsonwebtoken::{decode, Validation};
-    use std::env;
 
     const TEST_SECRET: &[u8] = b"foo-bar-secret";
     const TEST_USER_ID: i32 = 112233;
 
     #[test]
     fn test_create_token() {
-        setup();
-
-        let token = AuthToken::new(TEST_USER_ID).to_string();
+        let token = AuthToken::new(TEST_USER_ID, TEST_SECRET).to_string();
         assert_eq!(128, token.len());
 
-        let decoded = decode::<Claims>(&token, TEST_SECRET, &Validation::default()).unwrap();
+        let decoded = decode::<Data>(&token, TEST_SECRET, &Validation::default()).unwrap();
         assert_eq!(TEST_USER_ID, decoded.claims.user_id);
-
-        teardown();
     }
 
     #[test]
     #[should_panic(expected = "InvalidSignature")]
     fn test_create_token_with_invalid_secret() {
-        setup();
-
-        let token = AuthToken::new(TEST_USER_ID).to_string();
-        teardown(); // cleanup state before panic
-
-        decode::<Claims>(&token, b"secret", &Validation::default()).unwrap();
+        let token = AuthToken::new(TEST_USER_ID, TEST_SECRET).to_string();
+        decode::<Data>(&token, b"secret", &Validation::default()).unwrap();
     }
 
     #[test]
     fn test_verify_token() {
-        setup();
+        let valid_token = make_token(24, TEST_SECRET);
+        let result = AuthToken::from(&valid_token, TEST_SECRET).unwrap().user_id;
 
-        let valid_token = make_token(33, TEST_SECRET);
-
-        let result = AuthToken::verify(&valid_token);
-
-        // assert!(result.is_ok());
-        assert_eq!(AuthToken::new(TEST_USER_ID), result.unwrap());
-
-        teardown()
+        assert_eq!(TEST_USER_ID, result);
     }
 
     #[test]
     fn test_verify_expired_token() {
-        setup();
+        let token = make_token(-33, TEST_SECRET);
 
-        let valid_token = make_token(-33, TEST_SECRET);
-
-        assert!(AuthToken::verify(&valid_token).is_err());
-
-        teardown();
+        assert!(AuthToken::from(&token, TEST_SECRET).is_err());
     }
 
     #[test]
     fn test_verify_token_with_wrong_signature() {
-        setup();
-
         let valid_token = make_token(33, b"bar");
 
-        assert!(AuthToken::verify(&valid_token).is_err());
-
-        teardown();
+        assert!(AuthToken::from(&valid_token, TEST_SECRET).is_err());
     }
 
     fn make_token(hours_from_now: i64, secret: &[u8]) -> String {
-        use jsonwebtoken::{encode, Header};
-        use time::{now_utc, Duration};
-
-        let exp = (now_utc() + Duration::hours(hours_from_now))
-            .to_timespec()
-            .sec;
-        let user_id = TEST_USER_ID;
-        let my_claims = Claims { user_id, exp };
-
-        encode(&Header::default(), &my_claims, secret).expect("Failed to generate token")
-    }
-
-    fn setup() {
-        env::set_var(
-            "AUTH_TOKEN_SECRET",
-            String::from_utf8(TEST_SECRET.to_vec()).unwrap(),
-        );
-    }
-
-    fn teardown() {
-        env::remove_var("AUTH_TOKEN_SECRET");
+        AuthToken::new(TEST_USER_ID, secret)
+            .expire_in_hours(hours_from_now)
+            .to_string()
     }
 }

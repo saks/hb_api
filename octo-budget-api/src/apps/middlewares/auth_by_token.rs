@@ -3,6 +3,7 @@ use actix_web::middleware::{Middleware, Started};
 use actix_web::{http::header, HttpRequest, Result as WebResult};
 use octo_budget_lib::auth_token::AuthToken;
 
+use crate::config;
 pub struct VerifyAuthToken;
 
 impl VerifyAuthToken {
@@ -29,16 +30,14 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
         }
 
         match parts.next() {
-            Some(token) => AuthToken::verify(token)
+            Some(token) => AuthToken::from(token, config::auth_token_secret())
                 .map(|auth_token| {
                     req.extensions_mut().insert(auth_token);
 
                     Started::Done
                 })
                 .map_err(|_| ErrorUnauthorized("TODO: bad token error")),
-            None => {
-                return Err(ErrorUnauthorized("Wrong token format!"));
-            }
+            None => Err(ErrorUnauthorized("Wrong token format!")),
         }
     }
 }

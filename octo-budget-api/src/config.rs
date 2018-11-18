@@ -15,6 +15,10 @@ config_env_var!(AUTH_TOKEN_SECRET);
 config_env_var!(LISTEN_IP);
 config_env_var!(LISTEN_PORT);
 
+pub fn auth_token_secret() -> &'static [u8] {
+    (&**AUTH_TOKEN_SECRET).as_ref()
+}
+
 lazy_static! {
     pub static ref DATABASE_POOL_SIZE: usize = env::var("DATABASE_POOL_SIZE")
         .expect("DATABASE_POOL_SIZE env var is not set")

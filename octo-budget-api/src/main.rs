@@ -22,9 +22,7 @@ extern crate djangohashers;
 extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
-extern crate jsonwebtoken;
 extern crate r2d2;
-extern crate time;
 
 #[cfg(test)]
 #[macro_use]

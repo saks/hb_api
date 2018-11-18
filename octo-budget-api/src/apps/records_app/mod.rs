@@ -30,7 +30,7 @@ fn index(
                     return auth_error_response();
                 }
             };
-            let user_id = token.data.user_id;
+            let user_id = token.user_id;
 
             let message = GetRecordsMessage {
                 page,
@@ -67,24 +67,17 @@ mod test {
     use actix_web::client::ClientRequest;
     use actix_web::http::StatusCode;
     use actix_web::test::TestServer;
-    use dotenv::dotenv;
 
     fn setup() {
+        use dotenv::dotenv;
         dotenv().ok().expect("Failed to parse .env file");
     }
 
-    fn make_token(hours_from_now: i64, secret: &[u8]) -> String {
-        use crate::auth_token::Claims;
-        use jsonwebtoken::{encode, Header};
-        use time::{now_utc, Duration};
-
-        let exp = (now_utc() + Duration::hours(hours_from_now))
-            .to_timespec()
-            .sec;
-        let user_id = 123;
-        let my_claims = Claims { user_id, exp };
-
-        encode(&Header::default(), &my_claims, secret).expect("Failed to generate token")
+    fn make_token(hours_from_now: i64) -> String {
+        use crate::config;
+        AuthToken::new(123, config::auth_token_secret())
+            .expire_in_hours(hours_from_now)
+            .to_string()
     }
 
     #[test]
@@ -106,11 +99,9 @@ mod test {
     #[test]
     fn test_auth_success_for_records_app() {
         setup();
-        use std::env;
-        env::set_var("AUTH_TOKEN_SECRET", "foo-bar-secret");
 
         let mut srv = TestServer::with_factory(build);
-        let token = format!("JWT {}", make_token(12, b"foo-bar-secret"));
+        let token = format!("JWT {}", make_token(12));
 
         let request = ClientRequest::build()
             .header("Authorization", token)
