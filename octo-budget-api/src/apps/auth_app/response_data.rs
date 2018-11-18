@@ -1,5 +1,5 @@
 use super::auth_error::AuthError;
-use crate::auth_token::AuthToken;
+use octo_budget_lib::auth_token::AuthToken;
 
 #[derive(Serialize, Debug, Default, PartialEq)]
 pub struct ResponseData {

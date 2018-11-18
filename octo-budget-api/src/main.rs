@@ -17,7 +17,6 @@ extern crate failure_derive;
 extern crate serde_derive;
 #[macro_use]
 extern crate diesel;
-
 extern crate djangohashers;
 
 extern crate actix;
@@ -30,8 +29,24 @@ extern crate time;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
+extern crate octo_budget_lib;
 
 pub mod apps;
-pub mod auth_token;
 pub mod config;
 pub mod db;
+
+use actix_web::server;
+use dotenv::dotenv;
+
+use crate::apps::auth_app;
+use crate::apps::records_app;
+
+fn main() {
+    dotenv().expect("Failed to parse .env file");
+    env_logger::init();
+
+    server::new(|| vec![auth_app::build(), records_app::build()])
+        .bind(format!("{}:{}", *config::LISTEN_IP, *config::LISTEN_PORT))
+        .expect("Cannot bind to IP:PORT")
+        .run();
+}

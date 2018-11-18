@@ -1,0 +1,12 @@
+[package]
+name = "octo-budget-lib"
+version = "0.1.0"
+authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
+
+[dependencies]
+serde = "*"
+serde_derive = "*"
+jsonwebtoken = "5"
+lazy_static = "1.1"
+chrono = { version = "*", features = ["serde"] }
+time = "0.1"

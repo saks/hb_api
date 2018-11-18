@@ -4,7 +4,7 @@ use futures::{future, future::Future};
 
 use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
 use crate::apps::AppState;
-use crate::auth_token::AuthToken;
+use octo_budget_lib::auth_token::AuthToken;
 
 mod db;
 mod params;

@@ -1,7 +1,7 @@
 use actix_web::Error;
+use octo_budget_lib::auth_token::AuthToken;
 
 use super::{auth_error::AuthError, response_data::ResponseData};
-use crate::auth_token::AuthToken;
 use crate::db::{auth::FindUserResult, models::AuthUser as UserModel};
 
 pub fn validate_user(find_result: FindUserResult) -> Result<UserModel, Error> {
