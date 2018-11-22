@@ -1,6 +1,7 @@
 const DEFAULT_PER_PAGE: i64 = 10;
 
 use super::response_data::ResponseData;
+use serde_derive::Deserialize;
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Params {

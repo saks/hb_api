@@ -1,9 +1,10 @@
-use actix_web::middleware::Logger;
-use actix_web::{App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, State};
+use actix_web::{
+    middleware::Logger, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query,
+    State,
+};
 use futures::{future, future::Future};
 
-use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
-use crate::apps::AppState;
+use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
 use octo_budget_lib::auth_token::AuthToken;
 
 mod db;
@@ -64,9 +65,7 @@ pub fn build() -> App<AppState> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use actix_web::client::ClientRequest;
-    use actix_web::http::StatusCode;
-    use actix_web::test::TestServer;
+    use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
 
     fn setup() {
         use dotenv::dotenv;

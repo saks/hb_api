@@ -1,7 +1,7 @@
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::NaiveDateTime;
-use diesel::Insertable;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
+use serde_derive::Serialize;
 
 use crate::db::schema::auth_user;
 

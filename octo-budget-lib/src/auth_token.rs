@@ -1,5 +1,6 @@
 use failure::Error;
-use serde::{Serialize, Serializer};
+use serde::{Serialize as SerdeSerialize, Serializer};
+use serde_derive::{Deserialize, Serialize};
 
 const DEFAULT_EXPIRE_IN_HOURS: i64 = 24;
 
@@ -59,7 +60,7 @@ impl<'a> AuthToken<'a> {
     }
 }
 
-impl<'a> Serialize for AuthToken<'a> {
+impl<'a> SerdeSerialize for AuthToken<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

@@ -1,7 +1,8 @@
 use std::convert::Into;
 
-use actix_web::middleware::Logger;
-use actix_web::{App, AsyncResponder, FutureResponse, HttpResponse, Json, State};
+use actix_web::{
+    middleware::Logger, App, AsyncResponder, FutureResponse, HttpResponse, Json, State,
+};
 use futures::{future, future::Future};
 
 use crate::apps::AppState;
@@ -54,6 +55,7 @@ mod test {
         HttpMessage,
     };
     use dotenv::dotenv;
+    use serde_json::json;
     use std::str;
 
     fn setup() {

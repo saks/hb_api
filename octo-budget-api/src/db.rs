@@ -1,6 +1,8 @@
 use actix::{Actor, Addr, SyncArbiter, SyncContext};
-use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::{
+    pg::PgConnection,
+    r2d2::{ConnectionManager, Pool},
+};
 use r2d2;
 
 pub mod auth;

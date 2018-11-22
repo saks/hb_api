@@ -1,8 +1,4 @@
-use diesel::pg::Pg;
-use diesel::prelude::*;
-use diesel::query_builder::*;
-// use diesel::query_dsl::methods::LoadQuery;
-use diesel::sql_types::BigInt;
+use diesel::{pg::Pg, prelude::*, query_builder::*, sql_types::BigInt};
 
 pub trait Paginate: Sized {
     fn paginate(self, page: i64) -> Paginated<Self>;
@@ -56,7 +52,7 @@ impl<T> QueryFragment<Pg> for Paginated<T>
 where
     T: QueryFragment<Pg>,
 {
-    fn walk_ast(&self, mut out: AstPass<Pg>) -> QueryResult<()> {
+    fn walk_ast(&self, mut out: AstPass<'_, Pg>) -> QueryResult<()> {
         out.push_sql("SELECT *, COUNT(*) OVER () FROM (");
         self.query.walk_ast(out.reborrow())?;
         out.push_sql(") t LIMIT ");

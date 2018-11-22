@@ -1,3 +1,5 @@
+use serde_derive::Serialize;
+
 use crate::db::models::Record as RecordModel;
 
 #[derive(Serialize, Debug)]

@@ -1,3 +1,5 @@
+use serde_derive::Deserialize;
+
 use super::auth_error::AuthError;
 use super::response_data::ResponseData;
 

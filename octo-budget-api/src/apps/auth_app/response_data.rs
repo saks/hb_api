@@ -1,3 +1,5 @@
+use serde_derive::Serialize;
+
 use super::auth_error::AuthError;
 
 #[derive(Serialize, Debug, Default, PartialEq)]

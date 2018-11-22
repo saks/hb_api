@@ -1,6 +1,9 @@
-use actix_web::error::{ErrorUnauthorized, ParseError};
-use actix_web::middleware::{Middleware, Started};
-use actix_web::{http::header, HttpRequest, Result as WebResult};
+use actix_web::{
+    error::{ErrorUnauthorized, ParseError},
+    http::header,
+    middleware::{Middleware, Started},
+    HttpRequest, Result as WebResult,
+};
 use octo_budget_lib::auth_token::AuthToken;
 
 use crate::config;

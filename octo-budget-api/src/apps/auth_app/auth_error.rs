@@ -1,4 +1,5 @@
 use actix_web::{error, http, HttpResponse};
+use failure_derive::Fail;
 use serde::{Serialize, Serializer};
 
 use super::ResponseData;
