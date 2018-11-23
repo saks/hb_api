@@ -1,7 +1,4 @@
-use actix_web::{
-    middleware::Logger, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query,
-    State,
-};
+use actix_web::{AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, Scope, State};
 use futures::{future, future::Future};
 
 use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
@@ -54,12 +51,10 @@ fn index(
     }
 }
 
-pub fn build() -> App<AppState> {
-    App::with_state(AppState::new())
-        .prefix("/api/records/record-detail")
-        .middleware(Logger::default())
+pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+    scope
         .middleware(VerifyAuthToken::new())
-        .resource("/", |r| r.get().with(index))
+        .resource("/record-detail", |r| r.get().with(index))
 }
 
 #[cfg(test)]
@@ -79,11 +74,20 @@ mod test {
             .to_string()
     }
 
+    fn test_server() -> TestServer {
+        use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
+
+        TestServer::build_with_state(|| AppState::new()).start(|app| {
+            app.middleware(VerifyAuthToken::new())
+                .resource("/api/records/record-detail/", |r| r.get().with(index));
+        })
+    }
+
     #[test]
     fn test_auth_required_for_records_app() {
         setup();
 
-        let mut srv = TestServer::with_factory(build);
+        let mut srv = test_server();
 
         let request = ClientRequest::build()
             .uri(&srv.url("/api/records/record-detail/"))
@@ -99,7 +103,7 @@ mod test {
     fn test_auth_success_for_records_app() {
         setup();
 
-        let mut srv = TestServer::with_factory(build);
+        let mut srv = test_server();
         let token = format!("JWT {}", make_token(12));
 
         let request = ClientRequest::build()

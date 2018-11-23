@@ -10,17 +10,22 @@ pub mod apps;
 pub mod config;
 pub mod db;
 
-use actix_web::server;
+use actix_web::{middleware::Logger, server, App};
 use dotenv::dotenv;
 
-use crate::apps::{auth_app, records_app};
+use crate::apps::{auth_app, records_app, AppState};
 
 fn main() {
     dotenv().expect("Failed to parse .env file");
     env_logger::init();
 
-    server::new(|| vec![auth_app::build(), records_app::build()])
-        .bind(format!("{}:{}", *config::LISTEN_IP, *config::LISTEN_PORT))
-        .expect("Cannot bind to IP:PORT")
-        .run();
+    server::new(|| {
+        App::with_state(AppState::new())
+            .middleware(Logger::default())
+            .scope("/auth/jwt", auth_app::scope)
+            .scope("/api/records/", records_app::scope)
+    })
+    .bind(format!("{}:{}", *config::LISTEN_IP, *config::LISTEN_PORT))
+    .expect("Cannot bind to IP:PORT")
+    .run();
 }

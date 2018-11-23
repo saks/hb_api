@@ -1,8 +1,6 @@
 use std::convert::Into;
 
-use actix_web::{
-    middleware::Logger, App, AsyncResponder, FutureResponse, HttpResponse, Json, State,
-};
+use actix_web::{AsyncResponder, FutureResponse, HttpResponse, Json, Scope, State};
 use futures::{future, future::Future};
 
 use crate::apps::AppState;
@@ -34,15 +32,12 @@ fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureRespon
     }
 }
 
-pub fn build() -> App<AppState> {
-    App::with_state(AppState::new())
-        .prefix("/auth/jwt")
-        .middleware(Logger::default())
-        .resource("/create/", |r| {
-            r.post().with_config(create, |((cfg, _),)| {
-                cfg.limit(1024); // <- limit size of the payload
-            })
+pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+    scope.resource("/create/", |r| {
+        r.post().with_config(create, |((cfg, _),)| {
+            cfg.limit(1024); // <- limit size of the payload
         })
+    })
 }
 
 #[cfg(test)]
@@ -58,6 +53,12 @@ mod test {
     use serde_json::json;
     use std::str;
 
+    fn test_server() -> TestServer {
+        TestServer::build_with_state(|| AppState::new()).start(|app| {
+            app.resource("/create/", |r| r.post().with(create));
+        })
+    }
+
     fn setup() {
         dotenv().ok().expect("Failed to parse .env file");
     }
@@ -66,11 +67,11 @@ mod test {
     fn test_validation() {
         setup();
 
-        let mut srv = TestServer::with_factory(build);
+        let mut srv = test_server();
 
         let request = ClientRequest::build()
             .method(Method::POST)
-            .uri(&srv.url("/auth/jwt/create/"))
+            .uri(&srv.url("/create/"))
             .json(json!({"username":"bar","password": ""}))
             .unwrap();
 
@@ -91,11 +92,11 @@ mod test {
     fn test_not_json_body() {
         setup();
 
-        let mut srv = TestServer::with_factory(build);
+        let mut srv = test_server();
 
         let request = ClientRequest::build()
             .method(Method::POST)
-            .uri(&srv.url("/auth/jwt/create/"))
+            .uri(&srv.url("/create/"))
             .finish()
             .unwrap();
 
