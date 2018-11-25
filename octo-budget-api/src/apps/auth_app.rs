@@ -43,8 +43,9 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{config, tests::Session};
     use actix_web::{
-        client::ClientRequest,
+        client::{ClientRequest, ClientResponse},
         http::{Method, StatusCode},
         test::TestServer,
         HttpMessage,
@@ -53,29 +54,35 @@ mod test {
     use serde_json::json;
     use std::str;
 
-    fn test_server() -> TestServer {
+    fn setup() -> TestServer {
+        dotenv().ok().expect("Failed to parse .env file");
         TestServer::build_with_state(|| AppState::new()).start(|app| {
-            app.resource("/create/", |r| r.post().with(create));
+            app.resource("/create/", |r| r.post().with_async(create));
         })
     }
 
-    fn setup() {
-        dotenv().ok().expect("Failed to parse .env file");
+    fn response_json(srv: &mut TestServer, response: ClientResponse) -> serde_json::Value {
+        let bytes = srv.execute(response.body()).unwrap();
+        let body = str::from_utf8(&bytes).unwrap();
+        let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
+
+        body_json
+    }
+
+    fn request_new_token(srv: &mut TestServer, body: serde_json::Value) -> ClientResponse {
+        let request = ClientRequest::build()
+            .method(Method::POST)
+            .uri(&srv.url("/create/"))
+            .json(body)
+            .unwrap();
+
+        srv.execute(request.send()).unwrap()
     }
 
     #[test]
     fn test_validation() {
-        setup();
-
-        let mut srv = test_server();
-
-        let request = ClientRequest::build()
-            .method(Method::POST)
-            .uri(&srv.url("/create/"))
-            .json(json!({"username":"bar","password": ""}))
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+        let mut srv = setup();
+        let response = request_new_token(&mut srv, json!({"username":"bar","password": ""}));
 
         assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
@@ -90,17 +97,9 @@ mod test {
 
     #[test]
     fn test_not_json_body() {
-        setup();
+        let mut srv = setup();
 
-        let mut srv = test_server();
-
-        let request = ClientRequest::build()
-            .method(Method::POST)
-            .uri(&srv.url("/create/"))
-            .finish()
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+        let response = request_new_token(&mut srv, json!(""));
 
         assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
@@ -108,5 +107,76 @@ mod test {
         let body = str::from_utf8(&bytes).unwrap();
 
         assert_eq!(body, "");
+    }
+
+    #[test]
+    fn test_ok_auth_response() {
+        let mut srv = setup();
+        let mut session = Session::new();
+
+        let user = session.create_user("ok auth user", "dummy password");
+
+        let response = request_new_token(
+            &mut srv,
+            json!({ "username": user.username, "password": "dummy password" }),
+        );
+
+        assert_eq!(StatusCode::OK, response.status());
+    }
+
+    #[test]
+    fn test_ok_auth_token() {
+        use octo_budget_lib::auth_token::AuthToken;
+
+        let mut srv = setup();
+        let mut session = Session::new();
+
+        let user = session.create_user("ok auth user", "dummy password");
+
+        let response = request_new_token(
+            &mut srv,
+            json!({ "username": user.username, "password": "dummy password" }),
+        );
+
+        let body_json = response_json(&mut srv, response);
+        let token_string = body_json.get("token").unwrap().as_str().unwrap();
+
+        // returned token is valid
+        let token = AuthToken::from(&token_string, config::auth_token_secret()).unwrap();
+
+        assert_eq!(user.id, token.user_id);
+    }
+
+    #[test]
+    fn test_invalid_password_response() {
+        let mut srv = setup();
+        let mut session = Session::new();
+
+        let user = session.create_user("bad pass user", "dummy password");
+
+        let response = request_new_token(
+            &mut srv,
+            json!({ "username": user.username, "password": "wrong password" }),
+        );
+
+        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    }
+
+    #[test]
+    fn test_invalid_password_response_body() {
+        let mut srv = setup();
+        let mut session = Session::new();
+
+        let user = session.create_user("bad pass user", "dummy password");
+
+        let response = request_new_token(
+            &mut srv,
+            json!({ "username": user.username, "password": "wrong password" }),
+        );
+
+        let body_json = response_json(&mut srv, response);
+
+        let expected = json!({"non_field_errors":["Unable to log in with provided credentials."]});
+        assert_eq!(expected, body_json);
     }
 }

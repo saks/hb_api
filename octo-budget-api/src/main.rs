@@ -10,6 +10,9 @@ pub mod apps;
 pub mod config;
 pub mod db;
 
+#[cfg(test)]
+mod tests;
+
 use actix_web::{middleware::Logger, server, App};
 use dotenv::dotenv;
 

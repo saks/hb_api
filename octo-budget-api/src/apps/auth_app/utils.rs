@@ -22,7 +22,7 @@ pub fn validate_password(user: UserModel, password: String) -> Result<UserModel,
 }
 
 pub fn generate_token(user: &UserModel) -> ResponseData {
-    let secret = (&**config::AUTH_TOKEN_SECRET).as_ref();
+    let secret = config::auth_token_secret();
     let token = AuthToken::new(user.id, secret).to_string();
     ResponseData::from_token(token)
 }

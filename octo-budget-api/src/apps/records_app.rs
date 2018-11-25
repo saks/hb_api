@@ -18,16 +18,14 @@ fn auth_error_response() -> FutureResponse<HttpResponse> {
 fn index(
     (query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
 ) -> FutureResponse<HttpResponse> {
+    let token: AuthToken = match request.extensions_mut().remove() {
+        Some(token) => token,
+        _ => return auth_error_response(),
+    };
     let params = query_params.into_inner();
 
     match params.validate() {
         Ok(Params { page, per_page }) => {
-            let token: AuthToken = match request.extensions_mut().remove() {
-                Some(token) => token,
-                None => {
-                    return auth_error_response();
-                }
-            };
             let user_id = token.user_id;
 
             let message = GetRecordsMessage {
