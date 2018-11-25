@@ -17,7 +17,7 @@ impl Handler<FindUserMessage> for DbExecutor {
     type Result = FindUserResult;
 
     fn handle(&mut self, msg: FindUserMessage, _: &mut Self::Context) -> Self::Result {
-        let connection = &self.0.get()?;
+        let connection = &self.pool.get()?;
         let username = msg.0;
 
         auth_user::table

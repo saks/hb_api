@@ -105,13 +105,13 @@ table! {
 //         session_data -> Text,
 //         expire_date -> Timestamptz,
 //     }
-// }
 
+// }
 table! {
     records_record (id) {
         amount -> Numeric,
         amount_currency -> Varchar,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
         id -> Int4,
         tags -> Array<Varchar>,
         transaction_type -> Varchar,
@@ -137,13 +137,14 @@ table! {
 // joinable!(budgets_budget -> auth_user (user_id));
 // joinable!(django_admin_log -> auth_user (user_id));
 // joinable!(django_admin_log -> django_content_type (content_type_id));
-// joinable!(records_record -> auth_user (user_id));
+joinable!(records_record -> auth_user (user_id));
 
 allow_tables_to_appear_in_same_query!(
+    auth_user,
+    records_record,
     //     auth_group,
     //     auth_group_permissions,
     //     auth_permission,
-    auth_user,
     //     auth_user_groups,
     //     auth_user_user_permissions,
     //     budgets_budget,
@@ -151,5 +152,4 @@ allow_tables_to_appear_in_same_query!(
     //     django_content_type,
     //     django_migrations,
     //     django_session,
-    records_record,
 );

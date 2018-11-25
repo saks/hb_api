@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde_derive::Serialize;
 
-use crate::db::schema::auth_user;
+use crate::db::schema::{auth_user, records_record};
 
 #[derive(Queryable, Serialize, Debug, Clone, PartialEq, Insertable)]
 #[table_name = "auth_user"]
@@ -20,7 +20,8 @@ pub struct AuthUser {
     pub username: String,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq)]
+#[derive(Queryable, Debug, Clone, PartialEq, Insertable)]
+#[table_name = "records_record"]
 pub struct Record {
     pub amount: BigDecimal,
     pub amount_currency: String,

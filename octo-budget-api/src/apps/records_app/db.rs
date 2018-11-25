@@ -9,6 +9,7 @@ use crate::db::{models::Record as RecordModel, pagination::*, schema::records_re
 
 pub type GetRecordsResult = result::Result<ResponseData, Error>;
 
+#[derive(Clone)]
 pub struct GetRecordsMessage {
     pub user_id: i32,
     pub page: i64,
@@ -23,7 +24,7 @@ impl Handler<GetRecordsMessage> for DbExecutor {
     type Result = GetRecordsResult;
 
     fn handle(&mut self, msg: GetRecordsMessage, _: &mut Self::Context) -> Self::Result {
-        let connection = &self.0.get()?;
+        let connection = &self.pool.get()?;
 
         let query = records_record::table
             .select(records_record::all_columns)
@@ -48,5 +49,117 @@ impl Handler<GetRecordsMessage> for DbExecutor {
             next,
             previous,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::db::DbExecutor;
+    use crate::tests::Session;
+    use actix::{Arbiter, System};
+    use futures::{future, Future};
+
+    macro_rules! get_message_result {
+        ( $message:ident, $closure:expr ) => {{
+            System::run(|| {
+                Arbiter::spawn(DbExecutor::new().send($message).then(|res| {
+                    $closure(res.unwrap());
+                    System::current().stop();
+                    future::result(Ok(()))
+                }));
+            });
+        };};
+    }
+
+    #[test]
+    fn test_empty_result() {
+        let message = GetRecordsMessage {
+            page: 1,
+            per_page: 10,
+            user_id: 123,
+        };
+
+        get_message_result!(message, |res: GetRecordsResult| {
+            let data: ResponseData = res.unwrap();
+
+            assert_eq!(0, data.total);
+            assert_eq!(false, data.next);
+            assert_eq!(false, data.previous);
+            assert!(data.results.is_empty());
+        });
+    }
+
+    #[test]
+    fn test_first_page_result() {
+        let mut session = Session::new();
+        let user = session.create_user("ok auth user", "dummy password");
+        session.create_records(user.id, 12);
+
+        let message = GetRecordsMessage {
+            page: 1,
+            per_page: 10,
+            user_id: user.id,
+        };
+
+        get_message_result!(message, |res: GetRecordsResult| {
+            let data: ResponseData = res.unwrap();
+
+            assert_eq!(12, data.total);
+            assert_eq!(false, data.previous);
+            assert_eq!(true, data.next);
+            assert_eq!(10, data.results.len());
+        });
+    }
+
+    #[test]
+    fn test_second_page_result() {
+        let mut session = Session::new();
+        let user = session.create_user("ok auth user", "dummy password");
+        session.create_records(user.id, 12);
+
+        let message = GetRecordsMessage {
+            page: 2,
+            per_page: 10,
+            user_id: user.id,
+        };
+
+        get_message_result!(message, |res: GetRecordsResult| {
+            let data: ResponseData = res.unwrap();
+
+            assert_eq!(12, data.total);
+            assert_eq!(true, data.previous);
+            assert_eq!(false, data.next);
+            assert_eq!(2, data.results.len());
+        });
+    }
+
+    #[test]
+    fn test_records_for_correct_user() {
+        let mut session = Session::new();
+        let user1 = session.create_user("user1", "dummy password");
+        let user1_id = user1.id;
+        session.create_records(user1_id, 2);
+
+        let user2 = session.create_user("user2", "dummy password");
+        session.create_records(user2.id, 2);
+
+        let message = GetRecordsMessage {
+            page: 1,
+            per_page: 10,
+            user_id: user1.id,
+        };
+
+        let msg = message.clone();
+        get_message_result!(message, move |res: GetRecordsResult| {
+            let data: ResponseData = res.unwrap();
+
+            assert_eq!(2, data.total);
+            assert_eq!(false, data.previous);
+            assert_eq!(false, data.next);
+            assert_eq!(2, data.results.len());
+
+            assert!(data.results.into_iter().all(|r| r.user_id == msg.user_id));
+        });
     }
 }
