@@ -3,7 +3,7 @@ use serde_derive::Serialize;
 use super::auth_error::AuthError;
 
 #[derive(Serialize, Debug, Default, PartialEq)]
-pub struct ResponseData {
+pub struct Data {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", rename = "password")]
@@ -14,7 +14,7 @@ pub struct ResponseData {
     pub non_field_errors: Vec<AuthError>,
 }
 
-impl ResponseData {
+impl Data {
     pub fn from_token(token: String) -> Self {
         Self {
             token: Some(token),

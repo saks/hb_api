@@ -55,20 +55,20 @@ table! {
 //         permission_id -> Int4,
 //     }
 // }
-//
-// table! {
-//     budgets_budget (id) {
-//         id -> Int4,
-//         name -> Varchar,
-//         amount_currency -> Varchar,
-//         amount -> Numeric,
-//         start_date -> Date,
-//         tags_type -> Varchar,
-//         tags -> Nullable<Array<Varchar>>,
-//         user_id -> Int4,
-//     }
-// }
-//
+
+table! {
+    budgets_budget (id) {
+        amount -> Numeric,
+        amount_currency -> Varchar,
+        id -> Int4,
+        name -> Varchar,
+        start_date -> Date,
+        tags -> Nullable<Array<Varchar>>,
+        tags_type -> Varchar,
+        user_id -> Int4,
+    }
+}
+
 // table! {
 //     django_admin_log (id) {
 //         id -> Int4,
@@ -134,20 +134,20 @@ table! {
 // joinable!(auth_user_groups -> auth_user (user_id));
 // joinable!(auth_user_user_permissions -> auth_permission (permission_id));
 // joinable!(auth_user_user_permissions -> auth_user (user_id));
-// joinable!(budgets_budget -> auth_user (user_id));
 // joinable!(django_admin_log -> auth_user (user_id));
 // joinable!(django_admin_log -> django_content_type (content_type_id));
+joinable!(budgets_budget -> auth_user (user_id));
 joinable!(records_record -> auth_user (user_id));
 
 allow_tables_to_appear_in_same_query!(
     auth_user,
     records_record,
+    budgets_budget,
     //     auth_group,
     //     auth_group_permissions,
     //     auth_permission,
     //     auth_user_groups,
     //     auth_user_user_permissions,
-    //     budgets_budget,
     //     django_admin_log,
     //     django_content_type,
     //     django_migrations,

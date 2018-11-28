@@ -1,6 +1,8 @@
 const DEFAULT_PER_PAGE: i64 = 10;
+const DEFAULT_PAGE: i64 = 1;
 
-use super::response_data::ResponseData;
+use super::index_response::Data;
+use serde::Serialize;
 use serde_derive::Deserialize;
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -12,7 +14,7 @@ pub struct Params {
 }
 
 fn default_page() -> i64 {
-    1
+    DEFAULT_PAGE
 }
 
 fn default_per_page() -> i64 {
@@ -21,7 +23,7 @@ fn default_per_page() -> i64 {
 
 impl Params {
     // TODO: proper validation
-    pub fn validate(self) -> Result<Self, ResponseData> {
+    pub fn validate<T: Serialize>(self) -> Result<Self, Data<T>> {
         Ok(self)
     }
 }

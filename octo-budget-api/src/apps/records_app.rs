@@ -5,11 +5,13 @@ use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
 use octo_budget_lib::auth_token::AuthToken;
 
 mod db;
-mod params;
-mod response_data;
 
 use self::db::GetRecordsMessage;
-use self::params::Params;
+use super::index_params::Params;
+use super::index_response::Data;
+use crate::db::models::Record as RecordModel;
+
+type ResponseData = Data<RecordModel>;
 
 fn auth_error_response() -> FutureResponse<HttpResponse> {
     Box::new(future::ok(HttpResponse::Unauthorized().finish()))
@@ -24,7 +26,8 @@ fn index(
     };
     let params = query_params.into_inner();
 
-    match params.validate() {
+    let validation_result: Result<Params, ResponseData> = params.validate();
+    match validation_result {
         Ok(Params { page, per_page }) => {
             let user_id = token.user_id;
 

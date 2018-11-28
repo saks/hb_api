@@ -2,7 +2,7 @@ use actix_web::{error, http, HttpResponse};
 use failure_derive::Fail;
 use serde::{Serialize, Serializer};
 
-use super::ResponseData;
+use super::Data;
 
 #[derive(Fail, Debug, Clone, Copy, PartialEq)]
 pub enum AuthError {
@@ -23,9 +23,9 @@ impl Serialize for AuthError {
     }
 }
 
-impl From<AuthError> for ResponseData {
-    fn from(error: AuthError) -> ResponseData {
-        let mut data = ResponseData::default();
+impl From<AuthError> for Data {
+    fn from(error: AuthError) -> Data {
+        let mut data = Data::default();
 
         match error {
             AuthError::AuthFailed => {
@@ -46,7 +46,7 @@ impl error::ResponseError for AuthError {
             AuthError::MustPresent => http::StatusCode::BAD_REQUEST,
         };
 
-        let body = ResponseData::from(*self);
+        let body = Data::from(*self);
         HttpResponse::build(status_code).json(body)
     }
 }

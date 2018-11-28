@@ -1,7 +1,7 @@
 use serde_derive::Deserialize;
 
 use super::auth_error::AuthError;
-use super::response_data::ResponseData;
+use super::response_data::Data;
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct AuthForm {
@@ -10,12 +10,12 @@ pub struct AuthForm {
 }
 
 impl AuthForm {
-    pub fn validate(self) -> Result<(String, String), ResponseData> {
+    pub fn validate(self) -> Result<(String, String), Data> {
         let AuthForm {
             username, password, ..
         } = self;
 
-        let mut data = ResponseData::default();
+        let mut data = Data::default();
 
         if username.is_none() {
             data.username_errors.push(AuthError::MustPresent);

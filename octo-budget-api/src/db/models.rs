@@ -1,9 +1,9 @@
 use bigdecimal::{BigDecimal, ToPrimitive};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde_derive::Serialize;
 
-use crate::db::schema::{auth_user, records_record};
+use crate::db::schema::{auth_user, budgets_budget, records_record};
 
 #[derive(Queryable, Serialize, Debug, Clone, PartialEq, Insertable)]
 #[table_name = "auth_user"]
@@ -29,6 +29,19 @@ pub struct Record {
     pub id: i32,
     pub tags: Vec<String>,
     pub transaction_type: String,
+    pub user_id: i32,
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq, Insertable)]
+#[table_name = "budgets_budget"]
+pub struct Budget {
+    pub amount: BigDecimal,
+    pub amount_currency: String,
+    pub id: i32,
+    pub name: String,
+    pub start_date: NaiveDate,
+    pub tags: Option<Vec<String>>,
+    pub tags_type: String,
     pub user_id: i32,
 }
 

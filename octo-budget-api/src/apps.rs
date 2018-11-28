@@ -2,8 +2,12 @@ use actix::Addr;
 
 use crate::db::DbExecutor;
 
-pub mod auth_app;
+mod index_params;
+mod index_response;
 pub mod middlewares;
+
+pub mod auth_app;
+pub mod budgets_app;
 pub mod records_app;
 
 /// State with DbExecutor address

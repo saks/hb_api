@@ -1,7 +1,7 @@
 use actix_web::Error;
 use octo_budget_lib::auth_token::AuthToken;
 
-use super::{auth_error::AuthError, response_data::ResponseData};
+use super::{auth_error::AuthError, response_data::Data};
 use crate::config;
 use crate::db::{auth::FindUserResult, models::AuthUser as UserModel};
 
@@ -21,10 +21,10 @@ pub fn validate_password(user: UserModel, password: String) -> Result<UserModel,
     }
 }
 
-pub fn generate_token(user: &UserModel) -> ResponseData {
+pub fn generate_token(user: &UserModel) -> Data {
     let secret = config::auth_token_secret();
     let token = AuthToken::new(user.id, secret).to_string();
-    ResponseData::from_token(token)
+    Data::from_token(token)
 }
 
 #[cfg(test)]
@@ -52,7 +52,7 @@ mod test {
         let user = make_user_with_pass("foo");
         let data = generate_token(&make_user_with_pass("foo"));
         let token = AuthToken::new(user.id, config::auth_token_secret()).to_string();
-        let expected_data = ResponseData::from_token(token);
+        let expected_data = Data::from_token(token);
 
         assert_eq!(expected_data, data);
     }

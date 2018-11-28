@@ -4,7 +4,8 @@ use actix::{Handler, Message};
 use diesel::prelude::*;
 use failure::Error;
 
-use super::response_data::ResponseData;
+use super::ResponseData;
+use crate::apps::index_response::Data;
 use crate::db::{models::Record as RecordModel, pagination::*, schema::records_record, DbExecutor};
 
 pub type GetRecordsResult = result::Result<ResponseData, Error>;
@@ -43,7 +44,7 @@ impl Handler<GetRecordsMessage> for DbExecutor {
         let previous = msg.page > 1;
         let next = msg.page < total_pages;
 
-        Ok(ResponseData {
+        Ok(Data {
             total,
             results,
             next,
