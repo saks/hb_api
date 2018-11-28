@@ -138,8 +138,7 @@ mod test {
     fn test_records_for_correct_user() {
         let mut session = Session::new();
         let user1 = session.create_user("user1", "dummy password");
-        let user1_id = user1.id;
-        session.create_records(user1_id, 2);
+        session.create_records(user1.id, 2);
 
         let user2 = session.create_user("user2", "dummy password");
         session.create_records(user2.id, 2);
