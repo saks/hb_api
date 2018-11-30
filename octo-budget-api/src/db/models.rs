@@ -32,9 +32,10 @@ pub struct Record {
     pub user_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Insertable)]
-#[table_name = "budgets_budget"]
+#[derive(Queryable, Debug, Clone, PartialEq, Serialize)]
+// #[table_name = "budgets_budget"]
 pub struct Budget {
+    #[serde(skip_serializing)]
     pub amount: BigDecimal,
     pub amount_currency: String,
     pub id: i32,
@@ -43,6 +44,16 @@ pub struct Budget {
     pub tags: Option<Vec<String>>,
     pub tags_type: String,
     pub user_id: i32,
+}
+
+#[derive(Serialize, Default)]
+pub struct SerializedBudget {
+    pub name: String,
+    pub amount: f64,
+    pub spent: f64,
+    pub left: f64,
+    pub average_per_day: f64,
+    pub left_average_per_day: f64,
 }
 
 #[derive(Debug, Serialize)]
