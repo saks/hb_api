@@ -1,8 +1,9 @@
-use chrono::naive::NaiveDateTime;
+use bigdecimal::BigDecimal;
+use chrono::naive::{NaiveDate, NaiveDateTime};
 use diesel::{Connection, PgConnection};
 use std::env;
 
-use crate::db::models::{AuthUser, Record};
+use crate::db::models::{AuthUser, Budget, Record};
 
 fn database_url_from_env(env_var_name: &str) -> String {
     match env::var(env_var_name) {
@@ -46,28 +47,44 @@ impl Session {
     //     }
     // }
 
-    // pub fn conn(&self) -> &PgConnection {
-    //     &self.conn
-    // }
+    pub fn conn(&self) -> &PgConnection {
+        &self.conn
+    }
+
+    pub fn create_budget(&mut self, id_of_the_user: i32, tags_list: Vec<&str>) {
+        use crate::db::schema::budgets_budget::dsl::*;
+        use diesel::*;
+
+        insert_into(budgets_budget)
+            .values((
+                name.eq("foo"),
+                amount.eq(BigDecimal::from(123.12f64)),
+                amount_currency.eq("CAD"),
+                start_date.eq(NaiveDate::from_ymd(2015, 3, 14)),
+                tags.eq(tags_list),
+                tags_type.eq("INCL"),
+                user_id.eq(id_of_the_user),
+            ))
+            .get_result::<Budget>(&self.conn)
+            .unwrap();
+    }
 
     pub fn create_records(&mut self, id_of_the_user: i32, count: u32) {
         use crate::db::schema::records_record::dsl::*;
-        use bigdecimal::BigDecimal;
         use diesel::*;
 
         for _ in 0..count {
             let tags_list: Vec<String> = vec![];
-            let amount_num = BigDecimal::from(123.12f64);
-            let _: Record = insert_into(records_record)
+            insert_into(records_record)
                 .values((
-                    amount.eq(amount_num),
+                    amount.eq(BigDecimal::from(123.12f64)),
                     amount_currency.eq("CAD"),
                     created_at.eq(NaiveDateTime::from_timestamp(0, 0)),
                     tags.eq(tags_list),
                     transaction_type.eq("EXP"),
                     user_id.eq(id_of_the_user),
                 ))
-                .get_result(&self.conn)
+                .get_result::<Record>(&self.conn)
                 .unwrap();
         }
     }
@@ -110,4 +127,21 @@ impl Drop for Session {
             .execute("TRUNCATE TABLE auth_user CASCADE")
             .expect("Error executing TRUNCATE");
     }
+}
+
+// use crate::db::DbExecutor;
+// use actix::{Arbiter, System};
+// use futures::{future, Future};
+
+#[macro_export]
+macro_rules! get_message_result {
+    ( $message:ident, $closure:expr ) => {{
+        System::run(|| {
+            Arbiter::spawn(DbExecutor::new().send($message).then(|res| {
+                $closure(res.unwrap());
+                System::current().stop();
+                future::result(Ok(()))
+            }));
+        });
+    };};
 }

@@ -26,8 +26,16 @@ impl Message for GetBudgetsMessage {
     type Result = GetBudgetsResult;
 }
 
-// fn serialize_budget(budget: Budget) -> SerializedBudget {
-fn serialize_budget(budget: Budget, _conn: &PgConnection) -> SerializedBudget {
+impl Handler<GetBudgetsMessage> for DbExecutor {
+    type Result = GetBudgetsResult;
+
+    fn handle(&mut self, msg: GetBudgetsMessage, _: &mut Self::Context) -> Self::Result {
+        let connection = &self.pool.get()?;
+        handle(&msg, &*connection)
+    }
+}
+
+fn serialize_budget(budget: Budget, conn: &PgConnection) -> Result<SerializedBudget, Error> {
     use crate::db::schema::records_record;
     use bigdecimal::BigDecimal;
     use chrono::{Datelike, Local};
@@ -44,7 +52,7 @@ fn serialize_budget(budget: Budget, _conn: &PgConnection) -> SerializedBudget {
             ),
         );
 
-    let x = query.first::<(Option<BigDecimal>)>(_conn);
+    let x = query.first::<(Option<BigDecimal>)>(conn);
 
     println!("today: {:#?}", x);
     // today = date.today()
@@ -58,40 +66,137 @@ fn serialize_budget(budget: Budget, _conn: &PgConnection) -> SerializedBudget {
     //     spent = spent.exclude(tags__overlap=self.tags)
     // spent = spent.aggregate(spent=Sum('amount'))
 
-    SerializedBudget::default()
+    Ok(SerializedBudget::default())
 }
 
-impl Handler<GetBudgetsMessage> for DbExecutor {
-    type Result = GetBudgetsResult;
+fn get_page_of_budgets(
+    msg: &GetBudgetsMessage,
+    conn: &PgConnection,
+) -> Result<(Vec<Budget>, i64), Error> {
+    let query = budgets_budget::table
+        .select(budgets_budget::all_columns)
+        .filter(budgets_budget::user_id.eq(msg.user_id))
+        .order(budgets_budget::name.asc())
+        .paginate(msg.page)
+        .per_page(msg.per_page);
 
-    fn handle(&mut self, msg: GetBudgetsMessage, _: &mut Self::Context) -> Self::Result {
-        let connection = &self.pool.get()?;
+    let query_results = query.load::<(Budget, i64)>(conn)?;
 
-        let query = budgets_budget::table
-            .select(budgets_budget::all_columns)
-            .filter(budgets_budget::user_id.eq(msg.user_id))
-            .order(budgets_budget::name.asc())
-            .paginate(msg.page)
-            .per_page(msg.per_page);
+    let total = query_results.get(0).map(|x| x.1).unwrap_or(0);
 
-        let query_results = query.load::<(Budget, i64)>(&*connection)?;
+    let results: Vec<Budget> = query_results.into_iter().map(|x| x.0).collect();
 
-        let total = query_results.get(0).map(|x| x.1).unwrap_or(0);
-        let total_pages = (total as f64 / msg.per_page as f64).ceil() as i64;
+    Ok((results, total))
+}
 
-        let results = query_results
-            .into_iter()
-            .map(|x| serialize_budget(x.0, &*connection))
-            .collect();
+fn handle(msg: &GetBudgetsMessage, conn: &PgConnection) -> GetBudgetsResult {
+    let (results, total) = get_page_of_budgets(&msg, conn)?;
+    let total_pages = (total as f64 / msg.per_page as f64).ceil() as i64;
 
-        let previous = msg.page > 1;
-        let next = msg.page < total_pages;
+    let results = results
+        .into_iter()
+        .map(|budget| serialize_budget(budget, conn))
+        .collect::<Result<Vec<SerializedBudget>, Error>>()?;
 
-        Ok(Data {
-            total,
-            results,
-            next,
-            previous,
-        })
+    let previous = msg.page > 1;
+    let next = msg.page < total_pages;
+
+    Ok(Data {
+        total,
+        results,
+        next,
+        previous,
+    })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::tests::Session;
+
+    #[test]
+    fn test_empty_result() {
+        let message = GetBudgetsMessage {
+            page: 1,
+            per_page: 10,
+            user_id: 123,
+        };
+        let session = Session::new();
+
+        let data = handle(&message, session.conn()).unwrap();
+
+        assert_eq!(0, data.total);
+        assert_eq!(false, data.next);
+        assert_eq!(false, data.previous);
+        assert!(data.results.is_empty());
     }
+
+    #[test]
+    fn test_first_page_result() {
+        let mut session = Session::new();
+        let user = session.create_user("ok auth user", "dummy password");
+        session.create_budget(user.id, vec!["foo", "bar"]);
+
+        let message = GetBudgetsMessage {
+            page: 1,
+            per_page: 10,
+            user_id: user.id,
+        };
+        let data = handle(&message, session.conn()).unwrap();
+
+        assert_eq!(1, data.total);
+        assert_eq!(false, data.previous);
+        assert_eq!(false, data.next);
+        assert_eq!(1, data.results.len());
+    }
+
+    // #[test]
+    // fn test_second_page_result() {
+    //     let mut session = Session::new();
+    //     let user = session.create_user("ok auth user", "dummy password");
+    //     session.create_records(user.id, 12);
+    //
+    //     let message = GetRecordsMessage {
+    //         page: 2,
+    //         per_page: 10,
+    //         user_id: user.id,
+    //     };
+    //
+    //     get_message_result!(message, |res: GetRecordsResult| {
+    //         let data: ResponseData = res.unwrap();
+    //
+    //         assert_eq!(12, data.total);
+    //         assert_eq!(true, data.previous);
+    //         assert_eq!(false, data.next);
+    //         assert_eq!(2, data.results.len());
+    //     });
+    // }
+    //
+    // #[test]
+    // fn test_records_for_correct_user() {
+    //     let mut session = Session::new();
+    //     let user1 = session.create_user("user1", "dummy password");
+    //     session.create_records(user1.id, 2);
+    //
+    //     let user2 = session.create_user("user2", "dummy password");
+    //     session.create_records(user2.id, 2);
+    //
+    //     let message = GetRecordsMessage {
+    //         page: 1,
+    //         per_page: 10,
+    //         user_id: user1.id,
+    //     };
+    //
+    //     let msg = message.clone();
+    //     get_message_result!(message, move |res: GetRecordsResult| {
+    //         let data: ResponseData = res.unwrap();
+    //
+    //         assert_eq!(2, data.total);
+    //         assert_eq!(false, data.previous);
+    //         assert_eq!(false, data.next);
+    //         assert_eq!(2, data.results.len());
+    //
+    //         assert!(data.results.into_iter().all(|r| r.user_id == msg.user_id));
+    //     });
+    // }
 }
