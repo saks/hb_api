@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use chrono::naive::{NaiveDate, NaiveDateTime};
+use chrono::naive::NaiveDateTime;
 use diesel::{Connection, PgConnection};
 use std::env;
 
@@ -51,21 +51,38 @@ impl Session {
         &self.conn
     }
 
-    pub fn create_budget(&mut self, id_of_the_user: i32, tags_list: Vec<&str>) {
+    pub fn create_budget(&mut self, budget: Budget) {
         use crate::db::schema::budgets_budget::dsl::*;
         use diesel::*;
 
         insert_into(budgets_budget)
             .values((
-                name.eq("foo"),
-                amount.eq(BigDecimal::from(123.12f64)),
-                amount_currency.eq("CAD"),
-                start_date.eq(NaiveDate::from_ymd(2015, 3, 14)),
-                tags.eq(tags_list),
-                tags_type.eq("INCL"),
-                user_id.eq(id_of_the_user),
+                name.eq(budget.name),
+                amount.eq(budget.amount),
+                amount_currency.eq(budget.amount_currency),
+                start_date.eq(budget.start_date),
+                tags.eq(budget.tags),
+                tags_type.eq(budget.tags_type),
+                user_id.eq(budget.user_id),
             ))
             .get_result::<Budget>(&self.conn)
+            .unwrap();
+    }
+
+    pub fn create_record(&mut self, record: Record) {
+        use crate::db::schema::records_record::dsl::*;
+        use diesel::*;
+
+        insert_into(records_record)
+            .values((
+                amount.eq(record.amount),
+                amount_currency.eq(record.amount_currency),
+                created_at.eq(record.created_at),
+                tags.eq(record.tags),
+                transaction_type.eq(record.transaction_type),
+                user_id.eq(record.user_id),
+            ))
+            .get_result::<Record>(&self.conn)
             .unwrap();
     }
 
