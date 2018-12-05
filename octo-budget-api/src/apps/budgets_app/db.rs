@@ -2,7 +2,7 @@ use std::result;
 
 use actix::{Handler, Message};
 use bigdecimal::{BigDecimal, Zero};
-use chrono::NaiveDate;
+use chrono::{Datelike, Local, NaiveDate};
 use diesel::prelude::*;
 use failure::Error;
 
@@ -39,7 +39,6 @@ impl Handler<GetBudgetsMessage> for DbExecutor {
 
 fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Error> {
     use crate::db::schema::records_record;
-    use chrono::{Datelike, Local};
     use diesel::dsl::sum;
 
     let first_month_day = Local::now().naive_local().with_day0(0).unwrap();
@@ -76,8 +75,6 @@ fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Erro
 }
 
 fn ndays_in_the_current_month(today: NaiveDate) -> u32 {
-    use chrono::Datelike;
-
     let year = today.year();
     let month = today.month();
 
@@ -93,25 +90,29 @@ fn ndays_in_the_current_month(today: NaiveDate) -> u32 {
     d.pred().day()
 }
 
+// TODO: add tests
 fn serialize_budget(budget: Budget, conn: &PgConnection) -> Result<SerializedBudget, Error> {
     use bigdecimal::ToPrimitive;
-    use chrono::Local;
 
     let mut res = SerializedBudget::default();
     let today = Local::today().naive_local();
     let spent = budget_spent(&budget, conn)?;
     let days_in_this_month = ndays_in_the_current_month(today);
 
+    // we need to take into account spendings for today
+    let rest_days = days_in_this_month - today.day() + 1;
+
+    let left = (budget.amount.clone() - spent.clone())
+        .to_f64()
+        .unwrap_or(0.0);
+
     res.spent = spent.to_f64().unwrap_or(0.0);
-    res.left = (budget.amount.clone() - spent).to_f64().unwrap_or(0.0);
+    res.left = left;
     res.average_per_day = (budget.amount / BigDecimal::from(days_in_this_month))
         .to_f64()
         .unwrap_or(0.0);
-    // res.left_average_per_day =
-    // rest_days = days - date.today(
-    // ).day + 1  # we need to take into account spendings for today
-    // return (self.left / rest_days).quantize(
-    //     Decimal('.01'), rounding=ROUND_DOWN)
+
+    res.left_average_per_day = left / rest_days.to_f64().unwrap_or(0.0f64);
 
     Ok(res)
 }
