@@ -86,7 +86,7 @@ pub struct Budget {
     pub id: i32,
     pub name: String,
     pub start_date: NaiveDate,
-    pub tags: Option<Vec<String>>,
+    pub tags: Vec<String>,
     pub tags_type: String,
     pub user_id: i32,
 }
@@ -97,7 +97,7 @@ pub struct BudgetBuilder {
     pub amount_currency: String,
     pub id: i32,
     pub name: String,
-    pub tags: Option<Vec<String>>,
+    pub tags: Vec<String>,
     pub tags_type: String,
     pub user_id: i32,
 }

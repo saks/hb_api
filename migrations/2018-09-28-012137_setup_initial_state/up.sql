@@ -265,7 +265,7 @@ CREATE TABLE budgets_budget (
     amount numeric(15,2) NOT NULL,
     start_date date NOT NULL,
     tags_type character varying(4) NOT NULL,
-    tags character varying(20)[],
+    tags text[] NOT NULL,
     user_id integer NOT NULL
 );
 
@@ -421,7 +421,7 @@ ALTER TABLE django_session OWNER TO postgres;
 
 CREATE TABLE records_record (
     id integer NOT NULL,
-    tags character varying(20)[] NOT NULL,
+    tags text[] NOT NULL,
     amount_currency character varying(3) NOT NULL,
     amount numeric(15,2) NOT NULL,
     transaction_type character varying(3) NOT NULL,

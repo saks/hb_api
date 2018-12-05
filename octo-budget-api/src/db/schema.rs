@@ -63,7 +63,7 @@ table! {
         id -> Int4,
         name -> Varchar,
         start_date -> Date,
-        tags -> Nullable<Array<Varchar>>,
+        tags -> Array<Text>,
         tags_type -> Varchar,
         user_id -> Int4,
     }
@@ -113,7 +113,7 @@ table! {
         amount_currency -> Varchar,
         created_at -> Timestamptz,
         id -> Int4,
-        tags -> Array<Varchar>,
+        tags -> Array<Text>,
         transaction_type -> Varchar,
         user_id -> Int4,
 
