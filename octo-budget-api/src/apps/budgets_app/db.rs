@@ -2,6 +2,7 @@ use std::result;
 
 use actix::{Handler, Message};
 use bigdecimal::{BigDecimal, Zero};
+use chrono::NaiveDate;
 use diesel::prelude::*;
 use failure::Error;
 
@@ -36,12 +37,13 @@ impl Handler<GetBudgetsMessage> for DbExecutor {
     }
 }
 
-fn select_budget_amount(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Error> {
+fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Error> {
     use crate::db::schema::records_record;
     use chrono::{Datelike, Local};
     use diesel::dsl::sum;
 
     let first_month_day = Local::now().naive_local().with_day0(0).unwrap();
+
     let query = records_record::table
         .select(sum(records_record::amount))
         .filter(
@@ -52,42 +54,66 @@ fn select_budget_amount(budget: &Budget, conn: &PgConnection) -> Result<BigDecim
             ),
         );
 
-    Ok(query
-        .first::<(Option<BigDecimal>)>(conn)?
-        .unwrap_or_else(BigDecimal::zero))
+    match budget.tags_type.as_str() {
+        "INCL" => {
+            let query = query.filter(records_record::tags.overlaps_with(&budget.tags));
+
+            Ok(query
+                .first::<(Option<BigDecimal>)>(conn)?
+                .unwrap_or_else(BigDecimal::zero))
+        }
+        "EXCL" => {
+            use diesel::dsl::not;
+            let query = query.filter(not(records_record::tags.overlaps_with(&budget.tags)));
+            Ok(query
+                .first::<(Option<BigDecimal>)>(conn)?
+                .unwrap_or_else(BigDecimal::zero))
+        }
+        _ => Ok(query
+            .first::<(Option<BigDecimal>)>(conn)?
+            .unwrap_or_else(BigDecimal::zero)),
+    }
+}
+
+fn ndays_in_the_current_month(today: NaiveDate) -> u32 {
+    use chrono::Datelike;
+
+    let year = today.year();
+    let month = today.month();
+
+    // the first day of the next month...
+    let (y, m) = if month == 12 {
+        (year + 1, 1)
+    } else {
+        (year, month + 1)
+    };
+    let d = NaiveDate::from_ymd(y, m, 1);
+
+    // ...is preceded by the last day of the original month
+    d.pred().day()
 }
 
 fn serialize_budget(budget: Budget, conn: &PgConnection) -> Result<SerializedBudget, Error> {
-    use crate::db::schema::records_record;
-    use chrono::{Datelike, Local};
-    use diesel::dsl::sum;
+    use bigdecimal::ToPrimitive;
+    use chrono::Local;
 
-    let first_month_day = Local::now().naive_local().with_day0(0).unwrap();
-    let query = records_record::table
-        .select(sum(records_record::amount))
-        .filter(
-            records_record::user_id.eq(budget.user_id).and(
-                records_record::transaction_type
-                    .eq("EXP")
-                    .and(records_record::created_at.ge(first_month_day)),
-            ),
-        );
+    let mut res = SerializedBudget::default();
+    let today = Local::today().naive_local();
+    let spent = budget_spent(&budget, conn)?;
+    let days_in_this_month = ndays_in_the_current_month(today);
 
-    let x = query.first::<(Option<BigDecimal>)>(conn);
+    res.spent = spent.to_f64().unwrap_or(0.0);
+    res.left = (budget.amount.clone() - spent).to_f64().unwrap_or(0.0);
+    res.average_per_day = (budget.amount / BigDecimal::from(days_in_this_month))
+        .to_f64()
+        .unwrap_or(0.0);
+    // res.left_average_per_day =
+    // rest_days = days - date.today(
+    // ).day + 1  # we need to take into account spendings for today
+    // return (self.left / rest_days).quantize(
+    //     Decimal('.01'), rounding=ROUND_DOWN)
 
-    println!("today: {:#?}", x);
-    // today = date.today()
-    // first_month_day = date(today.year, today.month, 1)
-    // spent = Record.objects.filter(user=self.user,
-    //                               transaction_type='EXP',
-    //                               created_at__gte=first_month_day)
-    // if self.tags_type == 'INCL' and self.tags:
-    //     spent = spent.filter(tags__overlap=self.tags)
-    // if self.tags_type == 'EXCL' and self.tags:
-    //     spent = spent.exclude(tags__overlap=self.tags)
-    // spent = spent.aggregate(spent=Sum('amount'))
-
-    Ok(SerializedBudget::default())
+    Ok(res)
 }
 
 fn get_page_of_budgets(
@@ -219,7 +245,7 @@ mod test {
     }
 
     #[test]
-    fn amount_aggregation_without_tags() {
+    fn amount_aggregation_with_other_tags_type() {
         let mut session = Session::new();
         let user = session.create_user("ok auth user", "dummy password");
         let budget = BudgetBuilder::default().user_id(user.id).finish();
@@ -229,36 +255,55 @@ mod test {
             .transaction_type("EXP");
 
         session.create_record(record.clone().amount(1.0).finish());
-        session.create_record(record.clone().amount(2.0).finish());
-        session.create_record(record.clone().amount(4.0).finish());
 
-        let amount = select_budget_amount(&budget, session.conn()).unwrap();
+        let amount = budget_spent(&budget, session.conn()).unwrap();
 
-        assert_eq!(BigDecimal::from(7.0f64), amount);
+        assert_eq!(BigDecimal::from(1), amount);
     }
 
     #[test]
     fn amount_aggregation_with_including_tags() {
-        use bigdecimal::One;
-
         let mut session = Session::new();
         let user = session.create_user("ok auth user", "dummy password");
         let budget = BudgetBuilder::default()
             .user_id(user.id)
             .tags_type("INCL")
+            .tags(vec!["foo"])
             .finish();
 
         let record = RecordBuilder::default()
             .user_id(user.id)
-            .transaction_type("EXP")
-            .amount(1.0);
+            .transaction_type("EXP");
 
-        session.create_record(record.clone().tags(vec!["foo"]).finish());
-        session.create_record(record.clone().tags(vec!["bar"]).finish());
+        for (amount, tag) in [(1.0, "foo"), (3.0, "foo"), (2.0, "bar")].iter() {
+            session.create_record(record.clone().amount(*amount).tags(vec![tag]).finish());
+        }
 
-        let _amount = select_budget_amount(&budget, session.conn()).unwrap();
+        let amount = budget_spent(&budget, session.conn()).unwrap();
 
-        // TODO: make it work
-        // assert_eq!(BigDecimal::one(), _amount);
+        assert_eq!(BigDecimal::from(4), amount);
+    }
+
+    #[test]
+    fn amount_aggregation_with_excluding_tags() {
+        let mut session = Session::new();
+        let user = session.create_user("ok auth user", "dummy password");
+        let budget = BudgetBuilder::default()
+            .user_id(user.id)
+            .tags_type("EXCL")
+            .tags(vec!["foo"])
+            .finish();
+
+        let record = RecordBuilder::default()
+            .user_id(user.id)
+            .transaction_type("EXP");
+
+        for (amount, tag) in [(1.0, "foo"), (3.0, "foo"), (2.0, "bar"), (4.0, "bar")].iter() {
+            session.create_record(record.clone().amount(*amount).tags(vec![tag]).finish());
+        }
+
+        let amount = budget_spent(&budget, session.conn()).unwrap();
+
+        assert_eq!(BigDecimal::from(6), amount);
     }
 }

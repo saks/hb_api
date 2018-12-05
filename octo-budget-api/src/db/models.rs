@@ -108,6 +108,11 @@ impl BudgetBuilder {
         self
     }
 
+    pub fn tags(mut self, tags: Vec<&str>) -> Self {
+        self.tags = tags.into_iter().map(|s| s.to_string()).collect();
+        self
+    }
+
     pub fn user_id(mut self, user_id: i32) -> Self {
         self.user_id = user_id;
         self

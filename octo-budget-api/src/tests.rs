@@ -140,9 +140,11 @@ impl Drop for Session {
             return;
         }
 
-        self.conn
-            .execute("TRUNCATE TABLE auth_user CASCADE")
-            .expect("Error executing TRUNCATE");
+        for table_name in ["auth_user", "records_record", "budgets_budget"].iter() {
+            self.conn
+                .execute(&format!("TRUNCATE TABLE {} CASCADE", table_name))
+                .expect("Error executing TRUNCATE");
+        }
     }
 }
 
