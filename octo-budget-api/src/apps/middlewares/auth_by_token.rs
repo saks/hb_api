@@ -33,7 +33,7 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
         }
 
         match parts.next() {
-            Some(token) => AuthToken::from(token, config::auth_token_secret())
+            Some(token) => AuthToken::from(token, config::AUTH_TOKEN_SECRET.as_bytes())
                 .map(|auth_token| {
                     req.extensions_mut().insert(auth_token);
 

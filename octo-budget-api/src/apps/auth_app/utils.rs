@@ -22,7 +22,7 @@ pub fn validate_password(user: UserModel, password: String) -> Result<UserModel,
 }
 
 pub fn generate_token(user: &UserModel) -> Data {
-    let secret = config::auth_token_secret();
+    let secret = config::AUTH_TOKEN_SECRET.as_bytes();
     let token = AuthToken::new(user.id, secret).to_string();
     Data::from_token(token)
 }
@@ -51,7 +51,7 @@ mod test {
     fn test_generate_token() {
         let user = make_user_with_pass("foo");
         let data = generate_token(&make_user_with_pass("foo"));
-        let token = AuthToken::new(user.id, config::auth_token_secret()).to_string();
+        let token = AuthToken::new(user.id, config::AUTH_TOKEN_SECRET.as_bytes()).to_string();
         let expected_data = Data::from_token(token);
 
         assert_eq!(expected_data, data);

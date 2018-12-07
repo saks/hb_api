@@ -39,7 +39,7 @@ impl Handler<GetBudgetsMessage> for DbExecutor {
 
 fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Error> {
     use crate::db::schema::records_record;
-    use diesel::dsl::sum;
+    use diesel::dsl::{not, sum};
 
     let first_month_day = Local::now().naive_local().with_day0(0).unwrap();
 
@@ -53,25 +53,17 @@ fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Erro
             ),
         );
 
-    match budget.tags_type.as_str() {
-        "INCL" => {
-            let query = query.filter(records_record::tags.overlaps_with(&budget.tags));
+    let query_result = match budget.tags_type.as_str() {
+        "INCL" => query
+            .filter(records_record::tags.overlaps_with(&budget.tags))
+            .first::<(Option<BigDecimal>)>(conn)?,
+        "EXCL" => query
+            .filter(not(records_record::tags.overlaps_with(&budget.tags)))
+            .first::<(Option<BigDecimal>)>(conn)?,
+        _ => query.first::<(Option<BigDecimal>)>(conn)?,
+    };
 
-            Ok(query
-                .first::<(Option<BigDecimal>)>(conn)?
-                .unwrap_or_else(BigDecimal::zero))
-        }
-        "EXCL" => {
-            use diesel::dsl::not;
-            let query = query.filter(not(records_record::tags.overlaps_with(&budget.tags)));
-            Ok(query
-                .first::<(Option<BigDecimal>)>(conn)?
-                .unwrap_or_else(BigDecimal::zero))
-        }
-        _ => Ok(query
-            .first::<(Option<BigDecimal>)>(conn)?
-            .unwrap_or_else(BigDecimal::zero)),
-    }
+    Ok(query_result.unwrap_or_else(BigDecimal::zero).with_scale(2))
 }
 
 fn ndays_in_the_current_month(today: NaiveDate) -> u32 {
@@ -162,6 +154,7 @@ mod test {
     use super::*;
     use crate::db::models::{BudgetBuilder, RecordBuilder};
     use crate::tests::Session;
+    use bigdecimal::ToPrimitive;
 
     #[test]
     fn test_empty_result() {
@@ -255,11 +248,11 @@ mod test {
             .user_id(user.id)
             .transaction_type("EXP");
 
-        session.create_record(record.clone().amount(1.0).finish());
+        session.create_record(record.clone().amount(1.123).finish());
 
         let amount = budget_spent(&budget, session.conn()).unwrap();
 
-        assert_eq!(BigDecimal::from(1), amount);
+        assert_eq!(1.12, amount.to_f64().unwrap());
     }
 
     #[test]

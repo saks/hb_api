@@ -10,4 +10,7 @@ server:
 psql:
 	@docker-compose exec db psql -U rustapp test
 
+redis_cli:
+	@docker-compose exec redis redis-cli
+
 .PHONY: test server

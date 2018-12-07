@@ -142,7 +142,7 @@ mod test {
         let token_string = body_json.get("token").unwrap().as_str().unwrap();
 
         // returned token is valid
-        let token = AuthToken::from(&token_string, config::auth_token_secret()).unwrap();
+        let token = AuthToken::from(&token_string, config::AUTH_TOKEN_SECRET.as_bytes()).unwrap();
 
         assert_eq!(user.id, token.user_id);
     }

@@ -16,7 +16,7 @@ mod tests;
 use actix_web::{middleware::Logger, server, App};
 use dotenv::dotenv;
 
-use crate::apps::{auth_app, budgets_app, records_app, AppState};
+use crate::apps::{auth_app, budgets_app, records_app, users_app, AppState};
 
 fn main() {
     dotenv().expect("Failed to parse .env file");
@@ -28,8 +28,13 @@ fn main() {
             .scope("/auth/jwt", auth_app::scope)
             .scope("/api/records/", records_app::scope)
             .scope("/api/budgets/", budgets_app::scope)
+            .scope("/api/user/", users_app::scope)
     })
-    .bind(format!("{}:{}", *config::LISTEN_IP, *config::LISTEN_PORT))
+    .bind(format!(
+        "{}:{}",
+        config::LISTEN_IP.as_str(),
+        config::LISTEN_PORT.as_str()
+    ))
     .expect("Cannot bind to IP:PORT")
     .run();
 }
