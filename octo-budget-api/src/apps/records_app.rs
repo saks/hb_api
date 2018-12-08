@@ -54,8 +54,8 @@ fn index(
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
-        .middleware(VerifyAuthToken::new())
-        .resource("/record-detail", |r| r.get().with(index))
+        .middleware(VerifyAuthToken::default())
+        .resource("/record-detail/", |r| r.get().with(index))
 }
 
 #[cfg(test)]

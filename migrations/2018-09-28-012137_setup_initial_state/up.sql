@@ -159,7 +159,7 @@ CREATE TABLE auth_user (
     is_staff boolean NOT NULL,
     is_active boolean NOT NULL,
     date_joined timestamp with time zone NOT NULL,
-    tags character varying(30)[]
+    tags text[] NOT NULL
 );
 
 

@@ -18,7 +18,7 @@ pub struct DbExecutor {
 }
 
 impl DbExecutor {
-    pub fn new() -> Addr<Self> {
+    pub fn start() -> Addr<Self> {
         SyncArbiter::start(1, move || {
             let manager = ConnectionManager::<PgConnection>::new(config::DATABASE_URL.as_str());
 

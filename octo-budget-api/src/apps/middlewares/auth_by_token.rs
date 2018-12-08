@@ -7,13 +7,9 @@ use actix_web::{
 use octo_budget_lib::auth_token::AuthToken;
 
 use crate::config;
-pub struct VerifyAuthToken;
 
-impl VerifyAuthToken {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+#[derive(Default)]
+pub struct VerifyAuthToken;
 
 impl<AppState> Middleware<AppState> for VerifyAuthToken {
     fn start(&self, req: &HttpRequest<AppState>) -> WebResult<Started> {

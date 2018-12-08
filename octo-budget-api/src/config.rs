@@ -33,15 +33,15 @@ pub fn redis_url() -> String {
 
     let redis_url = REDIS_URL.as_str();
     let url = Url::parse(REDIS_URL.as_str())
-        .expect(format!("Cannot parse redis url: `{}'", redis_url).as_str());
+        .unwrap_or_else(|_| panic!("Cannot parse redis url: `{}'", redis_url));
 
     let host = url
         .host_str()
-        .expect(format!("bad redis host: `{}'", redis_url).as_str());
+        .unwrap_or_else(|| panic!("bad redis host: `{}'", redis_url));
 
     let port = url
         .port()
-        .expect(format!("bad redis port: `{}'", redis_url).as_str());
+        .unwrap_or_else(|| panic!("bad redis port: `{}'", redis_url));
 
     format!("{}:{}", host, port)
 }

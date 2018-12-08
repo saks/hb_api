@@ -12,7 +12,7 @@ pub mod middlewares;
 pub mod auth_app;
 pub mod budgets_app;
 pub mod records_app;
-pub mod users_app;
+pub mod tags_app;
 
 /// State with DbExecutor address
 pub struct AppState {
@@ -20,10 +20,16 @@ pub struct AppState {
     redis: Arc<Addr<RedisActor>>,
 }
 
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppState {
     pub fn new() -> Self {
         Self {
-            db: DbExecutor::new(),
+            db: DbExecutor::start(),
             redis: Arc::new(RedisActor::start(config::redis_url())),
         }
     }

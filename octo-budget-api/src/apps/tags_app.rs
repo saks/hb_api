@@ -24,7 +24,7 @@ fn auth_error_response() -> FutureResponse<HttpResponse> {
 fn show(
     (_query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
 ) -> FutureResponse<HttpResponse> {
-    let token: AuthToken = match request.extensions_mut().remove() {
+    let token = match request.extensions_mut().remove::<AuthToken>() {
         Some(token) => token,
         _ => return auth_error_response(),
     };
@@ -35,46 +35,19 @@ fn show(
         .send(tags::get_ordered_tags_from_redis_msg(&token));
 
     let get_user_tags = state.db.send(tags::get_user_tags_from_db_msg(&token));
-    let mut user_tags: Vec<String> = vec![];
 
-    get_user_tags
-        .and_then(|user_tags_result| {
-            // println!("user tags result: {:?}", user_tags_result);
-            // XXX: handle user not found error: Err(DeserializationError(UnexpectedNullError))
-            // user_tags = user_tags_result.unwrap_or_else(|_| vec![]);
-            get_redis_tags
-        })
+    get_redis_tags
+        .join(get_user_tags)
         .map_err(WebError::from)
-        .and_then(move |_redis_tags_result| {
-            // println!("redis tags result: {:?}", redis_tags_result);
-            // tags::get_ordered_tags(user_tags, _redis_tags_result)
-            let x: Vec<String> = vec![];
-            Ok(x)
-        })
-        .and_then(|tags| {
-            println!("tags result: {:?}", tags);
-            Ok(HttpResponse::Ok().json(tags))
-        })
+        .and_then(tags::get_ordered_tags)
+        .and_then(|res| Ok(HttpResponse::Ok().json(res)))
         .responder()
-
-    // state
-    //     .redis
-    //     .clone()
-    //     .send(tags::get_ordered_tags_from_redis_msg(&token))
-    //     .map_err(WebError::from)
-    //     .and_then(tags::get_ordered_tags)
-    //     .and_then(|res| {
-    //         println!("XXX: {:?}", res);
-    //         //
-    //         Ok(HttpResponse::Ok().json("[1,2,3]"))
-    //     })
-    //     .responder()
 }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
-        .middleware(VerifyAuthToken::new())
-        .resource("/{user_id}/", |r| r.get().with(show))
+        .middleware(VerifyAuthToken::default())
+        .resource("", |r| r.get().with(show))
 }
 
 #[cfg(test)]
