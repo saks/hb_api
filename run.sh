@@ -17,7 +17,7 @@ POSTGRES_HOST=$(docker-compose port db 5432)
 redis_host=$(docker-compose port redis $redis_port)
 # POSTGRES_HOST="172.18.0.2"
 export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_DB}"
-export REDIS_URL="redis://${redis_host}:${redis_port}"
+export REDIS_URL="redis://${redis_host}"
 
 
 until docker-compose exec -e PGPASSWORD=$POSTGRES_PASSWORD db sh -c 'psql -U $POSTGRES_USER -d postgres -c "\q"'; do

@@ -33,10 +33,10 @@ table! {
         is_superuser -> Bool,
         last_name -> Varchar,
         password -> Varchar,
+        tags -> Array<Text>,
         username -> Varchar,
 
         // last_login -> Nullable<Timestamptz>,
-        // tags -> Nullable<Array<Varchar>>,
     }
 }
 

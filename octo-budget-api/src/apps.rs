@@ -24,7 +24,7 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             db: DbExecutor::new(),
-            redis: Arc::new(RedisActor::start(config::REDIS_URL.as_str())),
+            redis: Arc::new(RedisActor::start(config::redis_url())),
         }
     }
 }

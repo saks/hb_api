@@ -19,6 +19,7 @@ r2d2 = "0.8"
 redis-async = "*"
 serde = "*"
 serde_derive = "*"
+url = "*"
 
 [dependencies.chrono]
 features = ["serde"]

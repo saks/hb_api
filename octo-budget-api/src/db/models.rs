@@ -17,6 +17,7 @@ pub struct AuthUser {
     pub is_superuser: bool,
     pub last_name: String,
     pub password: String,
+    pub tags: Vec<String>,
     pub username: String,
 }
 

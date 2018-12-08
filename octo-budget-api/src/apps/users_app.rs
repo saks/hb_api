@@ -1,19 +1,18 @@
-use actix_redis::{Command, Error as ARError, RedisActor};
-use actix_web::{AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, Scope, State};
-use futures::{
-    future,
-    future::{join_all, Future},
+use actix_web::{
+    AsyncResponder, Error as WebError, FutureResponse, HttpRequest, HttpResponse, Query, Scope,
+    State,
 };
-use redis_async::resp_array;
+use futures::{future, future::Future};
 
 use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
 use octo_budget_lib::auth_token::AuthToken;
 
+mod tags;
 // mod db;
 
 // use self::db::GetRecordsMessage;
 use super::index_params::Params;
-use super::index_response::Data;
+// use super::index_response::Data;
 // use crate::db::models::Record as RecordModel;
 
 // type ResponseData = Data<RecordModel>;
@@ -23,43 +22,53 @@ fn auth_error_response() -> FutureResponse<HttpResponse> {
 }
 
 fn show(
-    (_query_params, _state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
+    (_query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
 ) -> FutureResponse<HttpResponse> {
-    let redis = request.state().redis.clone();
-    let one = redis.send(Command(resp_array!["SET", "mydomain:one", "123"]));
-    let _x = join_all(vec![one].into_iter());
-    let _token: AuthToken<'_> = match request.extensions_mut().remove() {
+    let token: AuthToken = match request.extensions_mut().remove() {
         Some(token) => token,
         _ => return auth_error_response(),
     };
 
-    // let params = query_params.into_inner();
-    //
-    // let validation_result: Result<Params, ResponseData> = params.validate();
-    // match validation_result {
-    //     Ok(Params { page, per_page }) => {
-    //         let user_id = token.user_id;
-    //
-    //         let message = GetRecordsMessage {
-    //             page,
-    //             per_page,
-    //             user_id,
-    //         };
-    //
-    //         state
-    //             .db
-    //             .send(message)
-    //             .from_err()
-    //             .and_then(|result| {
-    //                 result
-    //                     .map(|data| HttpResponse::Ok().json(data))
-    //                     .map_err(|e| e.into())
-    //             })
-    //             .responder()
-    //     }
-    //     Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-    // }
-    auth_error_response()
+    let get_redis_tags = state
+        .redis
+        .clone()
+        .send(tags::get_ordered_tags_from_redis_msg(&token));
+
+    let get_user_tags = state.db.send(tags::get_user_tags_from_db_msg(&token));
+    let mut user_tags: Vec<String> = vec![];
+
+    get_user_tags
+        .and_then(|user_tags_result| {
+            // println!("user tags result: {:?}", user_tags_result);
+            // XXX: handle user not found error: Err(DeserializationError(UnexpectedNullError))
+            // user_tags = user_tags_result.unwrap_or_else(|_| vec![]);
+            get_redis_tags
+        })
+        .map_err(WebError::from)
+        .and_then(move |_redis_tags_result| {
+            // println!("redis tags result: {:?}", redis_tags_result);
+            // tags::get_ordered_tags(user_tags, _redis_tags_result)
+            let x: Vec<String> = vec![];
+            Ok(x)
+        })
+        .and_then(|tags| {
+            println!("tags result: {:?}", tags);
+            Ok(HttpResponse::Ok().json(tags))
+        })
+        .responder()
+
+    // state
+    //     .redis
+    //     .clone()
+    //     .send(tags::get_ordered_tags_from_redis_msg(&token))
+    //     .map_err(WebError::from)
+    //     .and_then(tags::get_ordered_tags)
+    //     .and_then(|res| {
+    //         println!("XXX: {:?}", res);
+    //         //
+    //         Ok(HttpResponse::Ok().json("[1,2,3]"))
+    //     })
+    //     .responder()
 }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
