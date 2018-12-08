@@ -1,6 +1,5 @@
 use actix_web::{
-    AsyncResponder, Error as WebError, FutureResponse, HttpRequest, HttpResponse, Query, Scope,
-    State,
+    AsyncResponder, Error as WebError, FutureResponse, HttpRequest, HttpResponse, Scope, State,
 };
 use futures::{future, future::Future};
 
@@ -8,25 +7,11 @@ use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
 use octo_budget_lib::auth_token::AuthToken;
 
 mod tags;
-// mod db;
 
-// use self::db::GetRecordsMessage;
-use super::index_params::Params;
-// use super::index_response::Data;
-// use crate::db::models::Record as RecordModel;
-
-// type ResponseData = Data<RecordModel>;
-
-fn auth_error_response() -> FutureResponse<HttpResponse> {
-    Box::new(future::ok(HttpResponse::Unauthorized().finish()))
-}
-
-fn show(
-    (_query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
-) -> FutureResponse<HttpResponse> {
-    let token = match request.extensions_mut().remove::<AuthToken>() {
+fn show((state, req): (State<AppState>, HttpRequest<AppState>)) -> FutureResponse<HttpResponse> {
+    let token = match req.extensions_mut().remove::<AuthToken>() {
         Some(token) => token,
-        _ => return auth_error_response(),
+        _ => return Box::new(future::ok(HttpResponse::Unauthorized().finish())),
     };
 
     let get_redis_tags = state

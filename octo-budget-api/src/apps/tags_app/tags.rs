@@ -1,16 +1,23 @@
 use actix::{Handler, Message};
-use actix_redis::Command as RedisCommand;
-use actix_redis::Error as RedisError;
-use actix_web::error::ErrorInternalServerError as InternalServerError;
-use actix_web::Error as WebError;
+use actix_redis::{Command as RedisCommand, Error as RedisError};
+use actix_web::{error::ErrorInternalServerError as InternalServerError, Error as WebError};
 use failure::Error;
 use octo_budget_lib::auth_token::AuthToken;
-use redis_async::resp::FromResp;
-use redis_async::resp::RespValue as RedisResponse;
-use redis_async::resp_array;
+use redis_async::{
+    resp::{FromResp, RespValue as RedisResponse},
+    resp_array,
+};
 use serde_derive::Serialize;
 
 use crate::db::{schema::auth_user, DbExecutor};
+
+type RedisResult = Result<RedisResponse, RedisError>;
+
+fn redis_response_into_tags(result: RedisResult) -> Result<Vec<String>, WebError> {
+    result
+        .and_then(|x| Vec::<String>::from_resp(x).map_err(|e| e.into()))
+        .map_err(|_| InternalServerError("Cannot read tags from redis"))
+}
 
 #[derive(Serialize, Default)]
 pub struct ResponseData {
@@ -20,14 +27,6 @@ pub struct ResponseData {
 pub fn get_ordered_tags_from_redis_msg(token: &AuthToken) -> RedisCommand {
     let redis_key = crate::config::user_tags_redis_key(token.user_id);
     RedisCommand(resp_array!["zrevrange", redis_key, "0", "-1"])
-}
-
-type RedisResult = Result<RedisResponse, RedisError>;
-
-fn redis_response_into_tags(result: RedisResult) -> Result<Vec<String>, WebError> {
-    result
-        .and_then(|x| Vec::<String>::from_resp(x).map_err(|e| e.into()))
-        .map_err(|_| InternalServerError("Cannot read tags from redis"))
 }
 
 pub fn get_ordered_tags(
