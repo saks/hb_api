@@ -64,7 +64,7 @@ mod test {
     macro_rules! get_message_result {
         ( $message:ident, $closure:expr ) => {{
             System::run(|| {
-                Arbiter::spawn(DbExecutor::new().send($message).then(|res| {
+                Arbiter::spawn(DbExecutor::start().send($message).then(|res| {
                     $closure(res.unwrap());
                     System::current().stop();
                     future::result(Ok(()))

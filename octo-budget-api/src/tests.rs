@@ -128,6 +128,7 @@ impl Session {
                 first_name.eq(""),
                 last_name.eq(""),
                 date_joined.eq(NaiveDateTime::from_timestamp(0, 0)),
+                tags.eq(Vec::<String>::new()),
             ))
             .get_result(&self.conn)
             .unwrap()

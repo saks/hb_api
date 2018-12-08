@@ -72,6 +72,7 @@ mod test {
             last_name: "".to_string(),
             is_staff: false,
             date_joined: NaiveDateTime::from_timestamp(0, 0),
+            tags: Vec::new(),
         }
     }
 }
