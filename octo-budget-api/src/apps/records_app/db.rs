@@ -54,10 +54,10 @@ impl Handler<GetRecordsMessage> for DbExecutor {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::db::DbExecutor;
-    use crate::tests::Session;
+    use crate::tests::DbSession;
     use actix::{Arbiter, System};
     use futures::{future, Future};
 
@@ -93,7 +93,7 @@ mod test {
 
     #[test]
     fn test_first_page_result() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
         session.create_records(user.id, 12);
 
@@ -115,7 +115,7 @@ mod test {
 
     #[test]
     fn test_second_page_result() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
         session.create_records(user.id, 12);
 
@@ -137,7 +137,7 @@ mod test {
 
     #[test]
     fn test_records_for_correct_user() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user1 = session.create_user("user1", "dummy password");
         session.create_records(user1.id, 2);
 

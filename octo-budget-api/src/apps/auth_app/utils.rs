@@ -28,7 +28,7 @@ pub fn generate_token(user: &UserModel) -> Data {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

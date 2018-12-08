@@ -78,7 +78,7 @@ pub struct Data {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use jsonwebtoken::{decode, Validation};
 

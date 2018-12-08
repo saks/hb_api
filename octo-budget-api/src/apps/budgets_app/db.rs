@@ -150,10 +150,10 @@ fn handle(msg: &GetBudgetsMessage, conn: &PgConnection) -> GetBudgetsResult {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::db::models::{BudgetBuilder, RecordBuilder};
-    use crate::tests::Session;
+    use crate::tests::DbSession;
     use bigdecimal::ToPrimitive;
 
     #[test]
@@ -163,7 +163,7 @@ mod test {
             per_page: 10,
             user_id: 123,
         };
-        let session = Session::new();
+        let session = DbSession::new();
 
         let data = handle(&message, session.conn()).unwrap();
 
@@ -175,7 +175,7 @@ mod test {
 
     #[test]
     fn test_first_page_result() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
 
         for _ in 0..12 {
@@ -197,7 +197,7 @@ mod test {
 
     #[test]
     fn test_second_page_result() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
         for _ in 0..12 {
             session.create_budget(BudgetBuilder::default().user_id(user.id).finish());
@@ -218,7 +218,7 @@ mod test {
 
     #[test]
     fn test_records_for_correct_user() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user1 = session.create_user("user1", "dummy password");
         session.create_budget(BudgetBuilder::default().user_id(user1.id).finish());
 
@@ -240,7 +240,7 @@ mod test {
 
     #[test]
     fn amount_aggregation_with_other_tags_type() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
         let budget = BudgetBuilder::default().user_id(user.id).finish();
 
@@ -257,7 +257,7 @@ mod test {
 
     #[test]
     fn amount_aggregation_with_including_tags() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
         let budget = BudgetBuilder::default()
             .user_id(user.id)
@@ -280,7 +280,7 @@ mod test {
 
     #[test]
     fn amount_aggregation_with_excluding_tags() {
-        let mut session = Session::new();
+        let mut session = DbSession::new();
         let user = session.create_user("ok auth user", "dummy password");
         let budget = BudgetBuilder::default()
             .user_id(user.id)

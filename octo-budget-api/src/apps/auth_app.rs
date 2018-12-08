@@ -41,9 +41,9 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use crate::{config, tests::Session};
+    use crate::{config, tests::DbSession};
     use actix_web::{
         client::{ClientRequest, ClientResponse},
         http::{Method, StatusCode},
@@ -112,7 +112,7 @@ mod test {
     #[test]
     fn test_ok_auth_response() {
         let mut srv = setup();
-        let mut session = Session::new();
+        let mut session = DbSession::new();
 
         let user = session.create_user("ok auth user", "dummy password");
 
@@ -129,7 +129,7 @@ mod test {
         use octo_budget_lib::auth_token::AuthToken;
 
         let mut srv = setup();
-        let mut session = Session::new();
+        let mut session = DbSession::new();
 
         let user = session.create_user("ok auth user", "dummy password");
 
@@ -150,7 +150,7 @@ mod test {
     #[test]
     fn test_invalid_password_response() {
         let mut srv = setup();
-        let mut session = Session::new();
+        let mut session = DbSession::new();
 
         let user = session.create_user("bad pass user", "dummy password");
 
@@ -165,7 +165,7 @@ mod test {
     #[test]
     fn test_invalid_password_response_body() {
         let mut srv = setup();
-        let mut session = Session::new();
+        let mut session = DbSession::new();
 
         let user = session.create_user("bad pass user", "dummy password");
 

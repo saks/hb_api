@@ -5,6 +5,20 @@ use std::env;
 
 use crate::db::models::{AuthUser, Budget, Record};
 
+#[macro_export]
+macro_rules! tags_vec {
+    ( $( $x:expr ),* ) => {
+        {
+            #[allow(unused_mut)]
+            let mut temp_vec: Vec<String> = Vec::new();
+            $(
+                temp_vec.push($x.to_string());
+            )*
+            temp_vec
+        }
+    };
+}
+
 fn database_url_from_env(env_var_name: &str) -> String {
     match env::var(env_var_name) {
         Ok(val) => {
@@ -27,14 +41,14 @@ pub fn connection_without_transaction() -> PgConnection {
     PgConnection::establish(&database_url).unwrap()
 }
 
-pub struct Session {
+pub struct DbSession {
     conn: PgConnection,
     with_transaction: bool,
 }
 
-impl Session {
+impl DbSession {
     pub fn new() -> Self {
-        Self {
+        DbSession {
             conn: connection_without_transaction(),
             with_transaction: false,
         }
@@ -135,7 +149,7 @@ impl Session {
     }
 }
 
-impl Drop for Session {
+impl Drop for DbSession {
     fn drop(&mut self) {
         if self.with_transaction {
             return;
