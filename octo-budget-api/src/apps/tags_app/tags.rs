@@ -1,4 +1,5 @@
 use actix::{Handler, Message};
+use actix_redis::Command;
 use failure::Fallible;
 use failure_derive::Fail;
 use redis_async::{
@@ -19,9 +20,9 @@ enum TagsError {
 
 impl actix_web::error::ResponseError for TagsError {}
 
-pub fn get_ordered_tags_from_redis_msg(user_id: i32) -> actix_redis::Command {
+pub fn get_ordered_tags_from_redis_msg(user_id: i32) -> Command {
     let redis_key = crate::config::user_tags_redis_key(user_id);
-    actix_redis::Command(resp_array!["zrevrange", redis_key, "0", "-1"])
+    Command(resp_array!["zrevrange", redis_key, "0", "-1"])
 }
 
 pub fn get_ordered_tags(
@@ -36,7 +37,7 @@ pub fn get_ordered_tags(
 }
 
 pub fn get_user_tags_from_db_msg(user_id: i32) -> GetUserTagsMessage {
-    GetUserTagsMessage { user_id: user_id }
+    GetUserTagsMessage { user_id }
 }
 
 pub type TagsResult = Fallible<Vec<String>>;
@@ -68,7 +69,7 @@ impl Handler<GetUserTagsMessage> for DbExecutor {
 fn redis_response_into_tags(result: RedisResult) -> Result<Vec<String>, TagsError> {
     result
         .and_then(|resp| Vec::<String>::from_resp(resp).map_err(|e| e.into()))
-        .map_err(|e| TagsError::Redis(e))
+        .map_err(TagsError::Redis)
 }
 
 fn sort_tags(redis_tags: Vec<String>, user_tags: Vec<String>) -> Vec<String> {
@@ -97,6 +98,7 @@ fn sort_tags(redis_tags: Vec<String>, user_tags: Vec<String>) -> Vec<String> {
 mod tests {
     use super::*;
     use crate::tags_vec;
+    use crate::tests::redis;
 
     #[test]
     fn sorting_tags_with_empty_user_tags() {
@@ -123,5 +125,59 @@ mod tests {
         let sorted = sort_tags(redis_tags, user_tags);
 
         assert_eq!(tags_vec!["buz", "foo", "bar"], sorted);
+    }
+
+    #[test]
+    fn sorted_tags_if_no_data_stores() {
+        redis::flushall();
+        redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
+            let result = Vec::<String>::from_resp(res).unwrap();
+            assert_eq!(tags_vec![], result);
+        });
+    }
+
+    #[test]
+    fn sorted_tags_if_data_exist() {
+        redis::flushall();
+        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "2", "xxx"]));
+        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "3", "zzz"]));
+
+        redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
+            let result = Vec::<String>::from_resp(res).unwrap();
+            assert_eq!(tags_vec!["zzz", "xxx"], result);
+        });
+    }
+
+    #[test]
+    #[should_panic(expected = "WRONGTYPE Operation against a key holding the wrong kind of value")]
+    fn get_ordered_tags_with_redis_error() {
+        redis::flushall();
+        redis::exec_msg(Command(resp_array!["SET", "user_tags_1", "foo"]));
+
+        redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
+            let user_result = Ok(tags_vec![]);
+            let redis_result = Ok(res);
+
+            get_ordered_tags((redis_result, user_result)).unwrap();
+        });
+    }
+
+    #[test]
+    fn get_ordered_tags_with_redis_data() {
+        redis::flushall();
+
+        // prepare sort order for tags:
+        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "2", "xxx"]));
+        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "1", "foo"]));
+        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "3", "zzz"]));
+
+        redis::handle_message(get_ordered_tags_from_redis_msg(1), |redis_res| {
+            let redis_result = Ok(redis_res);
+            let user_result = Ok(tags_vec!["foo", "xxx", "zzz"]);
+
+            let result = get_ordered_tags((redis_result, user_result)).unwrap();
+
+            assert_eq!(tags_vec!["zzz", "xxx", "foo"], result.tags);
+        });
     }
 }

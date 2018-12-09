@@ -9,7 +9,7 @@ use octo_budget_lib::auth_token::AuthToken;
 
 mod tags;
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct ResponseData {
     tags: Vec<String>,
 }

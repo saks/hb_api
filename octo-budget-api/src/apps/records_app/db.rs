@@ -56,22 +56,9 @@ impl Handler<GetRecordsMessage> for DbExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::DbExecutor;
-    use crate::tests::DbSession;
+    use crate::{db::DbExecutor, get_db_message_result, tests::DbSession};
     use actix::{Arbiter, System};
     use futures::{future, Future};
-
-    macro_rules! get_message_result {
-        ( $message:ident, $closure:expr ) => {{
-            System::run(|| {
-                Arbiter::spawn(DbExecutor::start().send($message).then(|res| {
-                    $closure(res.unwrap());
-                    System::current().stop();
-                    future::result(Ok(()))
-                }));
-            });
-        };};
-    }
 
     #[test]
     fn test_empty_result() {
@@ -81,7 +68,7 @@ mod tests {
             user_id: 123,
         };
 
-        get_message_result!(message, |res: GetRecordsResult| {
+        get_db_message_result!(message, |res: GetRecordsResult| {
             let data: ResponseData = res.unwrap();
 
             assert_eq!(0, data.total);
@@ -103,7 +90,7 @@ mod tests {
             user_id: user.id,
         };
 
-        get_message_result!(message, |res: GetRecordsResult| {
+        get_db_message_result!(message, |res: GetRecordsResult| {
             let data: ResponseData = res.unwrap();
 
             assert_eq!(12, data.total);
@@ -125,7 +112,7 @@ mod tests {
             user_id: user.id,
         };
 
-        get_message_result!(message, |res: GetRecordsResult| {
+        get_db_message_result!(message, |res: GetRecordsResult| {
             let data: ResponseData = res.unwrap();
 
             assert_eq!(12, data.total);
@@ -151,7 +138,7 @@ mod tests {
         };
 
         let msg = message.clone();
-        get_message_result!(message, move |res: GetRecordsResult| {
+        get_db_message_result!(message, move |res: GetRecordsResult| {
             let data: ResponseData = res.unwrap();
 
             assert_eq!(2, data.total);
