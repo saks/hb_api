@@ -59,7 +59,7 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     // use super::*;
     // use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
 

@@ -139,8 +139,8 @@ mod tests {
     #[test]
     fn sorted_tags_if_data_exist() {
         redis::flushall();
-        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "2", "xxx"]));
-        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "3", "zzz"]));
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
 
         redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
             let result = Vec::<String>::from_resp(res).unwrap();
@@ -152,7 +152,7 @@ mod tests {
     #[should_panic(expected = "WRONGTYPE Operation against a key holding the wrong kind of value")]
     fn get_ordered_tags_with_redis_error() {
         redis::flushall();
-        redis::exec_msg(Command(resp_array!["SET", "user_tags_1", "foo"]));
+        redis::exec_cmd(vec!["SET", "user_tags_1", "foo"]);
 
         redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
             let user_result = Ok(tags_vec![]);
@@ -167,9 +167,9 @@ mod tests {
         redis::flushall();
 
         // prepare sort order for tags:
-        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "2", "xxx"]));
-        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "1", "foo"]));
-        redis::exec_msg(Command(resp_array!["ZADD", "user_tags_1", "3", "zzz"]));
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "1", "foo"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
 
         redis::handle_message(get_ordered_tags_from_redis_msg(1), |redis_res| {
             let redis_result = Ok(redis_res);

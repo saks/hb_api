@@ -3,7 +3,10 @@ use chrono::naive::NaiveDateTime;
 use diesel::{Connection, PgConnection};
 use std::env;
 
-use crate::db::models::{AuthUser, Budget, Record};
+use crate::db::{
+    builders::UserBuilder,
+    models::{AuthUser, Budget, Record},
+};
 
 #[macro_export]
 macro_rules! get_db_message_result {
@@ -119,29 +122,26 @@ impl DbSession {
         }
     }
 
-    pub fn create_user(
-        &mut self,
-        username_str: &'static str,
-        password_str: &'static str,
-    ) -> AuthUser {
+    pub fn create_user(&mut self, builder: UserBuilder) -> AuthUser {
         use crate::db::schema::auth_user::dsl::*;
         use diesel::*;
         use djangohashers;
 
-        let new_password = djangohashers::make_password(password_str);
+        let user = builder.finish();
+        let new_password = djangohashers::make_password(&user.password);
 
         insert_into(auth_user)
             .values((
-                username.eq(username_str),
+                username.eq(user.username),
                 password.eq(&new_password),
-                is_superuser.eq(false),
-                is_active.eq(true),
-                is_staff.eq(false),
-                email.eq(""),
-                first_name.eq(""),
-                last_name.eq(""),
-                date_joined.eq(NaiveDateTime::from_timestamp(0, 0)),
-                tags.eq(Vec::<String>::new()),
+                is_superuser.eq(user.is_superuser),
+                is_active.eq(user.is_active),
+                is_staff.eq(user.is_staff),
+                email.eq(user.email),
+                first_name.eq(user.first_name),
+                last_name.eq(user.last_name),
+                date_joined.eq(user.date_joined),
+                tags.eq(user.tags),
             ))
             .get_result(&self.conn)
             .unwrap()

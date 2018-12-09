@@ -10,6 +10,9 @@ pub mod models;
 pub mod pagination;
 pub mod schema;
 
+#[cfg(test)]
+pub mod builders;
+
 use crate::config;
 
 /// This is db executor actor. We are going to run 3 of them in parallel.

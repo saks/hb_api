@@ -25,7 +25,10 @@ where
     });
 }
 
-pub fn exec_msg(msg: Command) {
+pub fn exec_cmd(cmd: Vec<&str>) {
+    let msg = Command(RespValue::Array(
+        cmd.into_iter().map(|e| e.into()).collect(),
+    ));
     handle_message(msg, |_| {});
 }
 

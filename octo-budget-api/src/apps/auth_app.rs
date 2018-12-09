@@ -43,6 +43,7 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::builders::UserBuilder;
     use crate::{config, tests::DbSession};
     use actix_web::{
         client::{ClientRequest, ClientResponse},
@@ -114,7 +115,11 @@ mod tests {
         let mut srv = setup();
         let mut session = DbSession::new();
 
-        let user = session.create_user("ok auth user", "dummy password");
+        let user = session.create_user(
+            UserBuilder::default()
+                .username("ok auth user")
+                .password("dummy password"),
+        );
 
         let response = request_new_token(
             &mut srv,
@@ -131,7 +136,11 @@ mod tests {
         let mut srv = setup();
         let mut session = DbSession::new();
 
-        let user = session.create_user("ok auth user", "dummy password");
+        let user = session.create_user(
+            UserBuilder::default()
+                .username("ok auth user")
+                .password("dummy password"),
+        );
 
         let response = request_new_token(
             &mut srv,
@@ -152,7 +161,11 @@ mod tests {
         let mut srv = setup();
         let mut session = DbSession::new();
 
-        let user = session.create_user("bad pass user", "dummy password");
+        let user = session.create_user(
+            UserBuilder::default()
+                .username("bad pass user")
+                .password("dummy password"),
+        );
 
         let response = request_new_token(
             &mut srv,
@@ -167,7 +180,11 @@ mod tests {
         let mut srv = setup();
         let mut session = DbSession::new();
 
-        let user = session.create_user("bad pass user", "dummy password");
+        let user = session.create_user(
+            UserBuilder::default()
+                .username("bad pass user")
+                .password("dummy password"),
+        );
 
         let response = request_new_token(
             &mut srv,
