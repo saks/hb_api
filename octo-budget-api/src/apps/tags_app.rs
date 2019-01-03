@@ -1,11 +1,10 @@
-use actix_web::{
-    AsyncResponder, Error as WebError, FutureResponse, HttpRequest, HttpResponse, Json, Scope,
-    State,
-};
+use actix_web::{AsyncResponder, Error as WebError, HttpResponse, Json, Scope};
 use futures::future::Future;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
+use crate::apps::{
+    middlewares::auth_by_token::VerifyAuthToken, AppState, Request, Response, State,
+};
 
 mod db;
 
@@ -14,7 +13,7 @@ pub struct TagsData {
     tags: Vec<String>,
 }
 
-fn index((state, req): (State<AppState>, HttpRequest<AppState>)) -> FutureResponse<HttpResponse> {
+fn index((state, req): (State, Request)) -> Response {
     let token = crate::auth_token_from_request!(req);
 
     let get_redis_tags = state
@@ -24,36 +23,32 @@ fn index((state, req): (State<AppState>, HttpRequest<AppState>)) -> FutureRespon
 
     let get_user_tags = state.db.send(db::get_user_tags_from_db_msg(token.user_id));
 
-    get_redis_tags
-        .join(get_user_tags)
+    get_user_tags
+        .join(get_redis_tags)
         .map_err(WebError::from)
         .and_then(|res| Ok(db::get_ordered_tags(res)?))
         .and_then(|res| Ok(HttpResponse::Ok().json(res)))
         .responder()
 }
 
-fn create(
-    (tags_data, state, req): (Json<TagsData>, State<AppState>, HttpRequest<AppState>),
-) -> FutureResponse<HttpResponse> {
-    let token = crate::auth_token_from_request!(req);
+// TODO: add tests
+fn create((tags_data, state, req): (Json<TagsData>, State, Request)) -> Response {
+    let user_id = crate::auth_token_from_request!(req).user_id;
+    let tags = tags_data.into_inner().tags;
 
-    let message = db::SetUserTags {
-        tags: tags_data.tags.clone(),
-        user_id: token.user_id,
-    };
+    let message = db::SetUserTags { tags, user_id };
+    let set_user_tags = state.db.send(message);
+    let get_redis_tags = state
+        .redis
+        .clone()
+        .send(db::get_ordered_tags_from_redis_msg(user_id));
 
-    state
-        .db
-        .send(message)
-        .from_err()
-        .and_then(|result| {
-            result
-                .map(|data| HttpResponse::Ok().json(data))
-                .map_err(|e| e.into())
-        })
+    set_user_tags
+        .join(get_redis_tags)
+        .map_err(WebError::from)
+        .and_then(|res| Ok(db::get_ordered_tags(res)?))
+        .and_then(|res| Ok(HttpResponse::Ok().json(res)))
         .responder()
-    // println!("data: {:?}", tags_data);
-    // Box::new(future::ok(HttpResponse::Ok().finish()))
 }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {

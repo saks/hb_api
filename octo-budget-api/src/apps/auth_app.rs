@@ -1,9 +1,9 @@
 use std::convert::Into;
 
-use actix_web::{AsyncResponder, FutureResponse, HttpResponse, Json, Scope, State};
+use actix_web::{AsyncResponder, HttpResponse, Json, Scope};
 use futures::{future, future::Future};
 
-use crate::apps::AppState;
+use crate::apps::{AppState, Response, State};
 use crate::db::auth::FindUserMessage;
 
 mod auth_error;
@@ -15,7 +15,7 @@ use self::auth_form::AuthForm;
 pub use self::response_data::Data;
 use self::utils::{generate_token, validate_password, validate_user};
 
-fn create((form_json, state): (Json<AuthForm>, State<AppState>)) -> FutureResponse<HttpResponse> {
+fn create((form_json, state): (Json<AuthForm>, State)) -> Response {
     let form = form_json.into_inner();
 
     match form.validate() {

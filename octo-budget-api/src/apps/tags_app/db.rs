@@ -6,6 +6,7 @@ use redis_async::{
     resp::{FromResp, RespValue as RedisResponse},
     resp_array,
 };
+use std::convert::Into;
 
 use super::TagsData;
 use crate::db::{schema::auth_user, DbExecutor};
@@ -26,7 +27,7 @@ pub fn get_ordered_tags_from_redis_msg(user_id: i32) -> Command {
 }
 
 pub fn get_ordered_tags(
-    (redis_result, user_result): (RedisResult, TagsResult),
+    (user_result, redis_result): (TagsResult, RedisResult),
 ) -> Fallible<TagsData> {
     let redis_tags = redis_response_into_tags(redis_result)?;
     let user_tags = user_result?;
@@ -67,10 +68,10 @@ impl Handler<SetUserTags> for DbExecutor {
 
         let target = auth_user::table.filter(auth_user::id.eq(user_id));
         diesel::update(target)
-            .set(auth_user::tags.eq(tags))
+            .set(auth_user::tags.eq(&tags))
             .execute(&*connection)?;
 
-        Ok(vec![])
+        Ok(tags)
     }
 }
 
@@ -90,13 +91,13 @@ impl Handler<GetUserTagsMessage> for DbExecutor {
             .select(auth_user::tags)
             .filter(auth_user::id.eq(msg.user_id))
             .first(connection)
-            .map_err(|e| e.into())
+            .map_err(Into::into)
     }
 }
 
 fn redis_response_into_tags(result: RedisResult) -> Result<Vec<String>, TagsError> {
     result
-        .and_then(|resp| Vec::<String>::from_resp(resp).map_err(|e| e.into()))
+        .and_then(|resp| Vec::<String>::from_resp(resp).map_err(Into::into))
         .map_err(TagsError::Redis)
 }
 
@@ -186,7 +187,7 @@ mod tests {
             let user_result = Ok(tags_vec![]);
             let redis_result = Ok(res);
 
-            get_ordered_tags((redis_result, user_result)).unwrap();
+            get_ordered_tags((user_result, redis_result)).unwrap();
         });
     }
 
@@ -203,7 +204,7 @@ mod tests {
             let redis_result = Ok(redis_res);
             let user_result = Ok(tags_vec!["foo", "xxx", "zzz"]);
 
-            let result = get_ordered_tags((redis_result, user_result)).unwrap();
+            let result = get_ordered_tags((user_result, redis_result)).unwrap();
 
             assert_eq!(tags_vec!["zzz", "xxx", "foo"], result.tags);
         });

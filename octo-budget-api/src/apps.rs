@@ -1,5 +1,6 @@
 use actix::Addr;
 use actix_redis::RedisActor;
+use actix_web::{FutureResponse, HttpRequest, HttpResponse, State as WebState};
 use std::sync::Arc;
 
 use crate::config;
@@ -30,6 +31,11 @@ macro_rules! auth_token_from_request {
         }
     };
 }
+
+// type aliases, just for convenience
+pub type State = WebState<AppState>;
+pub type Request = HttpRequest<AppState>;
+pub type Response = FutureResponse<HttpResponse>;
 
 /// State with DbExecutor address
 pub struct AppState {

@@ -1,7 +1,9 @@
-use actix_web::{AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query, Scope, State};
+use actix_web::{AsyncResponder, HttpResponse, Query, Scope};
 use futures::{future, future::Future};
 
-use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
+use crate::apps::{
+    middlewares::auth_by_token::VerifyAuthToken, AppState, Request, Response, State,
+};
 
 mod db;
 
@@ -12,9 +14,7 @@ use crate::db::models::Record as RecordModel;
 
 type ResponseData = Data<RecordModel>;
 
-fn index(
-    (query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
-) -> FutureResponse<HttpResponse> {
+fn index((query_params, state, request): (Query<Params>, State, Request)) -> Response {
     let token = crate::auth_token_from_request!(request);
     let params = query_params.into_inner();
 
