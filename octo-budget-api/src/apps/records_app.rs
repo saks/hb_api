@@ -2,7 +2,6 @@ use actix_web::{AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Query
 use futures::{future, future::Future};
 
 use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
-use octo_budget_lib::auth_token::AuthToken;
 
 mod db;
 
@@ -13,17 +12,10 @@ use crate::db::models::Record as RecordModel;
 
 type ResponseData = Data<RecordModel>;
 
-fn auth_error_response() -> FutureResponse<HttpResponse> {
-    Box::new(future::ok(HttpResponse::Unauthorized().finish()))
-}
-
 fn index(
     (query_params, state, request): (Query<Params>, State<AppState>, HttpRequest<AppState>),
 ) -> FutureResponse<HttpResponse> {
-    let token: AuthToken = match request.extensions_mut().remove() {
-        Some(token) => token,
-        _ => return auth_error_response(),
-    };
+    let token = crate::auth_token_from_request!(request);
     let params = query_params.into_inner();
 
     let validation_result: Result<Params, ResponseData> = params.validate();

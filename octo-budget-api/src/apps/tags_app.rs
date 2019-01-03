@@ -1,46 +1,68 @@
 use actix_web::{
-    AsyncResponder, Error as WebError, FutureResponse, HttpRequest, HttpResponse, Scope, State,
+    AsyncResponder, Error as WebError, FutureResponse, HttpRequest, HttpResponse, Json, Scope,
+    State,
 };
-use futures::{future, future::Future};
-use serde_derive::Serialize;
+use futures::future::Future;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState};
-use octo_budget_lib::auth_token::AuthToken;
 
-mod tags;
+mod db;
 
-#[derive(Serialize, Default, Debug)]
-pub struct ResponseData {
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct TagsData {
     tags: Vec<String>,
 }
 
 fn index((state, req): (State<AppState>, HttpRequest<AppState>)) -> FutureResponse<HttpResponse> {
-    let token = match req.extensions_mut().remove::<AuthToken>() {
-        Some(token) => token,
-        _ => return Box::new(future::ok(HttpResponse::Unauthorized().finish())),
-    };
+    let token = crate::auth_token_from_request!(req);
 
     let get_redis_tags = state
         .redis
         .clone()
-        .send(tags::get_ordered_tags_from_redis_msg(token.user_id));
+        .send(db::get_ordered_tags_from_redis_msg(token.user_id));
 
-    let get_user_tags = state
-        .db
-        .send(tags::get_user_tags_from_db_msg(token.user_id));
+    let get_user_tags = state.db.send(db::get_user_tags_from_db_msg(token.user_id));
 
     get_redis_tags
         .join(get_user_tags)
         .map_err(WebError::from)
-        .and_then(|res| Ok(tags::get_ordered_tags(res)?))
+        .and_then(|res| Ok(db::get_ordered_tags(res)?))
         .and_then(|res| Ok(HttpResponse::Ok().json(res)))
         .responder()
+}
+
+fn create(
+    (tags_data, state, req): (Json<TagsData>, State<AppState>, HttpRequest<AppState>),
+) -> FutureResponse<HttpResponse> {
+    let token = crate::auth_token_from_request!(req);
+
+    let message = db::SetUserTags {
+        tags: tags_data.tags.clone(),
+        user_id: token.user_id,
+    };
+
+    state
+        .db
+        .send(message)
+        .from_err()
+        .and_then(|result| {
+            result
+                .map(|data| HttpResponse::Ok().json(data))
+                .map_err(|e| e.into())
+        })
+        .responder()
+    // println!("data: {:?}", tags_data);
+    // Box::new(future::ok(HttpResponse::Ok().finish()))
 }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
         .middleware(VerifyAuthToken::default())
-        .resource("", |r| r.get().with(index))
+        .resource("", |r| {
+            r.get().with(index);
+            r.put().with(create);
+        })
 }
 
 #[cfg(test)]
@@ -48,6 +70,7 @@ mod tests {
     use super::*;
     use crate::db::builders::UserBuilder;
     use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer, HttpMessage};
+    use octo_budget_lib::auth_token::AuthToken;
     use std::str;
 
     fn setup_env() {

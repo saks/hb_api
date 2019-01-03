@@ -7,7 +7,7 @@ use redis_async::{
     resp_array,
 };
 
-use super::ResponseData;
+use super::TagsData;
 use crate::db::{schema::auth_user, DbExecutor};
 
 type RedisResult = Result<RedisResponse, actix_redis::Error>;
@@ -27,11 +27,11 @@ pub fn get_ordered_tags_from_redis_msg(user_id: i32) -> Command {
 
 pub fn get_ordered_tags(
     (redis_result, user_result): (RedisResult, TagsResult),
-) -> Fallible<ResponseData> {
+) -> Fallible<TagsData> {
     let redis_tags = redis_response_into_tags(redis_result)?;
     let user_tags = user_result?;
 
-    Ok(ResponseData {
+    Ok(TagsData {
         tags: sort_tags(redis_tags, user_tags),
     })
 }
@@ -44,6 +44,34 @@ pub type TagsResult = Fallible<Vec<String>>;
 
 pub struct GetUserTagsMessage {
     user_id: i32,
+}
+
+pub struct SetUserTags {
+    pub tags: Vec<String>,
+    pub user_id: i32,
+}
+
+impl Message for SetUserTags {
+    type Result = TagsResult;
+}
+
+impl Handler<SetUserTags> for DbExecutor {
+    type Result = TagsResult;
+
+    fn handle(&mut self, msg: SetUserTags, _: &mut Self::Context) -> Self::Result {
+        use diesel::prelude::*;
+
+        let connection = &self.pool.get()?;
+
+        let SetUserTags { user_id, tags } = msg;
+
+        let target = auth_user::table.filter(auth_user::id.eq(user_id));
+        diesel::update(target)
+            .set(auth_user::tags.eq(tags))
+            .execute(&*connection)?;
+
+        Ok(vec![])
+    }
 }
 
 impl Message for GetUserTagsMessage {
