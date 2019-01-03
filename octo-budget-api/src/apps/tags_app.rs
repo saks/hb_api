@@ -31,8 +31,7 @@ fn index((state, req): (State, Request)) -> Response {
         .responder()
 }
 
-// TODO: add tests
-fn create((tags_data, state, req): (Json<TagsData>, State, Request)) -> Response {
+fn update((tags_data, state, req): (Json<TagsData>, State, Request)) -> Response {
     let user_id = crate::auth_token_from_request!(req).user_id;
     let tags = tags_data.into_inner().tags;
 
@@ -56,7 +55,7 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
         .middleware(VerifyAuthToken::default())
         .resource("", |r| {
             r.get().with(index);
-            r.put().with(create);
+            r.put().with(update);
         })
 }
 
@@ -64,9 +63,23 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 mod tests {
     use super::*;
     use crate::db::builders::UserBuilder;
-    use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer, HttpMessage};
+    use actix_web::{
+        client::ClientRequest,
+        http::{Method, StatusCode},
+        test::TestServer,
+        HttpMessage,
+    };
     use octo_budget_lib::auth_token::AuthToken;
     use std::str;
+
+    macro_rules! assert_response_body_eq {
+        ($srv:ident, $response:ident, $body:tt) => {
+            let bytes = $srv.execute($response.body()).unwrap();
+            let body = str::from_utf8(&bytes).unwrap();
+
+            assert_eq!($body, body, "wrong response body");
+        };
+    }
 
     fn setup_env() {
         use dotenv::dotenv;
@@ -79,7 +92,10 @@ mod tests {
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())
-                .resource("/api/tags/", |r| r.get().with(index));
+                .resource("/api/tags/", |r| {
+                    r.get().with(index);
+                    r.put().with(update);
+                });
         })
     }
 
@@ -89,11 +105,26 @@ mod tests {
     }
 
     #[test]
-    fn test_auth_required_for_records_app() {
+    fn test_auth_required_for_index() {
         let mut srv = setup();
 
         let request = ClientRequest::build()
             .uri(&srv.url("/api/tags/"))
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    }
+
+    #[test]
+    fn test_auth_required_for_update() {
+        let mut srv = setup();
+
+        let request = ClientRequest::build()
+            .uri(&srv.url("/api/tags/"))
+            .method(Method::PUT)
             .finish()
             .unwrap();
 
@@ -123,12 +154,9 @@ mod tests {
             .unwrap();
 
         let response = srv.execute(request.send()).unwrap();
-        assert!(response.status().is_success());
 
-        let bytes = srv.execute(response.body()).unwrap();
-        let body = str::from_utf8(&bytes).unwrap();
-
-        assert_eq!(r#"{"tags":["foo"]}"#, body);
+        assert_eq!(StatusCode::OK, response.status(), "wrong status code");
+        assert_response_body_eq!(srv, response, r#"{"tags":["foo"]}"#);
     }
 
     #[test]
@@ -165,11 +193,40 @@ mod tests {
             .unwrap();
 
         let response = srv.execute(request.send()).unwrap();
-        assert!(response.status().is_success());
 
-        let bytes = srv.execute(response.body()).unwrap();
-        let body = str::from_utf8(&bytes).unwrap();
+        assert_eq!(StatusCode::OK, response.status());
+        assert_response_body_eq!(srv, response, r#"{"tags":["zzz","xxx","foo"]}"#);
+    }
 
-        assert_eq!(r#"{"tags":["zzz","xxx","foo"]}"#, body);
+    #[test]
+    fn test_add_and_remove_user_tags() {
+        let mut session = crate::tests::DbSession::new();
+        let mut srv = setup();
+
+        let user = session.create_user(
+            UserBuilder::default()
+                .tags(vec!["foo"])
+                .password("dummy password"),
+        );
+        let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
+            .expire_in_hours(10)
+            .to_string();
+
+        let request = ClientRequest::build()
+            .header("Authorization", format!("JWT {}", token))
+            .method(Method::PUT)
+            .uri(&srv.url("/api/tags/"))
+            .content_type("applicaton/json")
+            .body(r#"{"tags":["bar"]}"#)
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        // check response
+        assert_eq!(StatusCode::OK, response.status());
+        assert_response_body_eq!(srv, response, r#"{"tags":["bar"]}"#);
+
+        // make sure that user was updated
+        assert_eq!(vec!["bar"], user.reload(session).tags);
     }
 }

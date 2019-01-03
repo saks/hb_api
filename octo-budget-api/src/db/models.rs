@@ -21,6 +21,20 @@ pub struct AuthUser {
     pub username: String,
 }
 
+#[cfg(test)]
+impl AuthUser {
+    pub fn reload(self, session: crate::tests::DbSession) -> AuthUser {
+        use diesel::prelude::*;
+
+        let connection = session.conn();
+
+        auth_user::table
+            .filter(auth_user::id.eq(&self.id))
+            .first(connection)
+            .unwrap()
+    }
+}
+
 #[derive(Queryable, Debug, Clone, PartialEq, Insertable)]
 #[table_name = "records_record"]
 pub struct Record {
