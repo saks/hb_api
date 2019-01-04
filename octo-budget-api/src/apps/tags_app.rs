@@ -6,7 +6,7 @@ use crate::apps::{
     middlewares::auth_by_token::VerifyAuthToken, AppState, Request, Response, State,
 };
 
-mod db;
+pub mod db;
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct TagsData {

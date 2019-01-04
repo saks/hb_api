@@ -20,6 +20,10 @@ redis-async = "*"
 serde = "*"
 serde_derive = "*"
 url = "*"
+tokio = "*"
+
+[dependencies.actix-web-async-await]
+git = "https://github.com/saks/actix-web-async-await"
 
 [dependencies.chrono]
 features = ["serde"]

@@ -39,7 +39,7 @@ pub type Response = FutureResponse<HttpResponse>;
 
 /// State with DbExecutor address
 pub struct AppState {
-    db: Addr<DbExecutor>,
+    pub db: Addr<DbExecutor>,
     redis: Arc<Addr<RedisActor>>,
 }
 
