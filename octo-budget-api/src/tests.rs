@@ -16,3 +16,39 @@ macro_rules! tags_vec {
         }
     };
 }
+
+#[macro_export]
+macro_rules! assert_response_body_eq {
+    ($srv:ident, $response:ident, $body:tt) => {
+        use actix_web::HttpMessage;
+
+        let bytes = $srv.execute($response.body()).unwrap();
+        let body = std::str::from_utf8(&bytes).unwrap();
+
+        assert_eq!($body, body, "wrong response body");
+    };
+}
+
+use crate::db::models::AuthUser;
+use actix_web::{client::ClientRequest, http::Method};
+use octo_budget_lib::auth_token::AuthToken;
+
+pub fn authenticated_request(user: &AuthUser, uri: String) -> ClientRequest {
+    let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
+        .expire_in_hours(10)
+        .to_string();
+
+    ClientRequest::build()
+        .header("Authorization", format!("JWT {}", token))
+        .uri(uri)
+        .method(Method::GET)
+        .content_type("applicaton/json")
+        .finish()
+        .unwrap()
+}
+
+pub fn setup_env() {
+    use dotenv::dotenv;
+
+    dotenv().ok().expect("Failed to parse .env file");
+}

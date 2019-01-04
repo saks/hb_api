@@ -62,30 +62,12 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::builders::UserBuilder;
+    use crate::{assert_response_body_eq, db::builders::UserBuilder, tests};
     use actix_web::{
         client::ClientRequest,
         http::{Method, StatusCode},
         test::TestServer,
-        HttpMessage,
     };
-    use octo_budget_lib::auth_token::AuthToken;
-    use std::str;
-
-    macro_rules! assert_response_body_eq {
-        ($srv:ident, $response:ident, $body:tt) => {
-            let bytes = $srv.execute($response.body()).unwrap();
-            let body = str::from_utf8(&bytes).unwrap();
-
-            assert_eq!($body, body, "wrong response body");
-        };
-    }
-
-    fn setup_env() {
-        use dotenv::dotenv;
-
-        dotenv().ok().expect("Failed to parse .env file");
-    }
 
     fn setup_test_server() -> TestServer {
         use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
@@ -100,7 +82,7 @@ mod tests {
     }
 
     fn setup() -> TestServer {
-        setup_env();
+        tests::setup_env();
         setup_test_server()
     }
 
@@ -135,24 +117,11 @@ mod tests {
 
     #[test]
     fn test_auth_success_with_tags() {
-        let mut session = crate::tests::DbSession::new();
+        let mut session = tests::DbSession::new();
         let mut srv = setup();
 
-        let user = session.create_user(
-            UserBuilder::default()
-                .tags(vec!["foo"])
-                .password("dummy password"),
-        );
-        let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
-            .expire_in_hours(10)
-            .to_string();
-
-        let request = ClientRequest::build()
-            .header("Authorization", format!("JWT {}", token))
-            .uri(&srv.url("/api/tags/"))
-            .finish()
-            .unwrap();
-
+        let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
+        let request = tests::authenticated_request(&user, srv.url("/api/tags/"));
         let response = srv.execute(request.send()).unwrap();
 
         assert_eq!(StatusCode::OK, response.status(), "wrong status code");
@@ -163,14 +132,10 @@ mod tests {
     fn test_auth_success_with_ordered() {
         use crate::tests::redis;
 
-        setup_env();
+        tests::setup_env();
 
-        let mut session = crate::tests::DbSession::new();
-        let user = session.create_user(
-            UserBuilder::default()
-                .tags(vec!["foo", "xxx", "zzz"])
-                .password("dummy password"),
-        );
+        let mut session = tests::DbSession::new();
+        let user = session.create_user(UserBuilder::default().tags(vec!["foo", "xxx", "zzz"]));
 
         redis::flushall();
 
@@ -180,18 +145,8 @@ mod tests {
         redis::exec_cmd(vec!["ZADD", &redis_key, "3", "zzz"]);
         redis::exec_cmd(vec!["ZADD", &redis_key, "2", "xxx"]);
 
-        let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
-            .expire_in_hours(10)
-            .to_string();
-
         let mut srv = setup_test_server();
-
-        let request = ClientRequest::build()
-            .header("Authorization", format!("JWT {}", token))
-            .uri(&srv.url("/api/tags/"))
-            .finish()
-            .unwrap();
-
+        let request = tests::authenticated_request(&user, srv.url("/api/tags/"));
         let response = srv.execute(request.send()).unwrap();
 
         assert_eq!(StatusCode::OK, response.status());
@@ -200,25 +155,14 @@ mod tests {
 
     #[test]
     fn test_add_and_remove_user_tags() {
-        let mut session = crate::tests::DbSession::new();
+        let mut session = tests::DbSession::new();
         let mut srv = setup();
 
-        let user = session.create_user(
-            UserBuilder::default()
-                .tags(vec!["foo"])
-                .password("dummy password"),
-        );
-        let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
-            .expire_in_hours(10)
-            .to_string();
+        let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
 
-        let request = ClientRequest::build()
-            .header("Authorization", format!("JWT {}", token))
-            .method(Method::PUT)
-            .uri(&srv.url("/api/tags/"))
-            .content_type("applicaton/json")
-            .body(r#"{"tags":["bar"]}"#)
-            .unwrap();
+        let mut request = tests::authenticated_request(&user, srv.url("/api/tags/"));
+        request.set_body(r#"{"tags":["bar"]}"#);
+        request.set_method(Method::PUT);
 
         let response = srv.execute(request.send()).unwrap();
 

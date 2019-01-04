@@ -52,62 +52,52 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
-    // use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
+    use super::*;
+    use crate::{assert_response_body_eq, db::builders::UserBuilder, tests};
+    use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
 
-    // fn setup() -> TestServer {
-    //     use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
-    //     use dotenv::dotenv;
-    //
-    //     dotenv().ok().expect("Failed to parse .env file");
-    //
-    //     TestServer::build_with_state(|| AppState::new()).start(|app| {
-    //         app.resource("/api/records/record-detail/", |r| r.get().with(index));
-    //     })
-    // }
+    fn setup() -> TestServer {
+        tests::setup_env();
+        setup_test_server()
+    }
 
-    // fn make_token(hours_from_now: i64) -> String {
-    //     use crate::config;
-    //     AuthToken::new(123, config::auth_token_secret())
-    //         .expire_in_hours(hours_from_now)
-    //         .to_string()
-    // }
-    //
-    // #[test]
-    // fn get_empty_list_of_records() {}
+    fn setup_test_server() -> TestServer {
+        use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
 
-    // #[test]
-    // fn test_auth_required_for_records_app() {
-    //     setup();
-    //
-    //     let mut srv = test_server();
-    //
-    //     let request = ClientRequest::build()
-    //         .uri(&srv.url("/api/records/record-detail/"))
-    //         .finish()
-    //         .unwrap();
-    //
-    //     let response = srv.execute(request.send()).unwrap();
-    //
-    //     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    // }
+        TestServer::build_with_state(|| AppState::new()).start(|app| {
+            app.middleware(VerifyAuthToken::default())
+                .resource("/api/records/record-detail/", |r| r.get().with(index));
+        })
+    }
 
-    // #[test]
-    // fn test_auth_success_for_records_app() {
-    //     setup();
-    //
-    //     let mut srv = test_server();
-    //     let token = format!("JWT {}", make_token(12));
-    //
-    //     let request = ClientRequest::build()
-    //         .header("Authorization", token)
-    //         .uri(&srv.url("/api/records/record-detail/"))
-    //         .finish()
-    //         .unwrap();
-    //
-    //     let response = srv.execute(request.send()).unwrap();
-    //
-    //     assert_eq!(StatusCode::OK, response.status());
-    //     // TODO: check body
-    // }
+    #[test]
+    fn auth_required_for_records_app() {
+        let mut srv = setup();
+
+        let request = ClientRequest::build()
+            .uri(&srv.url("/api/records/record-detail/"))
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    }
+
+    #[test]
+    fn empty_list_of_records() {
+        let mut session = tests::DbSession::new();
+        let mut srv = setup();
+
+        let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
+        let request = tests::authenticated_request(&user, srv.url("/api/records/record-detail/"));
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(StatusCode::OK, response.status(), "wrong status code");
+        assert_response_body_eq!(
+            srv,
+            response,
+            r#"{"total":0,"results":[],"next":false,"previous":false}"#
+        );
+    }
 }

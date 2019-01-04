@@ -44,27 +44,30 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
 mod tests {
     use super::*;
     use crate::db::builders::UserBuilder;
-    use crate::{config, tests::DbSession};
+    use crate::{assert_response_body_eq, config, tests};
     use actix_web::{
         client::{ClientRequest, ClientResponse},
         http::{Method, StatusCode},
         test::TestServer,
-        HttpMessage,
     };
-    use dotenv::dotenv;
     use serde_json::json;
-    use std::str;
 
     fn setup() -> TestServer {
-        dotenv().ok().expect("Failed to parse .env file");
+        tests::setup_env();
+        setup_test_server()
+    }
+
+    fn setup_test_server() -> TestServer {
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.resource("/create/", |r| r.post().with_async(create));
         })
     }
 
     fn response_json(srv: &mut TestServer, response: ClientResponse) -> serde_json::Value {
+        use actix_web::HttpMessage;
+
         let bytes = srv.execute(response.body()).unwrap();
-        let body = str::from_utf8(&bytes).unwrap();
+        let body = std::str::from_utf8(&bytes).unwrap();
         let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
 
         body_json
@@ -86,13 +89,10 @@ mod tests {
         let response = request_new_token(&mut srv, json!({"username":"bar","password": ""}));
 
         assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-        let bytes = srv.execute(response.body()).unwrap();
-        let body = str::from_utf8(&bytes).unwrap();
-
-        assert_eq!(
-            body,
-            json!({"password":["This field may not be blank."]}).to_string()
+        assert_response_body_eq!(
+            srv,
+            response,
+            r#"{"password":["This field may not be blank."]}"#
         );
     }
 
@@ -103,17 +103,13 @@ mod tests {
         let response = request_new_token(&mut srv, json!(""));
 
         assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-        let bytes = srv.execute(response.body()).unwrap();
-        let body = str::from_utf8(&bytes).unwrap();
-
-        assert_eq!(body, "");
+        assert_response_body_eq!(srv, response, "");
     }
 
     #[test]
     fn test_ok_auth_response() {
         let mut srv = setup();
-        let mut session = DbSession::new();
+        let mut session = tests::DbSession::new();
 
         let user = session.create_user(
             UserBuilder::default()
@@ -134,7 +130,7 @@ mod tests {
         use octo_budget_lib::auth_token::AuthToken;
 
         let mut srv = setup();
-        let mut session = DbSession::new();
+        let mut session = tests::DbSession::new();
 
         let user = session.create_user(
             UserBuilder::default()
@@ -159,7 +155,7 @@ mod tests {
     #[test]
     fn test_invalid_password_response() {
         let mut srv = setup();
-        let mut session = DbSession::new();
+        let mut session = tests::DbSession::new();
 
         let user = session.create_user(
             UserBuilder::default()
@@ -178,7 +174,7 @@ mod tests {
     #[test]
     fn test_invalid_password_response_body() {
         let mut srv = setup();
-        let mut session = DbSession::new();
+        let mut session = tests::DbSession::new();
 
         let user = session.create_user(
             UserBuilder::default()
@@ -191,9 +187,10 @@ mod tests {
             json!({ "username": user.username, "password": "wrong password" }),
         );
 
-        let body_json = response_json(&mut srv, response);
-
-        let expected = json!({"non_field_errors":["Unable to log in with provided credentials."]});
-        assert_eq!(expected, body_json);
+        assert_response_body_eq!(
+            srv,
+            response,
+            r#"{"non_field_errors":["Unable to log in with provided credentials."]}"#
+        );
     }
 }
