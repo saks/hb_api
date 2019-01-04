@@ -3,6 +3,7 @@ authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
 edition = "2018"
 name = "octo-budget-api"
 version = "0.1.0"
+
 [dependencies]
 actix = "*"
 actix-web = "0.7"

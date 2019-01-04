@@ -13,22 +13,50 @@ pub struct TagsData {
     tags: Vec<String>,
 }
 
-fn index((state, req): (State, Request)) -> Response {
-    let token = crate::auth_token_from_request!(req);
+// fn index((state, req): (State, Request)) -> Response {
+//     let token = crate::auth_token_from_request!(req);
+//
+//     let get_redis_tags = state
+//         .redis
+//         .clone()
+//         .send(db::get_ordered_tags_from_redis_msg(token.user_id));
+//
+//     let get_user_tags = state.db.send(db::get_user_tags_from_db_msg(token.user_id));
+//
+//     get_user_tags
+//         .join(get_redis_tags)
+//         .map_err(WebError::from)
+//         .and_then(|res| Ok(db::get_ordered_tags(res)?))
+//         .and_then(|res| Ok(HttpResponse::Ok().json(res)))
+//         .responder()
+// }
 
-    let get_redis_tags = state
+use actix_web::{Responder, Result};
+use actix_web_async_await::{await, compat};
+async fn index((state, req): (State, Request)) -> Result<impl Responder> {
+    // TODO
+    // let token = req
+    //     .extensions_mut()
+    //     .remove::<octo_budget_lib::auth_token::AuthToken>()
+    //     .ok_or_else(|| HttpResponse::)?;
+
+    let token = match req
+        .extensions_mut()
+        .remove::<octo_budget_lib::auth_token::AuthToken>()
+    {
+        Some(token) => token,
+        _ => {
+            return Ok(HttpResponse::Unauthorized().finish());
+        }
+    };
+    let redis_tags = await!(state
         .redis
         .clone()
-        .send(db::get_ordered_tags_from_redis_msg(token.user_id));
+        .send(db::get_ordered_tags_from_redis_msg(token.user_id)))?;
+    let user_tags = await!(state.db.send(db::get_user_tags_from_db_msg(token.user_id)))?;
+    let ordered_tags = db::get_ordered_tags((user_tags, redis_tags))?;
 
-    let get_user_tags = state.db.send(db::get_user_tags_from_db_msg(token.user_id));
-
-    get_user_tags
-        .join(get_redis_tags)
-        .map_err(WebError::from)
-        .and_then(|res| Ok(db::get_ordered_tags(res)?))
-        .and_then(|res| Ok(HttpResponse::Ok().json(res)))
-        .responder()
+    Ok(HttpResponse::Ok().json(ordered_tags))
 }
 
 fn update((tags_data, state, req): (Json<TagsData>, State, Request)) -> Response {
@@ -54,7 +82,7 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
         .middleware(VerifyAuthToken::default())
         .resource("", |r| {
-            r.get().with(index);
+            r.get().with(compat(index));
             r.put().with(update);
         })
 }
@@ -75,7 +103,7 @@ mod tests {
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())
                 .resource("/api/tags/", |r| {
-                    r.get().with(index);
+                    r.get().with(compat(index));
                     r.put().with(update);
                 });
         })

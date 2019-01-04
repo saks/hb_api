@@ -129,7 +129,7 @@ dependencies = [
 [[package]]
 name = "actix-web-async-await"
 version = "0.2.0"
-source = "git+https://github.com/saks/actix-web-async-await#6a1068b1d034315e51e3660a7c3b30eba1f28260"
+source = "git+https://github.com/saks/actix-web-async-await#b02ab09927f76918f7a0151771cb28d74d48a1a8"
 dependencies = [
  "actix-web 0.7.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1623,7 +1623,7 @@ dependencies = [
 [[package]]
 name = "tokio-async-await"
 version = "0.1.4"
-source = "git+https://github.com/tokio-rs/tokio#cbecb877971826871fa409364722cf684bf3cabf"
+source = "git+https://github.com/tokio-rs/tokio#39dc5706b71898f5127704a4c323fa28b29154af"
 dependencies = [
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.10 (git+https://github.com/tokio-rs/tokio)",
@@ -1669,7 +1669,7 @@ dependencies = [
 [[package]]
 name = "tokio-io"
 version = "0.1.10"
-source = "git+https://github.com/tokio-rs/tokio#cbecb877971826871fa409364722cf684bf3cabf"
+source = "git+https://github.com/tokio-rs/tokio#39dc5706b71898f5127704a4c323fa28b29154af"
 dependencies = [
  "bytes 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
