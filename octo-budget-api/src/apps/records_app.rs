@@ -1,9 +1,7 @@
-use actix_web::{AsyncResponder, HttpResponse, Query, Scope};
-use futures::{future, future::Future};
+use actix_web::{HttpResponse, Query, Responder, Result as WebResult, Scope};
+use actix_web_async_await::{await, compat};
 
-use crate::apps::{
-    middlewares::auth_by_token::VerifyAuthToken, AppState, Request, Response, State,
-};
+use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState, Request, State};
 
 mod db;
 
@@ -14,40 +12,66 @@ use crate::db::models::Record as RecordModel;
 
 type ResponseData = Data<RecordModel>;
 
-fn index((query_params, state, request): (Query<Params>, State, Request)) -> Response {
-    let token = crate::auth_token_from_request!(request);
-    let params = query_params.into_inner();
+// use crate::apps::Response;
+// use actix_web::{AsyncResponder};
+// use futures::{future, future::Future};
+// fn index((query_params, state, request): (Query<Params>, State, Request)) -> Response {
+//     let token = crate::auth_token_from_request!(request);
+//     let params = query_params.into_inner();
+//
+//     let validation_result: Result<Params, ResponseData> = params.validate();
+//     match validation_result {
+//         Ok(Params { page, per_page }) => {
+//             let user_id = token.user_id;
+//
+//             let message = GetRecordsMessage {
+//                 page,
+//                 per_page,
+//                 user_id,
+//             };
+//
+//             state
+//                 .db
+//                 .send(message)
+//                 .from_err()
+//                 .and_then(|result| {
+//                     result
+//                         .map(|data| HttpResponse::Ok().json(data))
+//                         .map_err(|e| e.into())
+//                 })
+//                 .responder()
+//         }
+//         Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
+//     }
+// }
 
+async fn index((params, state, req): (Query<Params>, State, Request)) -> WebResult<impl Responder> {
+    let token = crate::auth_token_from_async_request!(req);
+    let params = params.into_inner();
     let validation_result: Result<Params, ResponseData> = params.validate();
-    match validation_result {
-        Ok(Params { page, per_page }) => {
-            let user_id = token.user_id;
 
-            let message = GetRecordsMessage {
-                page,
-                per_page,
-                user_id,
-            };
-
-            state
-                .db
-                .send(message)
-                .from_err()
-                .and_then(|result| {
-                    result
-                        .map(|data| HttpResponse::Ok().json(data))
-                        .map_err(|e| e.into())
-                })
-                .responder()
+    let params = match validation_result {
+        Ok(params) => params,
+        Err(response_data) => {
+            return Ok(HttpResponse::BadRequest().json(response_data));
         }
-        Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-    }
+    };
+
+    let message = GetRecordsMessage {
+        page: params.page,
+        per_page: params.per_page,
+        user_id: token.user_id,
+    };
+
+    let res = await!(state.db.send(message))?;
+
+    Ok(HttpResponse::Ok().json(res?))
 }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
         .middleware(VerifyAuthToken::default())
-        .resource("/record-detail/", |r| r.get().with(index))
+        .resource("/record-detail/", |r| r.get().with(compat(index)))
 }
 
 #[cfg(test)]
@@ -66,7 +90,9 @@ mod tests {
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())
-                .resource("/api/records/record-detail/", |r| r.get().with(index));
+                .resource("/api/records/record-detail/", |r| {
+                    r.get().with(compat(index))
+                });
         })
     }
 
