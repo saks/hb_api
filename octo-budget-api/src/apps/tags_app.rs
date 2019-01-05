@@ -34,12 +34,6 @@ pub struct TagsData {
 use actix_web::{Responder, Result};
 use actix_web_async_await::{await, compat};
 async fn index((state, req): (State, Request)) -> Result<impl Responder> {
-    // TODO
-    // let token = req
-    //     .extensions_mut()
-    //     .remove::<octo_budget_lib::auth_token::AuthToken>()
-    //     .ok_or_else(|| HttpResponse::)?;
-
     let token = match req
         .extensions_mut()
         .remove::<octo_budget_lib::auth_token::AuthToken>()
