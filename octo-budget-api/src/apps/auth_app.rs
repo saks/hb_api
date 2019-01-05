@@ -1,9 +1,7 @@
-use std::convert::Into;
+use actix_web::{HttpResponse, Json, Responder, Result as WebResult, Scope};
+use actix_web_async_await::{await, compat};
 
-use actix_web::{AsyncResponder, HttpResponse, Json, Scope};
-use futures::{future, future::Future};
-
-use crate::apps::{AppState, Response, State};
+use crate::apps::{AppState, State};
 use crate::db::auth::FindUserMessage;
 
 mod auth_error;
@@ -15,26 +13,48 @@ use self::auth_form::AuthForm;
 pub use self::response_data::Data;
 use self::utils::{generate_token, validate_password, validate_user};
 
-fn create((form_json, state): (Json<AuthForm>, State)) -> Response {
-    let form = form_json.into_inner();
+async fn create((form, state): (Json<AuthForm>, State)) -> WebResult<impl Responder> {
+    let form = form.into_inner();
 
-    match form.validate() {
-        Ok((username, password)) => state
-            .db
-            .send(FindUserMessage(username))
-            .from_err()
-            .and_then(validate_user)
-            .and_then(|user| validate_password(user, password).map_err(Into::into))
-            .and_then(|user| Ok(generate_token(&user)))
-            .and_then(|response_data| Ok(HttpResponse::Ok().json(response_data)))
-            .responder(),
-        Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-    }
+    let (username, password) = match form.validate() {
+        Ok((username, password)) => (username, password),
+        Err(response_data) => {
+            return Ok(HttpResponse::BadRequest().json(response_data));
+        }
+    };
+
+    let result = await!(state.db.send(FindUserMessage(username)))?;
+    let user = validate_user(result)?;
+    validate_password(&user, password)?;
+    let token = generate_token(&user);
+
+    Ok(HttpResponse::Ok().json(token))
 }
+
+// use std::convert::Into;
+// use crate::apps::Response;
+// use actix_web::{AsyncResponder};
+// use futures::{future, future::Future};
+// fn create((form_json, state): (Json<AuthForm>, State)) -> Response {
+//     let form = form_json.into_inner();
+//
+//     match form.validate() {
+//         Ok((username, password)) => state
+//             .db
+//             .send(FindUserMessage(username))
+//             .from_err()
+//             .and_then(validate_user)
+//             .and_then(|user| validate_password(user, password).map_err(Into::into))
+//             .and_then(|user| Ok(generate_token(&user)))
+//             .and_then(|response_data| Ok(HttpResponse::Ok().json(response_data)))
+//             .responder(),
+//         Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
+//     }
+// }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope.resource("/create/", |r| {
-        r.post().with_config(create, |((cfg, _),)| {
+        r.post().with_config(compat(create), |((cfg, _),)| {
             cfg.limit(1024); // <- limit size of the payload
         })
     })
@@ -59,7 +79,7 @@ mod tests {
 
     fn setup_test_server() -> TestServer {
         TestServer::build_with_state(|| AppState::new()).start(|app| {
-            app.resource("/create/", |r| r.post().with_async(create));
+            app.resource("/create/", |r| r.post().with(compat(create)));
         })
     }
 
