@@ -10,19 +10,21 @@ pub fn handle_message<F: 'static>(msg: Command, callback: F)
 where
     F: Fn(RespValue),
 {
+    let system = System::new("test");
+
     let addr = RedisActor::start(crate::config::redis_url());
     let result = addr.send(msg);
 
-    System::run(move || {
-        Arbiter::spawn(
-            result
-                .map(move |result| {
-                    callback(result.unwrap());
-                    System::current().stop();
-                })
-                .map_err(|_| ()),
-        );
-    });
+    Arbiter::spawn(
+        result
+            .map(move |result| {
+                callback(result.expect("unexpected redis response"));
+                System::current().stop();
+            })
+            .map_err(|_| ()),
+    );
+
+    system.run();
 }
 
 pub fn exec_cmd(cmd: Vec<&str>) {
@@ -34,6 +36,10 @@ pub fn exec_cmd(cmd: Vec<&str>) {
 
 pub fn flushall() {
     handle_message(Command(resp_array!["flushall"]), |result| {
-        assert_eq!(SimpleString("OK".to_string()), result);
+        assert_eq!(
+            SimpleString("OK".to_string()),
+            result,
+            "not OK response from redis"
+        );
     });
 }
