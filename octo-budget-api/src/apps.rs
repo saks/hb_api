@@ -26,8 +26,21 @@ macro_rules! auth_token_from_request {
             _ => {
                 return Box::new(futures::future::ok(
                     actix_web::HttpResponse::Unauthorized().finish(),
-                ))
+                ));
             }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! auth_token_from_async_request {
+    ($request:ident) => {
+        match $request
+            .extensions_mut()
+            .remove::<octo_budget_lib::auth_token::AuthToken>()
+        {
+            Some(token) => token,
+            _ => return Ok(HttpResponse::Unauthorized().finish()),
         }
     };
 }

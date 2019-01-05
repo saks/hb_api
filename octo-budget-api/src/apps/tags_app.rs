@@ -1,10 +1,8 @@
-use actix_web::{AsyncResponder, Error as WebError, HttpResponse, Json, Scope};
-use futures::future::Future;
+use actix_web::{HttpResponse, Json, Responder, Result, Scope};
+use actix_web_async_await::{await, compat};
 use serde_derive::{Deserialize, Serialize};
 
-use crate::apps::{
-    middlewares::auth_by_token::VerifyAuthToken, AppState, Request, Response, State,
-};
+use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState, Request, State};
 
 pub mod db;
 
@@ -31,18 +29,27 @@ pub struct TagsData {
 //         .responder()
 // }
 
-use actix_web::{Responder, Result};
-use actix_web_async_await::{await, compat};
+// fn update((tags_data, state, req): (Json<TagsData>, State, Request)) -> Response {
+//     let user_id = crate::auth_token_from_request!(req).user_id;
+//     let tags = tags_data.into_inner().tags;
+//
+//     let message = db::SetUserTags { tags, user_id };
+//     let set_user_tags = state.db.send(message);
+//     let get_redis_tags = state
+//         .redis
+//         .clone()
+//         .send(db::get_ordered_tags_from_redis_msg(user_id));
+//
+//     set_user_tags
+//         .join(get_redis_tags)
+//         .map_err(WebError::from)
+//         .and_then(|res| Ok(db::get_ordered_tags(res)?))
+//         .and_then(|res| Ok(HttpResponse::Ok().json(res)))
+//         .responder()
+// }
+
 async fn index((state, req): (State, Request)) -> Result<impl Responder> {
-    let token = match req
-        .extensions_mut()
-        .remove::<octo_budget_lib::auth_token::AuthToken>()
-    {
-        Some(token) => token,
-        _ => {
-            return Ok(HttpResponse::Unauthorized().finish());
-        }
-    };
+    let token = crate::auth_token_from_async_request!(req);
     let redis_tags = await!(state
         .redis
         .clone()
@@ -53,23 +60,21 @@ async fn index((state, req): (State, Request)) -> Result<impl Responder> {
     Ok(HttpResponse::Ok().json(ordered_tags))
 }
 
-fn update((tags_data, state, req): (Json<TagsData>, State, Request)) -> Response {
-    let user_id = crate::auth_token_from_request!(req).user_id;
+async fn update(
+    (tags_data, state, req): (Json<TagsData>, State, Request),
+) -> Result<impl Responder> {
+    let user_id = crate::auth_token_from_async_request!(req).user_id;
     let tags = tags_data.into_inner().tags;
 
-    let message = db::SetUserTags { tags, user_id };
-    let set_user_tags = state.db.send(message);
-    let get_redis_tags = state
+    let user_tags = await!(state.db.send(db::SetUserTags { tags, user_id }))?;
+    let redis_tags = await!(state
         .redis
         .clone()
-        .send(db::get_ordered_tags_from_redis_msg(user_id));
+        .send(db::get_ordered_tags_from_redis_msg(user_id)))?;
 
-    set_user_tags
-        .join(get_redis_tags)
-        .map_err(WebError::from)
-        .and_then(|res| Ok(db::get_ordered_tags(res)?))
-        .and_then(|res| Ok(HttpResponse::Ok().json(res)))
-        .responder()
+    let ordered_tags = db::get_ordered_tags((user_tags, redis_tags))?;
+
+    Ok(HttpResponse::Ok().json(ordered_tags))
 }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
@@ -77,7 +82,7 @@ pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
         .middleware(VerifyAuthToken::default())
         .resource("", |r| {
             r.get().with(compat(index));
-            r.put().with(update);
+            r.put().with(compat(update));
         })
 }
 
@@ -98,7 +103,7 @@ mod tests {
             app.middleware(VerifyAuthToken::default())
                 .resource("/api/tags/", |r| {
                     r.get().with(compat(index));
-                    r.put().with(update);
+                    r.put().with(compat(update));
                 });
         })
     }
