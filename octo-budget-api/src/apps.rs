@@ -50,10 +50,12 @@ pub type State = WebState<AppState>;
 pub type Request = HttpRequest<AppState>;
 pub type Response = FutureResponse<HttpResponse>;
 
+pub type Redis = Arc<Addr<RedisActor>>;
+
 /// State with DbExecutor address
 pub struct AppState {
     pub db: Addr<DbExecutor>,
-    redis: Arc<Addr<RedisActor>>,
+    redis: Redis,
 }
 
 impl Default for AppState {
@@ -68,5 +70,9 @@ impl AppState {
             db: DbExecutor::start(),
             redis: Arc::new(RedisActor::start(config::redis_url())),
         }
+    }
+
+    pub fn redis(&self) -> Redis {
+        self.redis.clone()
     }
 }

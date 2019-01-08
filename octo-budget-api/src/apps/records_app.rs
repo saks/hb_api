@@ -1,11 +1,13 @@
-use actix_web::{HttpResponse, Query, Responder, Result as WebResult, Scope};
+use actix_web::{HttpResponse, Json, Query, Responder, Result as WebResult, Scope};
 use actix_web_async_await::{await, compat};
 
 use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState, Request, State};
 
 mod db;
+mod forms;
 
-use self::db::GetRecordsMessage;
+use self::db::{CreateNewRecordMessage, GetRecordsMessage};
+use self::forms::RecordForm as Form;
 use super::index_params::Params;
 use super::index_response::Data;
 use crate::db::models::Record as RecordModel;
@@ -68,10 +70,48 @@ async fn index((params, state, req): (Query<Params>, State, Request)) -> WebResu
     Ok(HttpResponse::Ok().json(res?))
 }
 
+use crate::apps::Redis;
+use actix_redis::{Command, Error as RedisError, RespValue};
+use failure::Fallible;
+use redis_async::resp_array;
+async fn increment_tags(user_id: i32, tags: &Vec<String>, redis: Redis) -> Fallible<()> {
+    let key = crate::config::user_tags_redis_key(user_id);
+
+    let responses = tags
+        .iter()
+        .map(|tag| resp_array!["zincrby", &key, "1", tag])
+        .map(Command)
+        .map(|cmd| redis.send(cmd))
+        .collect::<Vec<_>>();
+
+    await!(futures::future::join_all(responses))?
+        .into_iter()
+        .collect::<Result<Vec<RespValue>, RedisError>>()?;
+
+    Ok(())
+}
+
+async fn create((form, state, req): (Json<Form>, State, Request)) -> WebResult<impl Responder> {
+    let token = crate::auth_token_from_async_request!(req);
+    let data = form.into_inner().validate()?;
+
+    await!(state.db.send(CreateNewRecordMessage::new(&data, &token)))??;
+    await!(increment_tags(
+        token.user_id,
+        &data.tags,
+        state.redis.clone()
+    ))?;
+
+    Ok(HttpResponse::Ok().json(""))
+}
+
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
         .middleware(VerifyAuthToken::default())
-        .resource("/record-detail/", |r| r.get().with(compat(index)))
+        .resource("/record-detail/", |r| {
+            r.get().with(compat(index));
+            r.post().with(compat(create));
+        })
 }
 
 #[cfg(test)]

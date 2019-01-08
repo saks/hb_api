@@ -1,20 +1,77 @@
 use std::result;
 
 use actix::{Handler, Message};
+use bigdecimal::BigDecimal;
+use chrono::{Local, NaiveDateTime};
 use diesel::prelude::*;
 use failure::Error;
+use octo_budget_lib::auth_token::AuthToken;
 
+use super::forms::FormData;
 use super::ResponseData;
 use crate::apps::index_response::Data;
 use crate::db::{models::Record as RecordModel, pagination::*, schema::records_record, DbExecutor};
 
 pub type GetRecordsResult = result::Result<ResponseData, Error>;
+pub type CreateNewRecordResult = result::Result<(), Error>;
 
 #[derive(Clone)]
 pub struct GetRecordsMessage {
     pub user_id: i32,
     pub page: i64,
     pub per_page: i64,
+}
+
+pub struct CreateNewRecordMessage {
+    amount: BigDecimal,
+    amount_currency: String,
+    created_at: NaiveDateTime,
+    tags: Vec<String>,
+    transaction_type: String,
+    user_id: i32,
+}
+
+impl CreateNewRecordMessage {
+    pub fn new(data: &FormData, token: &AuthToken) -> Self {
+        let created_at = Local::now().naive_local();
+
+        Self {
+            amount: data.amount.clone(),
+            amount_currency: data.amount_currency.clone(),
+            tags: data.tags.clone(),
+            transaction_type: data.transaction_type.clone(),
+            user_id: token.user_id,
+            created_at,
+        }
+    }
+}
+
+impl Message for CreateNewRecordMessage {
+    type Result = CreateNewRecordResult;
+}
+
+impl Handler<CreateNewRecordMessage> for DbExecutor {
+    type Result = CreateNewRecordResult;
+
+    fn handle(&mut self, msg: CreateNewRecordMessage, _: &mut Self::Context) -> Self::Result {
+        use crate::db::schema::records_record::dsl::*;
+        use diesel::*;
+
+        let connection = &self.pool.get()?;
+
+        insert_into(records_record)
+            .values((
+                amount.eq(msg.amount),
+                amount_currency.eq(msg.amount_currency),
+                created_at.eq(msg.created_at),
+                tags.eq(msg.tags),
+                transaction_type.eq(msg.transaction_type),
+                user_id.eq(msg.user_id),
+            ))
+            .execute(connection)?;
+
+        Ok(())
+    }
 }
 
 impl Message for GetRecordsMessage {
