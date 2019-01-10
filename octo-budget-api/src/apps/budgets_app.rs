@@ -1,7 +1,7 @@
 use actix_web::{HttpResponse, Query, Responder, Result as WebResult, Scope};
 use actix_web_async_await::{await, compat};
 
-use crate::apps::{middlewares::auth_by_token::VerifyAuthToken, AppState, Request, State};
+use crate::apps::{middlewares::VerifyAuthToken, AppState, Request, State};
 
 mod db;
 
@@ -81,7 +81,7 @@ mod tests {
     use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
 
     fn setup_test_server() -> TestServer {
-        use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
+        use crate::apps::middlewares::VerifyAuthToken;
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())

@@ -3,7 +3,10 @@ use actix_redis::Command;
 use actix_web_async_await::await;
 use failure::Fallible;
 use failure_derive::Fail;
-use redis_async::{resp::FromResp, resp_array};
+use redis_async::{
+    resp::{FromResp, RespValue::Array},
+    resp_array,
+};
 use std::convert::Into;
 
 use super::Redis;
@@ -41,36 +44,67 @@ impl actix_web::error::ResponseError for Error {
     }
 }
 
-pub fn get_ordered_tags_from_redis_msg(user_id: i32) -> Command {
-    let redis_key = crate::config::user_tags_redis_key(user_id);
-    Command(resp_array!["zrevrange", redis_key, "0", "-1"])
-}
-
 pub async fn read_redis_tags(user_id: i32, redis: Redis) -> Fallible<Vec<String>> {
-    let res = await!(redis.send(get_ordered_tags_from_redis_msg(user_id)))?
-        .map_err(Error::Redis)
-        .and_then(|resp| match resp {
-            arr @ redis_async::resp::RespValue::Array(..) => Vec::<String>::from_resp(arr)
-                .map_err(|e| Error::BadRedisResponse(format!("{:?}", e))),
-            resp @ _ => Err(Error::BadRedisResponse(format!("{:?}", resp))),
-        })?;
+    use self::Error::BadRedisResponse;
 
-    Ok(res)
-}
+    let redis_key = crate::config::user_tags_redis_key(user_id);
 
-pub fn get_user_tags_from_db_msg(user_id: i32) -> GetUserTagsMessage {
-    GetUserTagsMessage { user_id }
+    let command = Command(resp_array!["zrevrange", redis_key, "0", "-1"]);
+    let response = await!(redis.send(command))?.map_err(Error::Redis)?;
+
+    let tags = match response {
+        // Here we assume that if returned value is of Array type, then query has succeeded.
+        res @ Array(..) => Vec::from_resp(res).map_err(|e| BadRedisResponse(format!("{:?}", e))),
+        res @ _ => Err(BadRedisResponse(format!("{:?}", res))),
+    }?;
+
+    Ok(tags)
 }
 
 pub type TagsResult = Result<Vec<String>, Error>;
 
-pub struct GetUserTagsMessage {
+pub struct GetUserTags {
     user_id: i32,
 }
 
+impl Message for GetUserTags {
+    type Result = TagsResult;
+}
+
+impl GetUserTags {
+    pub fn new(user_id: i32) -> Self {
+        GetUserTags { user_id }
+    }
+}
+
+impl Handler<GetUserTags> for DbExecutor {
+    type Result = TagsResult;
+
+    fn handle(&mut self, msg: GetUserTags, _: &mut Self::Context) -> Self::Result {
+        use diesel::prelude::*;
+
+        let connection = &self.pool.get().map_err(|_| Error::Connection)?;
+
+        auth_user::table
+            .select(auth_user::tags)
+            .filter(auth_user::id.eq(msg.user_id))
+            .first(connection)
+            .map_err(|e| match e {
+                diesel::result::Error::NotFound => Error::UserNotFound(msg.user_id),
+                err @ _ => Error::UnknownDb(err),
+            })
+    }
+}
+
 pub struct SetUserTags {
-    pub tags: Vec<String>,
-    pub user_id: i32,
+    tags: Vec<String>,
+    user_id: i32,
+}
+
+impl SetUserTags {
+    pub fn new(user_id: i32, tags: Vec<String>) -> Self {
+        Self { user_id, tags }
+    }
 }
 
 impl Message for SetUserTags {
@@ -94,29 +128,6 @@ impl Handler<SetUserTags> for DbExecutor {
             .map_err(Error::UnknownDb)?;
 
         Ok(tags)
-    }
-}
-
-impl Message for GetUserTagsMessage {
-    type Result = TagsResult;
-}
-
-impl Handler<GetUserTagsMessage> for DbExecutor {
-    type Result = TagsResult;
-
-    fn handle(&mut self, msg: GetUserTagsMessage, _: &mut Self::Context) -> Self::Result {
-        use diesel::prelude::*;
-
-        let connection = &self.pool.get().map_err(|_| Error::Connection)?;
-
-        auth_user::table
-            .select(auth_user::tags)
-            .filter(auth_user::id.eq(msg.user_id))
-            .first(connection)
-            .map_err(|e| match e {
-                diesel::result::Error::NotFound => Error::UserNotFound(msg.user_id),
-                err @ _ => Error::UnknownDb(err),
-            })
     }
 }
 
@@ -179,7 +190,7 @@ mod tests {
     //     #[test]
     //     fn sorted_tags_if_no_data_stores() {
     //         redis::flushall();
-    //         redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
+    //         redis::handle_message(read_ordered_tags_msg(1), |res| {
     //             let result = Vec::<String>::from_resp(res).unwrap();
     //             assert_eq!(tags_vec![], result);
     //         });
@@ -191,7 +202,7 @@ mod tests {
     //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
     //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
     //
-    //         redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
+    //         redis::handle_message(read_ordered_tags_msg(1), |res| {
     //             let result = Vec::<String>::from_resp(res).unwrap();
     //             assert_eq!(tags_vec!["zzz", "xxx"], result);
     //         });
@@ -203,7 +214,7 @@ mod tests {
     //         redis::flushall();
     //         redis::exec_cmd(vec!["SET", "user_tags_1", "foo"]);
     //
-    //         redis::handle_message(get_ordered_tags_from_redis_msg(1), |res| {
+    //         redis::handle_message(read_ordered_tags_msg(1), |res| {
     //             let user_result = Ok(tags_vec![]);
     //             let redis_result = Ok(res);
     //
@@ -220,7 +231,7 @@ mod tests {
     //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "1", "foo"]);
     //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
     //
-    //         redis::handle_message(get_ordered_tags_from_redis_msg(1), |redis_res| {
+    //         redis::handle_message(read_ordered_tags_msg(1), |redis_res| {
     //             let redis_result = Ok(redis_res);
     //             let user_result = Ok(tags_vec!["foo", "xxx", "zzz"]);
     //
