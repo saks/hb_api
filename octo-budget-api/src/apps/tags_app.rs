@@ -9,29 +9,27 @@ pub mod db;
 use self::db::{GetUserTags, SetUserTags};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
-pub struct TagsData {
+pub struct Data {
     tags: Vec<String>,
 }
 
-fn ordered_tags(user_tags: Vec<String>, redis_tags: Vec<String>) -> TagsData {
+fn ordered_tags(user_tags: Vec<String>, redis_tags: Vec<String>) -> Data {
     let tags = db::sort_tags(redis_tags, user_tags);
-    TagsData { tags }
+    Data { tags }
 }
 
 async fn index((state, req): (State, Request)) -> Result<impl Responder> {
     let user_id = crate::auth_token_from_async_request!(req).user_id;
 
-    let redis_tags = await!(db::read_redis_tags(user_id, state.redis()));
     let user_tags = await!(state.db.send(GetUserTags::new(user_id)))?;
+    let redis_tags = await!(db::read_redis_tags(user_id, state.redis()));
 
     Ok(HttpResponse::Ok().json(ordered_tags(user_tags?, redis_tags?)))
 }
 
-async fn update(
-    (tags_data, state, req): (Json<TagsData>, State, Request),
-) -> Result<impl Responder> {
+async fn update((data, state, req): (Json<Data>, State, Request)) -> Result<impl Responder> {
     let user_id = crate::auth_token_from_async_request!(req).user_id;
-    let tags = tags_data.into_inner().tags;
+    let tags = data.into_inner().tags;
 
     let user_tags = await!(state.db.send(SetUserTags::new(user_id, tags)))?;
     let redis_tags = await!(db::read_redis_tags(user_id, state.redis()));

@@ -14,50 +14,9 @@ use crate::db::models::Record as RecordModel;
 
 type ResponseData = Data<RecordModel>;
 
-// use crate::apps::Response;
-// use actix_web::{AsyncResponder};
-// use futures::{future, future::Future};
-// fn index((query_params, state, request): (Query<Params>, State, Request)) -> Response {
-//     let token = crate::auth_token_from_request!(request);
-//     let params = query_params.into_inner();
-//
-//     let validation_result: Result<Params, ResponseData> = params.validate();
-//     match validation_result {
-//         Ok(Params { page, per_page }) => {
-//             let user_id = token.user_id;
-//
-//             let message = GetRecordsMessage {
-//                 page,
-//                 per_page,
-//                 user_id,
-//             };
-//
-//             state
-//                 .db
-//                 .send(message)
-//                 .from_err()
-//                 .and_then(|result| {
-//                     result
-//                         .map(|data| HttpResponse::Ok().json(data))
-//                         .map_err(|e| e.into())
-//                 })
-//                 .responder()
-//         }
-//         Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-//     }
-// }
-
 async fn index((params, state, req): (Query<Params>, State, Request)) -> WebResult<impl Responder> {
     let token = crate::auth_token_from_async_request!(req);
-    let params = params.into_inner();
-    let validation_result: Result<Params, ResponseData> = params.validate();
-
-    let params = match validation_result {
-        Ok(params) => params,
-        Err(response_data) => {
-            return Ok(HttpResponse::BadRequest().json(response_data));
-        }
-    };
+    let params = params.into_inner().validate()?;
 
     let message = GetRecordsMessage {
         page: params.page,
@@ -65,11 +24,12 @@ async fn index((params, state, req): (Query<Params>, State, Request)) -> WebResu
         user_id: token.user_id,
     };
 
-    let res = await!(state.db.send(message))?;
+    let result = await!(state.db.send(message))?;
 
-    Ok(HttpResponse::Ok().json(res?))
+    Ok(HttpResponse::Ok().json(result?))
 }
 
+// helper function
 use crate::apps::Redis;
 use actix_redis::{Command, Error as RedisError, RespValue};
 use failure::Fallible;

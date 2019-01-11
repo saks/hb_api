@@ -21,8 +21,8 @@ pub struct AuthUser {
     pub username: String,
 }
 
-#[cfg(test)]
 impl AuthUser {
+    #[cfg(test)]
     pub fn reload(self, session: crate::tests::DbSession) -> AuthUser {
         use diesel::prelude::*;
 

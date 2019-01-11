@@ -6,7 +6,6 @@ use chrono::{Datelike, Local, NaiveDate};
 use diesel::prelude::*;
 use failure::Error;
 
-use super::ResponseData;
 use crate::apps::index_response::Data;
 use crate::db::{
     models::{Budget, SerializedBudget},
@@ -15,7 +14,7 @@ use crate::db::{
     DbExecutor,
 };
 
-pub type GetBudgetsResult = result::Result<ResponseData, Error>;
+pub type GetBudgetsResult = result::Result<Data<SerializedBudget>, Error>;
 
 #[derive(Clone)]
 pub struct GetBudgetsMessage {

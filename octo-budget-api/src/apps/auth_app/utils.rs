@@ -1,25 +1,8 @@
-use actix_web::Error;
 use octo_budget_lib::auth_token::AuthToken;
 
-use super::{auth_error::AuthError, response_data::Data};
+use super::response_data::Data;
 use crate::config;
-use crate::db::{auth::FindUserResult, models::AuthUser as UserModel};
-
-pub fn validate_user(find_result: FindUserResult) -> Result<UserModel, Error> {
-    find_result.map_err(|e| {
-        println!("E: Failed to find user by username: {:?}", e);
-        AuthError::AuthFailed.into()
-    })
-}
-
-pub fn validate_password(user: &UserModel, password: String) -> Result<(), AuthError> {
-    use djangohashers;
-
-    match djangohashers::check_password(&password, &user.password) {
-        Ok(true) => Ok(()),
-        _ => Err(AuthError::AuthFailed)?,
-    }
-}
+use crate::db::models::AuthUser as UserModel;
 
 pub fn generate_token(user: &UserModel) -> Data {
     let secret = config::AUTH_TOKEN_SECRET.as_bytes();
@@ -30,22 +13,6 @@ pub fn generate_token(user: &UserModel) -> Data {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_validate_password_ok() {
-        let user = make_user_with_pass("foo");
-        let result = validate_password(&user, "foo".to_string());
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_password_err() {
-        let user = make_user_with_pass("foo");
-        let result = validate_password(&user, "bar".to_string());
-
-        assert_eq!(AuthError::AuthFailed, result.unwrap_err());
-    }
 
     #[test]
     fn test_generate_token() {

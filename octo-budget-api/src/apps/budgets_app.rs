@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse, Query, Responder, Result as WebResult, Scope};
+use actix_web::{HttpResponse, Query, Responder, Result, Scope};
 use actix_web_async_await::{await, compat};
 
 use crate::apps::{middlewares::VerifyAuthToken, AppState, Request, State};
@@ -6,67 +6,22 @@ use crate::apps::{middlewares::VerifyAuthToken, AppState, Request, State};
 mod db;
 
 use self::db::GetBudgetsMessage;
-use super::index_params::Params;
-use super::index_response::Data;
-use crate::db::models::SerializedBudget;
+use crate::apps::index_params::Params;
 
-type ResponseData = Data<SerializedBudget>;
-
-async fn index((params, state, req): (Query<Params>, State, Request)) -> WebResult<impl Responder> {
+async fn index((params, state, req): (Query<Params>, State, Request)) -> Result<impl Responder> {
     let token = crate::auth_token_from_async_request!(req);
-    let params = params.into_inner();
-    let validation_result: Result<Params, ResponseData> = params.validate();
+    let params = params.into_inner().validate()?;
 
-    let params = match validation_result {
-        Ok(params) => params,
-        Err(response_data) => {
-            return Ok(HttpResponse::BadRequest().json(response_data));
-        }
-    };
     let message = GetBudgetsMessage {
         page: params.page,
         per_page: params.per_page,
         user_id: token.user_id,
     };
 
-    let res = await!(state.db.send(message))?;
+    let result = await!(state.db.send(message))??;
 
-    Ok(HttpResponse::Ok().json(res?))
+    Ok(HttpResponse::Ok().json(result))
 }
-
-// use crate::apps::Response;
-// use actix_web::{AsyncResponder};
-// use futures::{future, future::Future};
-// fn index((query_params, state, request): (Query<Params>, State, Request)) -> Response {
-//     let token = crate::auth_token_from_request!(request);
-//
-//     let params = query_params.into_inner();
-//
-//     let validation_result: Result<Params, ResponseData> = params.validate();
-//     match validation_result {
-//         Ok(Params { page, per_page }) => {
-//             let user_id = token.user_id;
-//
-//             let message = GetBudgetsMessage {
-//                 page,
-//                 per_page,
-//                 user_id,
-//             };
-//
-//             state
-//                 .db
-//                 .send(message)
-//                 .from_err()
-//                 .and_then(|result| {
-//                     result
-//                         .map(|data| HttpResponse::Ok().json(data))
-//                         .map_err(|e| e.into())
-//                 })
-//                 .responder()
-//         }
-//         Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-//     }
-// }
 
 pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
     scope
