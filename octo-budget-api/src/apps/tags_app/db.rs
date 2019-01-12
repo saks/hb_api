@@ -241,64 +241,16 @@ mod tests {
     //         });
     //     }
 
-    // use actix::{Arbiter, System};
-    // use actix_redis::RedisActor;
-    // use futures::Future;
-    // use std::sync::Arc;
-    // use tokio_async_await::compat::backward::Compat;
-    // fn run_future<F: 'static, Fut: 'static>(fut: Fut, callback: F)
-    // where
-    //     Fut: Future,
-    //     F: Fn(Result<Fut::Item, Fut::Error>),
-    // {
-    //     let system = System::new("test");
-    //
-    //     Arbiter::spawn({
-    //         fut.then(move |res| {
-    //             callback(res);
-    //             System::current().stop();
-    //             futures::future::ok(())
-    //         })
-    //     });
-    //
-    //     system.run();
-    // }
-
     use tokio_async_await::compat::backward::Compat;
     #[test]
     fn sorted_tags_if_no_data_stores() {
         redis::flushall();
+
         redis::run_future(
             Compat::new(read_redis_tags(1, redis::get_connection())),
             |result: Fallible<Vec<String>>| {
                 assert_eq!(Vec::<String>::new(), result.unwrap());
             },
         );
-    }
-
-    #[test]
-    fn foo() {
-        use actix::{Arbiter, System};
-        use actix_redis::RedisActor;
-        use futures::Future;
-        use std::sync::Arc;
-        use tokio_async_await::compat::backward::Compat;
-
-        // let callback = |res| {
-        //     println!("res: `{:?}'", res);
-        // };
-
-        let system = System::new("test");
-        let redis = Arc::new(RedisActor::start(crate::config::redis_url()));
-
-        Arbiter::spawn({
-            Compat::new(read_redis_tags(1, redis)).then(|res| {
-                println!("res: `{:?}'", res);
-                System::current().stop();
-                futures::future::ok(())
-            })
-        });
-
-        system.run();
     }
 }
