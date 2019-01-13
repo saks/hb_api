@@ -29,6 +29,24 @@ macro_rules! assert_response_body_eq {
     };
 }
 
+pub fn run_future<F: 'static, Fut: 'static>(fut: Fut, callback: F)
+where
+    Fut: futures::Future,
+    F: Fn(Result<Fut::Item, Fut::Error>),
+{
+    let system = actix::System::new("test");
+
+    actix::Arbiter::spawn({
+        fut.then(move |res| {
+            callback(res);
+            actix::System::current().stop();
+            futures::future::ok(())
+        })
+    });
+
+    system.run();
+}
+
 use crate::db::models::AuthUser;
 use actix_web::{client::ClientRequest, http::Method};
 use octo_budget_lib::auth_token::AuthToken;

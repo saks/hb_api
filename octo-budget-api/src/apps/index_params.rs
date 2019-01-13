@@ -53,38 +53,25 @@ pub struct Data {
 }
 
 impl Params {
+    // TODO: add tests
     pub fn validate(self) -> Result<Data, ValidationErrors> {
         let Self { page, per_page } = self;
-        let _errors = ValidationErrors::default();
+        let mut errors = ValidationErrors::default();
 
-        // match transaction_type.as_str() {
-        //     "EXP" | "INC" => {}
-        //     other @ _ => errors
-        //         .transaction_type
-        //         .push(format!("\"{}\" is not a valid choice.", other)),
-        // };
-        //
-        // let amount_number = match BigDecimal::from_f64(amount.amount) {
-        //     Some(n) => n,
-        //     None => {
-        //         errors
-        //             .amount
-        //             .push(format!("Cannot parse a number from {}", amount.amount));
-        //         BigDecimal::zero()
-        //     }
-        // };
-        //
-        // match amount.currency.code.as_str() {
-        //     "CAD" => {}
-        //     other @ _ => errors
-        //         .currency_code
-        //         .push(format!("\"{}\" is not a valid choice.", other)),
-        // };
+        if page < 0 {
+            errors.page.push("Must be a positive number".to_string());
+        }
 
-        if _errors.is_empty() {
+        if per_page < 0 {
+            errors
+                .per_page
+                .push("Must be a positive number".to_string());
+        }
+
+        if errors.is_empty() {
             Ok(Data { page, per_page })
         } else {
-            Err(_errors)
+            Err(errors)
         }
     }
 }

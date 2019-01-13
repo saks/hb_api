@@ -27,29 +27,6 @@ where
     system.run();
 }
 
-// use actix::{Arbiter, System};
-// use actix_redis::RedisActor;
-// use futures::Future;
-// use std::sync::Arc;
-// use tokio_async_await::compat::backward::Compat;
-pub fn run_future<F: 'static, Fut: 'static>(fut: Fut, callback: F)
-where
-    Fut: Future,
-    F: Fn(Result<Fut::Item, Fut::Error>),
-{
-    let system = System::new("test");
-
-    Arbiter::spawn({
-        fut.then(move |res| {
-            callback(res);
-            System::current().stop();
-            futures::future::ok(())
-        })
-    });
-
-    system.run();
-}
-
 // use failure::Fallible;
 // pub fn handle_message2<F: 'static>(fut: Future<Item = Fallible<Vec<String>>>, callback: F)
 // where

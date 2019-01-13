@@ -153,12 +153,12 @@ pub fn sort_tags(redis_tags: Vec<String>, user_tags: Vec<String>) -> Vec<String>
     result
 }
 
-// TODO: fix tests
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tags_vec;
-    use crate::tests::redis;
+    use crate::tests::{self as tests, redis};
+    use tokio_async_await::compat::backward::Compat;
 
     #[test]
     fn sorting_tags_with_empty_user_tags() {
@@ -187,69 +187,63 @@ mod tests {
         assert_eq!(tags_vec!["buz", "foo", "bar"], sorted);
     }
 
-    //     #[test]
-    //     fn sorted_tags_if_no_data_stores() {
-    //         redis::flushall();
-    //         redis::handle_message(read_ordered_tags_msg(1), |res| {
-    //             let result = Vec::<String>::from_resp(res).unwrap();
-    //             assert_eq!(tags_vec![], result);
-    //         });
-    //     }
-    //
-    //     #[test]
-    //     fn sorted_tags_if_data_exist() {
-    //         redis::flushall();
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
-    //
-    //         redis::handle_message(read_ordered_tags_msg(1), |res| {
-    //             let result = Vec::<String>::from_resp(res).unwrap();
-    //             assert_eq!(tags_vec!["zzz", "xxx"], result);
-    //         });
-    //     }
-    //
-    //     #[test]
-    //     #[should_panic(expected = "WRONGTYPE Operation against a key holding the wrong kind of value")]
-    //     fn get_ordered_tags_with_redis_error() {
-    //         redis::flushall();
-    //         redis::exec_cmd(vec!["SET", "user_tags_1", "foo"]);
-    //
-    //         redis::handle_message(read_ordered_tags_msg(1), |res| {
-    //             let user_result = Ok(tags_vec![]);
-    //             let redis_result = Ok(res);
-    //
-    //             get_ordered_tags((user_result, redis_result)).unwrap();
-    //         });
-    //     }
-    //
-    //     #[test]
-    //     fn get_ordered_tags_with_redis_data() {
-    //         redis::flushall();
-    //
-    //         // prepare sort order for tags:
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "1", "foo"]);
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
-    //
-    //         redis::handle_message(read_ordered_tags_msg(1), |redis_res| {
-    //             let redis_result = Ok(redis_res);
-    //             let user_result = Ok(tags_vec!["foo", "xxx", "zzz"]);
-    //
-    //             let result = get_ordered_tags((user_result, redis_result)).unwrap();
-    //
-    //             assert_eq!(tags_vec!["zzz", "xxx", "foo"], result.tags);
-    //         });
-    //     }
-
-    use tokio_async_await::compat::backward::Compat;
     #[test]
     fn sorted_tags_if_no_data_stores() {
         redis::flushall();
 
-        redis::run_future(
+        tests::run_future(
             Compat::new(read_redis_tags(1, redis::get_connection())),
             |result: Fallible<Vec<String>>| {
                 assert_eq!(Vec::<String>::new(), result.unwrap());
+            },
+        );
+    }
+
+    #[test]
+    fn sorted_tags_if_data_exist() {
+        redis::flushall();
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
+
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                assert_eq!(vec!["zzz", "xxx"], result.unwrap());
+            },
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "WRONGTYPE Operation against a key holding the wrong kind of value")]
+    fn get_ordered_tags_with_redis_error() {
+        redis::flushall();
+        redis::exec_cmd(vec!["SET", "user_tags_1", "foo"]);
+
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                result.unwrap();
+            },
+        );
+    }
+
+    #[test]
+    fn sort_tags_with_redis_data() {
+        redis::flushall();
+
+        // prepare sort order for tags:
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "1", "foo"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
+
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                let redis_tags = result.unwrap();
+                let user_tags = tags_vec!["foo", "xxx", "zzz"];
+                let sorted = sort_tags(redis_tags, user_tags);
+
+                assert_eq!(tags_vec!["zzz", "xxx", "foo"], sorted);
             },
         );
     }
