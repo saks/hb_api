@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, Json, Responder, Result as WebResult, Scope};
 use actix_web_async_await::{await, compat};
 
 use crate::apps::{AppState, State};
-use crate::db::auth::FindUserMessage;
+use crate::db::messages::FindUserByName;
 
 mod auth_error;
 mod form;
@@ -16,7 +16,7 @@ use self::utils::generate_token;
 async fn create((form, state): (Json<Form>, State)) -> WebResult<impl Responder> {
     let data = form.into_inner().validate()?;
 
-    let user = await!(state.db.send(FindUserMessage(data.username)))??;
+    let user = await!(state.db.send(FindUserByName(data.username)))??;
     Form::validate_password(&user, &data.password)?;
 
     Ok(HttpResponse::Ok().json(generate_token(&user)))

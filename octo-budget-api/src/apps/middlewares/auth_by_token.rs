@@ -32,7 +32,6 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
             Some(token) => AuthToken::from(token, config::AUTH_TOKEN_SECRET.as_bytes())
                 .map(|auth_token| {
                     req.extensions_mut().insert(auth_token);
-
                     Started::Done
                 })
                 .map_err(|_| ErrorUnauthorized("TODO: bad token error")),
