@@ -296,8 +296,10 @@ mod tests {
 			.user_id(user.id)
 			.transaction_type("EXP");
 
-		for (amount, tag) in [(1.0, "foo"), (3.0, "foo"), (2.0, "bar"), (4.0, "bar")].iter() {
-			session.create_record(record.clone().amount(*amount).tags(vec![tag]).finish());
+		let test_data = [(1.0, "foo"), (3.0, "foo"), (2.0, "bar"), (4.0, "bar")];
+		for (amount, tag) in test_data.into_iter() {
+			let rec = record.clone().amount(*amount).tags(vec![tag]).finish();
+			session.create_record(rec);
 		}
 
 		let amount = budget_spent(&budget, session.conn()).unwrap();

@@ -39,11 +39,17 @@ pub enum Error {
     #[fail(display = "Cannot find user by id: `{}'", _0)]
     UserNotFound(i32),
 
+    #[fail(display = "Cannot update {} with id: `{}'", _0, _1)]
+    RecordNotUpdated(&'static str, i32),
+
     #[fail(display = "Unknown database error {}", _0)]
     UnknownDb(#[cause] diesel::result::Error),
 
     #[fail(display = "Unexpected error {}", _0)]
     Unknown(#[cause] failure::Error),
+
+    #[fail(display = "Unexpected error: {}", _0)]
+    UnknownMsg(&'static str),
 
     #[fail(display = "Cannot get database connection")]
     Connection,
@@ -52,7 +58,9 @@ pub enum Error {
 impl actix_web::error::ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
         match self {
-            Error::UserNotFound(_) => HttpResponse::new(StatusCode::NOT_FOUND),
+            Error::UserNotFound(_) | Error::RecordNotUpdated(..) => {
+                HttpResponse::new(StatusCode::NOT_FOUND)
+            }
             _ => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR),
         }
     }

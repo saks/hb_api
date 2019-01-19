@@ -26,6 +26,23 @@ pub async fn increment_tags(user_id: i32, tags: &[String], redis: Redis) -> Fall
     Ok(())
 }
 
+pub async fn decrement_tags(user_id: i32, tags: &[String], redis: Redis) -> Fallible<()> {
+    let key = crate::config::user_tags_redis_key(user_id);
+
+    let responses = tags
+        .iter()
+        .map(|tag| resp_array!["zincrby", &key, "-1", tag])
+        .map(Command)
+        .map(|cmd| redis.send(cmd))
+        .collect::<Vec<_>>();
+
+    await!(futures::future::join_all(responses))?
+        .into_iter()
+        .collect::<Result<Vec<RespValue>, RedisError>>()?;
+
+    Ok(())
+}
+
 pub async fn read_redis_tags(user_id: i32, redis: Redis) -> Fallible<Vec<String>> {
     use crate::errors::Error::BadRedisResponse;
 
