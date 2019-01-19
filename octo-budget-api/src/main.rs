@@ -10,8 +10,8 @@ use env_logger;
 pub mod apps;
 pub mod config;
 pub mod db;
-mod redis;
 mod errors;
+mod redis;
 
 #[cfg(test)]
 mod tests;
@@ -19,7 +19,7 @@ mod tests;
 use actix_web::{middleware::Logger, server, App};
 use dotenv::dotenv;
 
-use crate::apps::{auth_app, budgets_app, records_app, tags_app, AppState};
+use crate::apps::{auth_app, budgets_app, records_app, tags_app, users_app, AppState};
 
 fn main() {
     dotenv().expect("Failed to parse .env file");
@@ -32,6 +32,7 @@ fn main() {
             .scope("/api/records/", records_app::scope)
             .scope("/api/budgets/", budgets_app::scope)
             .scope("/api/tags/", tags_app::scope)
+            .scope("/api/user/", users_app::scope)
     })
     .bind(format!(
         "{}:{}",

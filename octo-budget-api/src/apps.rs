@@ -1,4 +1,4 @@
-use actix_web::{FutureResponse, HttpRequest, HttpResponse, State as WebState};
+use actix_web::{FutureResponse, HttpRequest, HttpResponse, Scope as WebScope, State as WebState};
 
 use crate::db::{self as db, Postgres};
 use crate::redis::{self as redis, Redis};
@@ -13,6 +13,7 @@ pub mod auth_app;
 pub mod budgets_app;
 pub mod records_app;
 pub mod tags_app;
+pub mod users_app;
 
 #[macro_export]
 macro_rules! auth_token_from_async_request {
@@ -29,6 +30,7 @@ macro_rules! auth_token_from_async_request {
 
 // type aliases, just for convenience
 pub type State = WebState<AppState>;
+pub type Scope = WebScope<AppState>;
 pub type Request = HttpRequest<AppState>;
 pub type Response = FutureResponse<HttpResponse>;
 
