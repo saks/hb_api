@@ -1,8 +1,8 @@
-use actix_web::{HttpResponse, Query, Responder, Result, Scope};
+use actix_web::{HttpResponse, Query, Responder, Result};
 use actix_web_async_await::{await, compat};
 
 use crate::apps::index_params::Params;
-use crate::apps::{middlewares::VerifyAuthToken, AppState, Request, State};
+use crate::apps::{middlewares::VerifyAuthToken, Request, Scope, State};
 use crate::db::messages::GetBudgets;
 
 async fn index((params, state, req): (Query<Params>, State, Request)) -> Result<impl Responder> {
@@ -20,7 +20,7 @@ async fn index((params, state, req): (Query<Params>, State, Request)) -> Result<
     Ok(HttpResponse::Ok().json(result))
 }
 
-pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+pub fn scope(scope: Scope) -> Scope {
     scope
         .middleware(VerifyAuthToken::default())
         .resource("/budget-detail/", |r| r.get().with(compat(index)))
@@ -33,7 +33,7 @@ mod tests {
     use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
 
     fn setup_test_server() -> TestServer {
-        use crate::apps::middlewares::VerifyAuthToken;
+        use crate::apps::{middlewares::VerifyAuthToken, AppState};
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())

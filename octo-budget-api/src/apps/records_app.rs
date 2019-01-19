@@ -1,7 +1,7 @@
-use actix_web::{HttpResponse, Json, Query, Responder, Result as WebResult, Scope};
+use actix_web::{HttpResponse, Json, Query, Responder, Result as WebResult};
 use actix_web_async_await::{await, compat};
 
-use crate::apps::{forms::record::Form, middlewares::VerifyAuthToken, AppState, Request, State};
+use crate::apps::{forms::record::Form, middlewares::VerifyAuthToken, Request, Scope, State};
 use crate::redis::helpers::increment_tags;
 
 use super::index_params::Params;
@@ -36,7 +36,7 @@ async fn create((form, state, req): (Json<Form>, State, Request)) -> WebResult<i
     Ok(HttpResponse::Ok().json(""))
 }
 
-pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+pub fn scope(scope: Scope) -> Scope {
     scope
         .middleware(VerifyAuthToken::default())
         .resource("/record-detail/", |r| {
@@ -57,7 +57,7 @@ mod tests {
     }
 
     fn setup_test_server() -> TestServer {
-        use crate::apps::middlewares::VerifyAuthToken;
+        use crate::apps::{middlewares::VerifyAuthToken, AppState};
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())

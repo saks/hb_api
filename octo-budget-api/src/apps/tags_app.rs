@@ -1,8 +1,8 @@
-use actix_web::{HttpResponse, Json, Responder, Result, Scope};
+use actix_web::{HttpResponse, Json, Responder, Result};
 use actix_web_async_await::{await, compat};
 use serde_derive::{Deserialize, Serialize};
 
-use super::{middlewares::VerifyAuthToken, AppState, Request, State, helpers::sort_tags};
+use super::{helpers::sort_tags, middlewares::VerifyAuthToken, Request, Scope, State};
 
 use crate::db::messages::{GetUserTags, SetUserTags};
 use crate::redis::helpers::read_redis_tags;
@@ -36,7 +36,7 @@ async fn update((data, state, req): (Json<Data>, State, Request)) -> Result<impl
     Ok(HttpResponse::Ok().json(ordered_tags(user_tags?, redis_tags?)))
 }
 
-pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+pub fn scope(scope: Scope) -> Scope {
     scope
         .middleware(VerifyAuthToken::default())
         .resource("", |r| {
@@ -56,7 +56,7 @@ mod tests {
     };
 
     fn setup_test_server() -> TestServer {
-        use crate::apps::middlewares::VerifyAuthToken;
+        use crate::apps::{middlewares::VerifyAuthToken, AppState};
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())

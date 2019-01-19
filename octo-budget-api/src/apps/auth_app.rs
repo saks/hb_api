@@ -1,7 +1,7 @@
-use actix_web::{HttpResponse, Json, Responder, Result as WebResult, Scope};
+use actix_web::{HttpResponse, Json, Responder, Result as WebResult};
 use actix_web_async_await::{await, compat};
 
-use crate::apps::{AppState, State};
+use crate::apps::{Scope, State};
 use crate::db::messages::FindUserByName;
 
 mod response_data;
@@ -19,7 +19,7 @@ async fn create((form, state): (Json<Form>, State)) -> WebResult<impl Responder>
     Ok(HttpResponse::Ok().json(generate_token(&user)))
 }
 
-pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+pub fn scope(scope: Scope) -> Scope {
     scope.resource("/create/", |r| {
         r.post().with_config(compat(create), |((cfg, _),)| {
             cfg.limit(1024); // <- limit size of the payload
@@ -45,6 +45,8 @@ mod tests {
     }
 
     fn setup_test_server() -> TestServer {
+        use crate::apps::AppState;
+
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.resource("/create/", |r| r.post().with(compat(create)));
         })
