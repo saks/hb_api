@@ -10,6 +10,8 @@ use env_logger;
 pub mod apps;
 pub mod config;
 pub mod db;
+mod redis;
+mod errors;
 
 #[cfg(test)]
 mod tests;

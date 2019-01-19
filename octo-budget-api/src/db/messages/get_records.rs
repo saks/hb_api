@@ -1,87 +1,30 @@
+use crate::db::{models::Record as RecordModel, pagination::*, schema::records_record, DbExecutor};
+use actix::{Handler, Message};
+use failure::Error;
 use std::result;
 
-use actix::{Handler, Message};
-use bigdecimal::BigDecimal;
-use chrono::{Local, NaiveDateTime};
-use diesel::prelude::*;
-use failure::Error;
-use octo_budget_lib::auth_token::AuthToken;
-
-use super::forms::FormData;
-use super::ResponseData;
 use crate::apps::index_response::Data;
-use crate::db::{models::Record as RecordModel, pagination::*, schema::records_record, DbExecutor};
 
+pub type ResponseData = Data<RecordModel>;
 pub type GetRecordsResult = result::Result<ResponseData, Error>;
-pub type CreateNewRecordResult = result::Result<(), Error>;
 
 #[derive(Clone)]
-pub struct GetRecordsMessage {
+pub struct GetRecords {
     pub user_id: i32,
     pub page: i64,
     pub per_page: i64,
 }
 
-pub struct CreateNewRecordMessage {
-    amount: BigDecimal,
-    amount_currency: String,
-    created_at: NaiveDateTime,
-    tags: Vec<String>,
-    transaction_type: String,
-    user_id: i32,
-}
-
-impl CreateNewRecordMessage {
-    pub fn new(data: &FormData, token: &AuthToken) -> Self {
-        let created_at = Local::now().naive_local();
-
-        Self {
-            amount: data.amount.clone(),
-            amount_currency: data.amount_currency.clone(),
-            tags: data.tags.clone(),
-            transaction_type: data.transaction_type.clone(),
-            user_id: token.user_id,
-            created_at,
-        }
-    }
-}
-
-impl Message for CreateNewRecordMessage {
-    type Result = CreateNewRecordResult;
-}
-
-impl Handler<CreateNewRecordMessage> for DbExecutor {
-    type Result = CreateNewRecordResult;
-
-    fn handle(&mut self, msg: CreateNewRecordMessage, _: &mut Self::Context) -> Self::Result {
-        use crate::db::schema::records_record::dsl::*;
-        use diesel::*;
-
-        let connection = &self.pool.get()?;
-
-        insert_into(records_record)
-            .values((
-                amount.eq(msg.amount),
-                amount_currency.eq(msg.amount_currency),
-                created_at.eq(msg.created_at),
-                tags.eq(msg.tags),
-                transaction_type.eq(msg.transaction_type),
-                user_id.eq(msg.user_id),
-            ))
-            .execute(connection)?;
-
-        Ok(())
-    }
-}
-
-impl Message for GetRecordsMessage {
+impl Message for GetRecords {
     type Result = GetRecordsResult;
 }
 
-impl Handler<GetRecordsMessage> for DbExecutor {
+impl Handler<GetRecords> for DbExecutor {
     type Result = GetRecordsResult;
 
-    fn handle(&mut self, msg: GetRecordsMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: GetRecords, _: &mut Self::Context) -> Self::Result {
+        use diesel::prelude::*;
+
         let connection = &self.pool.get()?;
 
         let query = records_record::table
@@ -114,13 +57,13 @@ impl Handler<GetRecordsMessage> for DbExecutor {
 mod tests {
     use super::*;
     use crate::db::builders::UserBuilder;
-    use crate::{db::DbExecutor, get_db_message_result, tests::DbSession};
+    use crate::{get_db_message_result, tests::DbSession};
     use actix::{Arbiter, System};
     use futures::{future, Future};
 
     #[test]
     fn test_empty_result() {
-        let message = GetRecordsMessage {
+        let message = GetRecords {
             page: 1,
             per_page: 10,
             user_id: 123,
@@ -142,7 +85,7 @@ mod tests {
         let user = session.create_user(UserBuilder::default().password("dummy password"));
         session.create_records(user.id, 12);
 
-        let message = GetRecordsMessage {
+        let message = GetRecords {
             page: 1,
             per_page: 10,
             user_id: user.id,
@@ -164,7 +107,7 @@ mod tests {
         let user = session.create_user(UserBuilder::default().password("dummy password"));
         session.create_records(user.id, 12);
 
-        let message = GetRecordsMessage {
+        let message = GetRecords {
             page: 2,
             per_page: 10,
             user_id: user.id,
@@ -197,7 +140,7 @@ mod tests {
         );
         session.create_records(user2.id, 2);
 
-        let message = GetRecordsMessage {
+        let message = GetRecords {
             page: 1,
             per_page: 10,
             user_id: user1.id,

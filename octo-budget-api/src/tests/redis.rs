@@ -1,3 +1,4 @@
+use crate::redis::{self as redis, Redis};
 use actix::{Arbiter, System};
 use actix_redis::{Command, RedisActor};
 use futures::Future;
@@ -56,9 +57,8 @@ pub fn exec_cmd(cmd: Vec<&str>) {
     handle_message(msg, |_| {});
 }
 
-pub fn get_connection() -> crate::apps::Redis {
-    use std::sync::Arc;
-    Arc::new(RedisActor::start(crate::config::redis_url()))
+pub fn get_connection() -> Redis {
+    redis::start()
 }
 
 pub fn flushall() {

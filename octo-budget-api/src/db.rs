@@ -10,31 +10,30 @@ pub mod models;
 pub mod pagination;
 pub mod schema;
 
-#[cfg(test)]
-pub mod builders;
+pub type Postgres = Addr<DbExecutor>;
 
-use crate::config;
+pub fn start() -> Postgres {
+    use crate::config::DATABASE_URL;
 
-/// This is db executor actor. We are going to run 3 of them in parallel.
-pub struct DbExecutor {
-    pub pool: Pool<ConnectionManager<PgConnection>>,
+    SyncArbiter::start(1, move || {
+        let manager = ConnectionManager::<PgConnection>::new(DATABASE_URL.as_str());
+
+        let pool = r2d2::Pool::builder()
+            .max_size(1) // max pool size
+            .build(manager)
+            .expect("Failed to create database connection pool.");
+
+        DbExecutor { pool }
+    })
 }
 
-impl DbExecutor {
-    pub fn start() -> Addr<Self> {
-        SyncArbiter::start(1, move || {
-            let manager = ConnectionManager::<PgConnection>::new(config::DATABASE_URL.as_str());
-
-            let pool = r2d2::Pool::builder()
-                .max_size(1) // max pool size
-                .build(manager)
-                .expect("Failed to create database connection pool.");
-
-            DbExecutor { pool }
-        })
-    }
+pub struct DbExecutor {
+    pub pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl Actor for DbExecutor {
     type Context = SyncContext<Self>;
 }
+
+#[cfg(test)]
+pub mod builders;

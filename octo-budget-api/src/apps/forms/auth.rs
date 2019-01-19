@@ -2,8 +2,8 @@ use actix_web::{error::ResponseError, http::StatusCode, HttpResponse};
 use failure_derive::Fail;
 use serde_derive::{Deserialize, Serialize};
 
-use super::auth_error::AuthError;
 use crate::db::models::AuthUser;
+use crate::errors::ValidationError;
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Form {
@@ -31,11 +31,11 @@ pub struct Data {
 #[derive(Debug, Fail, Serialize, Default, PartialEq)]
 pub struct ValidationErrors {
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    password: Vec<AuthError>,
+    password: Vec<ValidationError>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    username: Vec<AuthError>,
+    username: Vec<ValidationError>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    non_field_errors: Vec<AuthError>,
+    non_field_errors: Vec<ValidationError>,
 }
 
 impl std::fmt::Display for ValidationErrors {
@@ -63,7 +63,7 @@ impl ValidationErrors {
 
     fn bad_password() -> Self {
         ValidationErrors {
-            non_field_errors: vec![AuthError::AuthFailed],
+            non_field_errors: vec![ValidationError::AuthFailed],
             username: vec![],
             password: vec![],
         }
@@ -76,18 +76,18 @@ impl Form {
         let mut errors = ValidationErrors::default();
 
         if username.is_none() {
-            errors.username.push(AuthError::MustPresent);
+            errors.username.push(ValidationError::MustPresent);
         } else if let Some(val) = username.as_ref() {
             if val.is_empty() {
-                errors.username.push(AuthError::CannotBeBlank);
+                errors.username.push(ValidationError::CannotBeBlank);
             }
         }
 
         if password.is_none() {
-            errors.password.push(AuthError::MustPresent);
+            errors.password.push(ValidationError::MustPresent);
         } else if let Some(val) = password.as_ref() {
             if val.is_empty() {
-                errors.password.push(AuthError::CannotBeBlank);
+                errors.password.push(ValidationError::CannotBeBlank);
             }
         }
 
@@ -165,7 +165,7 @@ mod tests {
 
         let errors = form.validate().unwrap_err();
 
-        assert_eq!(vec![AuthError::MustPresent], errors.username);
+        assert_eq!(vec![ValidationError::MustPresent], errors.username);
 
         assert!(errors.password.is_empty());
         assert!(errors.non_field_errors.is_empty());
@@ -180,7 +180,7 @@ mod tests {
 
         let errors = form.validate().unwrap_err();
 
-        assert_eq!(vec![AuthError::MustPresent], errors.password);
+        assert_eq!(vec![ValidationError::MustPresent], errors.password);
 
         assert!(errors.username.is_empty());
         assert!(errors.non_field_errors.is_empty());
@@ -195,7 +195,7 @@ mod tests {
 
         let errors = form.validate().unwrap_err();
 
-        assert_eq!(vec![AuthError::CannotBeBlank], errors.username);
+        assert_eq!(vec![ValidationError::CannotBeBlank], errors.username);
 
         assert!(errors.password.is_empty());
         assert!(errors.non_field_errors.is_empty());
@@ -210,7 +210,7 @@ mod tests {
 
         let errors = form.validate().unwrap_err();
 
-        assert_eq!(vec![AuthError::CannotBeBlank], errors.password);
+        assert_eq!(vec![ValidationError::CannotBeBlank], errors.password);
 
         assert!(errors.username.is_empty());
         assert!(errors.non_field_errors.is_empty());
@@ -225,9 +225,9 @@ mod tests {
 
         let errors = form.validate().unwrap_err();
 
-        assert_eq!(vec![AuthError::CannotBeBlank], errors.password);
+        assert_eq!(vec![ValidationError::CannotBeBlank], errors.password);
 
-        assert_eq!(vec![AuthError::CannotBeBlank], errors.username);
+        assert_eq!(vec![ValidationError::CannotBeBlank], errors.username);
 
         assert!(errors.non_field_errors.is_empty());
     }
@@ -241,8 +241,8 @@ mod tests {
 
         let errors = form.validate().unwrap_err();
 
-        assert_eq!(vec![AuthError::MustPresent], errors.password);
-        assert_eq!(vec![AuthError::MustPresent], errors.username);
+        assert_eq!(vec![ValidationError::MustPresent], errors.password);
+        assert_eq!(vec![ValidationError::MustPresent], errors.username);
 
         assert!(errors.non_field_errors.is_empty());
     }

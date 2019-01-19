@@ -2,11 +2,10 @@ use actix_web::{HttpResponse, Json, Responder, Result, Scope};
 use actix_web_async_await::{await, compat};
 use serde_derive::{Deserialize, Serialize};
 
-use crate::apps::{middlewares::VerifyAuthToken, AppState, Redis, Request, State};
+use super::{middlewares::VerifyAuthToken, AppState, Request, State, helpers::sort_tags};
 
-pub mod db;
-
-use self::db::{GetUserTags, SetUserTags};
+use crate::db::messages::{GetUserTags, SetUserTags};
+use crate::redis::helpers::read_redis_tags;
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct Data {
@@ -14,7 +13,7 @@ pub struct Data {
 }
 
 fn ordered_tags(user_tags: Vec<String>, redis_tags: Vec<String>) -> Data {
-    let tags = db::sort_tags(redis_tags, user_tags);
+    let tags = sort_tags(redis_tags, user_tags);
     Data { tags }
 }
 
@@ -22,7 +21,7 @@ async fn index((state, req): (State, Request)) -> Result<impl Responder> {
     let user_id = crate::auth_token_from_async_request!(req).user_id;
 
     let user_tags = await!(state.db.send(GetUserTags::new(user_id)))?;
-    let redis_tags = await!(db::read_redis_tags(user_id, state.redis()));
+    let redis_tags = await!(read_redis_tags(user_id, state.redis()));
 
     Ok(HttpResponse::Ok().json(ordered_tags(user_tags?, redis_tags?)))
 }
@@ -32,7 +31,7 @@ async fn update((data, state, req): (Json<Data>, State, Request)) -> Result<impl
     let tags = data.into_inner().tags;
 
     let user_tags = await!(state.db.send(SetUserTags::new(user_id, tags)))?;
-    let redis_tags = await!(db::read_redis_tags(user_id, state.redis()));
+    let redis_tags = await!(read_redis_tags(user_id, state.redis()));
 
     Ok(HttpResponse::Ok().json(ordered_tags(user_tags?, redis_tags?)))
 }

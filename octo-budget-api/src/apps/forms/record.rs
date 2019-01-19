@@ -4,7 +4,7 @@ use failure_derive::Fail;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Default, Clone)]
-pub struct RecordForm {
+pub struct Form {
     tags: Vec<String>,
     transaction_type: String,
     amount: Amount,
@@ -58,7 +58,7 @@ impl ValidationErrors {
     }
 }
 
-impl RecordForm {
+impl Form {
     pub fn validate(self) -> Result<FormData, ValidationErrors> {
         let Self {
             transaction_type,
@@ -69,7 +69,7 @@ impl RecordForm {
 
         match transaction_type.as_str() {
             "EXP" | "INC" => {}
-            other @ _ => errors
+            other => errors
                 .transaction_type
                 .push(format!("\"{}\" is not a valid choice.", other)),
         };
@@ -86,7 +86,7 @@ impl RecordForm {
 
         match amount.currency.code.as_str() {
             "CAD" => {}
-            other @ _ => errors
+            other => errors
                 .currency_code
                 .push(format!("\"{}\" is not a valid choice.", other)),
         };

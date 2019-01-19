@@ -12,7 +12,7 @@ use crate::db::{
 macro_rules! get_db_message_result {
     ( $message:ident, $closure:expr ) => {{
         System::run(|| {
-            Arbiter::spawn(DbExecutor::start().send($message).then(|res| {
+            Arbiter::spawn(crate::db::start().send($message).then(|res| {
                 $closure(res.unwrap());
                 System::current().stop();
                 future::result(Ok(()))

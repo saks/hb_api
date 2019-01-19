@@ -4,14 +4,11 @@ use actix_web_async_await::{await, compat};
 use crate::apps::{AppState, State};
 use crate::db::messages::FindUserByName;
 
-mod auth_error;
-mod form;
 mod response_data;
 mod utils;
 
-use self::form::Form;
-pub use self::response_data::Data;
 use self::utils::generate_token;
+use super::forms::auth::Form;
 
 async fn create((form, state): (Json<Form>, State)) -> WebResult<impl Responder> {
     let data = form.into_inner().validate()?;

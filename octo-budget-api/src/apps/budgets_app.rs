@@ -1,18 +1,15 @@
 use actix_web::{HttpResponse, Query, Responder, Result, Scope};
 use actix_web_async_await::{await, compat};
 
-use crate::apps::{middlewares::VerifyAuthToken, AppState, Request, State};
-
-mod db;
-
-use self::db::GetBudgetsMessage;
 use crate::apps::index_params::Params;
+use crate::apps::{middlewares::VerifyAuthToken, AppState, Request, State};
+use crate::db::messages::GetBudgets;
 
 async fn index((params, state, req): (Query<Params>, State, Request)) -> Result<impl Responder> {
     let token = crate::auth_token_from_async_request!(req);
     let params = params.into_inner().validate()?;
 
-    let message = GetBudgetsMessage {
+    let message = GetBudgets {
         page: params.page,
         per_page: params.per_page,
         user_id: token.user_id,
