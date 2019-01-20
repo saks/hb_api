@@ -27,13 +27,13 @@ async fn create((form, state, req): (Json<Form>, State, Request)) -> WebResult<i
     let data = form.into_inner().validate()?;
 
     await!(state.db.send(CreateRecord::new(&data, &token)))??;
-    await!(increment_tags(token.user_id, &data.tags, state.redis()))?;
+    await!(increment_tags(token.user_id, data.tags, state.redis()))?;
 
     Ok(HttpResponse::Ok().json(""))
 }
 
 async fn update(
-    (params, form, state, req): (Path<RecordId>, Json<Form>, State, Request),
+    (params, form, state, req): (Path<i32>, Json<Form>, State, Request),
 ) -> WebResult<impl Responder> {
     let token = crate::auth_token_from_async_request!(req);
     let data = form.into_inner().validate()?;
@@ -42,8 +42,8 @@ async fn update(
     let record = await!(state.db.send(FindRecord::new(id, token.user_id)))??;
     await!(state.db.send(UpdateRecord::new(record.id, &data, &token)))??;
 
-    await!(decrement_tags(token.user_id, &record.tags, state.redis()))?;
-    await!(increment_tags(token.user_id, &data.tags, state.redis()))?;
+    await!(decrement_tags(token.user_id, record.tags, state.redis()))?;
+    await!(increment_tags(token.user_id, data.tags, state.redis()))?;
 
     Ok(HttpResponse::Ok().json(""))
 }
@@ -80,11 +80,11 @@ mod tests {
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())
-                .resource("/api/records/record-detail/", |r| {
+                .resource("/record-detail/", |r| {
                     r.get().with(compat(index));
                     r.post().with(compat(create));
                 })
-                .resource("/api/records/record-detail/{id}/", |r| {
+                .resource("/record-detail/{id}/", |r| {
                     r.put().with(compat(update));
                 });
         })
@@ -95,7 +95,7 @@ mod tests {
         let mut srv = setup();
 
         let request = ClientRequest::build()
-            .uri(&srv.url("/api/records/record-detail/"))
+            .uri(&srv.url("/record-detail/"))
             .finish()
             .unwrap();
 
@@ -109,7 +109,7 @@ mod tests {
         let mut srv = setup();
 
         let request = ClientRequest::build()
-            .uri(&srv.url("/api/records/record-detail/"))
+            .uri(&srv.url("/record-detail/"))
             .method(Method::POST)
             .finish()
             .unwrap();
@@ -124,7 +124,7 @@ mod tests {
         let mut srv = setup();
 
         let request = ClientRequest::build()
-            .uri(&srv.url("/api/records/record-detail/123"))
+            .uri(&srv.url("/record-detail/123"))
             .method(Method::PUT)
             .finish()
             .unwrap();
@@ -140,8 +140,7 @@ mod tests {
         let mut srv = setup();
 
         let user = session.create_user(UserBuilder::default());
-        let mut request =
-            tests::authenticated_request(&user, srv.url("/api/records/record-detail/"));
+        let mut request = tests::authenticated_request(&user, srv.url("/record-detail/"));
         request.set_body(r#"{}"#);
         request.set_method(Method::POST);
 
@@ -157,8 +156,7 @@ mod tests {
         let mut srv = setup();
 
         let user = session.create_user(UserBuilder::default());
-        let mut request =
-            tests::authenticated_request(&user, srv.url("/api/records/record-detail/"));
+        let mut request = tests::authenticated_request(&user, srv.url("/record-detail/"));
         request.set_body(
             r###"{
             "user":"",
@@ -184,7 +182,7 @@ mod tests {
         let user = session.create_user(UserBuilder::default());
         let record = session.create_record2(user.id);
 
-        let url = srv.url(format!("/api/records/record-detail/{}/", record.id).as_str());
+        let url = srv.url(format!("/record-detail/{}/", record.id).as_str());
         let mut request = tests::authenticated_request(&user, url);
         request.set_body(
             r###"{
@@ -211,7 +209,7 @@ mod tests {
         let user = session.create_user(UserBuilder::default());
         let record = session.create_record2(user.id);
 
-        let url = srv.url(format!("/api/records/record-detail/{}/", record.id).as_str());
+        let url = srv.url(format!("/record-detail/{}/", record.id).as_str());
         let mut request = tests::authenticated_request(&user, url);
         request.set_body(
             r###"{
@@ -240,8 +238,7 @@ mod tests {
         let mut srv = setup();
 
         let user = session.create_user(UserBuilder::default());
-        let mut request =
-            tests::authenticated_request(&user, srv.url("/api/records/record-detail/"));
+        let mut request = tests::authenticated_request(&user, srv.url("/record-detail/"));
         request.set_body(
             r###"{
             "user":"",
@@ -269,7 +266,7 @@ mod tests {
         let mut srv = setup();
 
         let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
-        let request = tests::authenticated_request(&user, srv.url("/api/records/record-detail/"));
+        let request = tests::authenticated_request(&user, srv.url("/record-detail/"));
         let response = srv.execute(request.send()).unwrap();
 
         assert_eq!(StatusCode::OK, response.status(), "wrong status code");

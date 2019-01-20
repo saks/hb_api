@@ -9,7 +9,7 @@ use redis_async::{
 use super::Redis;
 use crate::errors::Error;
 
-pub async fn increment_tags(user_id: i32, tags: &[String], redis: Redis) -> Fallible<()> {
+pub async fn increment_tags(user_id: i32, tags: Vec<String>, redis: Redis) -> Fallible<()> {
     let key = crate::config::user_tags_redis_key(user_id);
 
     let responses = tags
@@ -26,7 +26,7 @@ pub async fn increment_tags(user_id: i32, tags: &[String], redis: Redis) -> Fall
     Ok(())
 }
 
-pub async fn decrement_tags(user_id: i32, tags: &[String], redis: Redis) -> Fallible<()> {
+pub async fn decrement_tags(user_id: i32, tags: Vec<String>, redis: Redis) -> Fallible<()> {
     let key = crate::config::user_tags_redis_key(user_id);
 
     let responses = tags
@@ -128,4 +128,68 @@ mod tests {
             },
         );
     }
+
+    #[test]
+    fn increment_tags_happy_path() {
+        redis::flushall();
+
+        // prepare sort order for tags:
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "1", "foo"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "3", "zzz"]);
+
+        // check result BEFORE incrementing
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                assert_eq!(vec!["zzz", "xxx", "foo"], result.unwrap());
+            },
+        );
+
+        for _ in 0..3 {
+            let fut = increment_tags(1, crate::tags_vec!["foo"], redis::get_connection());
+            tests::run_future(Compat::new(fut), |res| assert!(res.is_ok()));
+        }
+
+        // check result AFTER incrementing
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                assert_eq!(vec!["foo", "zzz", "xxx"], result.unwrap());
+            },
+        );
+    }
+
+    #[test]
+    fn decrement_tags_happy_path() {
+        redis::flushall();
+
+        // prepare sort order for tags:
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "5", "xxx"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "4", "foo"]);
+        redis::exec_cmd(vec!["ZADD", "user_tags_1", "6", "zzz"]);
+
+        // check result BEFORE decrementing
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                assert_eq!(vec!["zzz", "xxx", "foo"], result.unwrap());
+            },
+        );
+
+        for _ in 0..3 {
+            let fut = decrement_tags(1, crate::tags_vec!["zzz"], redis::get_connection());
+            tests::run_future(Compat::new(fut), |res| assert!(res.is_ok()));
+        }
+
+        // check result AFTER decrementing
+        tests::run_future(
+            Compat::new(read_redis_tags(1, redis::get_connection())),
+            |result: Fallible<Vec<String>>| {
+                assert_eq!(vec!["xxx", "foo", "zzz"], result.unwrap());
+            },
+        );
+    }
+
+    // TODO: check removal of tags with 0 scope after decrement
 }
