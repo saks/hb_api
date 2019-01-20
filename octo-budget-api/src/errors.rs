@@ -33,6 +33,9 @@ pub enum Error {
     #[fail(display = "Cannot read sorted tags from redis {}", _0)]
     Redis(#[cause] actix_redis::Error),
 
+    #[fail(display = "Redis command failed {:?}", _0)]
+    RedisCommandFailed(actix_redis::RespValue),
+
     #[fail(display = "Bad response from redis `{}'", _0)]
     BadRedisResponse(String),
 
@@ -41,6 +44,9 @@ pub enum Error {
 
     #[fail(display = "Cannot update {} with id: `{}'", _0, _1)]
     RecordNotUpdated(&'static str, i32),
+
+    #[fail(display = "Cannot find record")]
+    RecordNotFound,
 
     #[fail(display = "Unknown database error {}", _0)]
     UnknownDb(#[cause] diesel::result::Error),
@@ -51,8 +57,35 @@ pub enum Error {
     #[fail(display = "Unexpected error: {}", _0)]
     UnknownMsg(&'static str),
 
-    #[fail(display = "Cannot get database connection")]
-    Connection,
+    #[fail(display = "Cannot get database connection: {}", _0)]
+    Connection(#[cause] r2d2::Error),
+}
+
+impl From<failure::Error> for Error {
+    fn from(error: failure::Error) -> Self {
+        Error::Unknown(error)
+    }
+}
+
+impl From<actix::MailboxError> for Error {
+    fn from(error: actix::MailboxError) -> Self {
+        Error::Unknown(error.into())
+    }
+}
+
+impl From<r2d2::Error> for Error {
+    fn from(error: r2d2::Error) -> Self {
+        Error::Connection(error)
+    }
+}
+
+impl From<diesel::result::Error> for Error {
+    fn from(error: diesel::result::Error) -> Self {
+        match error {
+            diesel::result::Error::NotFound => Error::RecordNotFound,
+            err => Error::UnknownDb(err),
+        }
+    }
 }
 
 impl actix_web::error::ResponseError for Error {

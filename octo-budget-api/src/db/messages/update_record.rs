@@ -41,7 +41,7 @@ impl Handler<Message> for DbExecutor {
         use crate::db::schema::records_record::dsl::*;
         use diesel::prelude::*;
 
-        let connection = &self.pool.get().map_err(|_| Error::Connection)?;
+        let connection = &self.pool.get()?;
 
         let target = records_record
             .filter(user_id.eq(msg.user_id))

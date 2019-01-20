@@ -25,7 +25,7 @@ impl Handler<SetUserTags> for DbExecutor {
     fn handle(&mut self, msg: SetUserTags, _: &mut Self::Context) -> Self::Result {
         use diesel::prelude::*;
 
-        let connection = &self.pool.get().map_err(|_| Error::Connection)?;
+        let connection = &self.pool.get()?;
 
         let SetUserTags { user_id, tags } = msg;
 
