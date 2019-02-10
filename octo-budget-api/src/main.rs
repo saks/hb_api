@@ -1,5 +1,3 @@
-// disable warnings from diesel till 1.4 gets released
-#![allow(proc_macro_derive_resolution_fallback)]
 #![feature(await_macro, futures_api, async_await)]
 
 #[macro_use]

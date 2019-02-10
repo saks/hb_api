@@ -24,7 +24,7 @@ tokio = "*"
 tokio-async-await = "*"
 
 [dependencies.bigdecimal]
-version = "0.0.11" # must match version of diesel dependency
+version = "0.0.14" # must match version of diesel dependency
 features = ["serde"]
 
 [dependencies.actix-web-async-await]
