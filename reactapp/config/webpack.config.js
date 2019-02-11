@@ -25,6 +25,8 @@ const ModuleNotFoundPlugin = require('react-dev-utils/ModuleNotFoundPlugin')
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin-alt')
 const typescriptFormatter = require('react-dev-utils/typescriptFormatter')
 
+const wasm = require('./wasm')
+
 // Source maps are resource heavy and can cause out of memory issue for large source files.
 const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false'
 // Some apps do not need the benefits of saving a web request, so not inlining the chunk
@@ -45,6 +47,7 @@ const sassModuleRegex = /\.module\.(scss|sass)$/
 module.exports = function(webpackEnv) {
     const isEnvDevelopment = webpackEnv === 'development'
     const isEnvProduction = webpackEnv === 'production'
+    const wasmPlugin = wasm.pluginFor(webpackEnv)
 
     // Webpack uses `publicPath` to determine where the app is being served from.
     // It requires a trailing slash, or the file assets will get an incorrect path.
@@ -490,11 +493,7 @@ module.exports = function(webpackEnv) {
                         : undefined
                 )
             ),
-            new WasmPackPlugin({
-                crateDirectory: path.resolve(__dirname, '..', '..', './octo-budget-frontend'),
-                extraArgs: '--no-typescript --out-dir ./../reactapp/src/wasm --target browser',
-                forceWatch: true,
-            }),
+            wasmPlugin,
             new WasmPackPlugin({
                 crateDirectory: path.resolve(__dirname, '..', '..', './octo-budget-frontend'),
                 extraArgs: '--no-typescript --out-dir ./../reactapp/src/test_wasm --target nodejs',

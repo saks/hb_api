@@ -9,12 +9,10 @@ import App from './containers/App'
 import * as serviceWorker from './serviceWorker'
 import { Provider } from 'react-redux'
 import store from './store'
-import wasm_module from './wasm_loader'
+import wasmModule from './wasm_loader'
 
-const wasmLoaded = import('./wasm/octo_budget_frontend')
-
-wasmLoaded.then(rust => {
-    wasm_module.rust = rust
+import('./wasm/octo_budget_frontend').then(rust => {
+    wasmModule.rust = rust
 
     ReactDOM.render(
         <Provider store={store}>
