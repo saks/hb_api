@@ -12,7 +12,7 @@ use crate::db::{
 macro_rules! get_db_message_result {
     ( $message:ident, $closure:expr ) => {{
         System::run(|| {
-            Arbiter::spawn(DbExecutor::start().send($message).then(|res| {
+            Arbiter::spawn(crate::db::start().send($message).then(|res| {
                 $closure(res.unwrap());
                 System::current().stop();
                 future::result(Ok(()))
@@ -85,6 +85,24 @@ impl DbSession {
             .unwrap();
     }
 
+    pub fn create_record2(&mut self, id_of_the_user: i32) -> Record {
+        use crate::db::schema::records_record::dsl::*;
+        use diesel::*;
+        let tags_list: Vec<String> = vec![];
+
+        insert_into(records_record)
+            .values((
+                amount.eq(BigDecimal::from(123.12f64)),
+                amount_currency.eq("CAD"),
+                created_at.eq(NaiveDateTime::from_timestamp(0, 0)),
+                tags.eq(tags_list),
+                transaction_type.eq("EXP"),
+                user_id.eq(id_of_the_user),
+            ))
+            .get_result::<Record>(&self.conn)
+            .unwrap()
+    }
+
     pub fn create_record(&mut self, record: Record) {
         use crate::db::schema::records_record::dsl::*;
         use diesel::*;
@@ -100,6 +118,32 @@ impl DbSession {
             ))
             .get_result::<Record>(&self.conn)
             .unwrap();
+    }
+
+    pub fn create_records2(&mut self, id_of_the_user: i32, count: usize) -> Vec<Record> {
+        use crate::db::schema::records_record::dsl::*;
+        use diesel::*;
+
+        let mut result = Vec::with_capacity(count);
+
+        for _ in 0..count {
+            let tags_list: Vec<String> = vec![];
+            let record = insert_into(records_record)
+                .values((
+                    amount.eq(BigDecimal::from(123.12f64)),
+                    amount_currency.eq("CAD"),
+                    created_at.eq(NaiveDateTime::from_timestamp(0, 0)),
+                    tags.eq(tags_list),
+                    transaction_type.eq("EXP"),
+                    user_id.eq(id_of_the_user),
+                ))
+                .get_result::<Record>(&self.conn)
+                .unwrap();
+
+            result.push(record);
+        }
+
+        result
     }
 
     pub fn create_records(&mut self, id_of_the_user: i32, count: u32) {

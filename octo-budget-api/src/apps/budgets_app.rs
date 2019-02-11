@@ -1,54 +1,29 @@
-use actix_web::{AsyncResponder, HttpResponse, Query, Scope};
-use futures::{future, future::Future};
+use actix_web::{HttpResponse, Query, Responder, Result};
+use actix_web_async_await::{await, compat};
 
-use crate::apps::{
-    middlewares::auth_by_token::VerifyAuthToken, AppState, Request, Response, State,
-};
+use crate::apps::index_params::Params;
+use crate::apps::{middlewares::VerifyAuthToken, Request, Scope, State};
+use crate::db::messages::GetBudgets;
 
-mod db;
+async fn index((params, state, req): (Query<Params>, State, Request)) -> Result<impl Responder> {
+    let token = crate::auth_token_from_async_request!(req);
+    let params = params.into_inner().validate()?;
 
-use self::db::GetBudgetsMessage;
-use super::index_params::Params;
-use super::index_response::Data;
-use crate::db::models::SerializedBudget;
+    let message = GetBudgets {
+        page: params.page,
+        per_page: params.per_page,
+        user_id: token.user_id,
+    };
 
-type ResponseData = Data<SerializedBudget>;
+    let result = await!(state.db.send(message))??;
 
-fn index((query_params, state, request): (Query<Params>, State, Request)) -> Response {
-    let token = crate::auth_token_from_request!(request);
-
-    let params = query_params.into_inner();
-
-    let validation_result: Result<Params, ResponseData> = params.validate();
-    match validation_result {
-        Ok(Params { page, per_page }) => {
-            let user_id = token.user_id;
-
-            let message = GetBudgetsMessage {
-                page,
-                per_page,
-                user_id,
-            };
-
-            state
-                .db
-                .send(message)
-                .from_err()
-                .and_then(|result| {
-                    result
-                        .map(|data| HttpResponse::Ok().json(data))
-                        .map_err(|e| e.into())
-                })
-                .responder()
-        }
-        Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-    }
+    Ok(HttpResponse::Ok().json(result))
 }
 
-pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+pub fn scope(scope: Scope) -> Scope {
     scope
         .middleware(VerifyAuthToken::default())
-        .resource("/budget-detail/", |r| r.get().with(index))
+        .resource("/budget-detail/", |r| r.get().with(compat(index)))
 }
 
 #[cfg(test)]
@@ -58,11 +33,11 @@ mod tests {
     use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
 
     fn setup_test_server() -> TestServer {
-        use crate::apps::middlewares::auth_by_token::VerifyAuthToken;
+        use crate::apps::{middlewares::VerifyAuthToken, AppState};
 
         TestServer::build_with_state(|| AppState::new()).start(|app| {
             app.middleware(VerifyAuthToken::default())
-                .resource("/budget-detail/", |r| r.get().with(index));
+                .resource("/budget-detail/", |r| r.get().with(compat(index)));
         })
     }
 

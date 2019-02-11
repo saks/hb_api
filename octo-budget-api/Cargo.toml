@@ -3,11 +3,11 @@ authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
 edition = "2018"
 name = "octo-budget-api"
 version = "0.1.0"
+
 [dependencies]
 actix = "*"
 actix-web = "0.7"
 actix-redis = "*"
-bigdecimal = "0.0.11" # must match version of diesel dependency
 bytes = "*"
 dotenv = "0.13"
 env_logger = "0.5"
@@ -20,6 +20,15 @@ redis-async = "*"
 serde = "*"
 serde_derive = "*"
 url = "*"
+tokio = "*"
+tokio-async-await = "*"
+
+[dependencies.bigdecimal]
+version = "0.0.14" # must match version of diesel dependency
+features = ["serde"]
+
+[dependencies.actix-web-async-await]
+git = "https://github.com/saks/actix-web-async-await"
 
 [dependencies.chrono]
 features = ["serde"]

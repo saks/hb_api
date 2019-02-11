@@ -1,40 +1,27 @@
-use std::convert::Into;
+use actix_web::{HttpResponse, Json, Responder, Result as WebResult};
+use actix_web_async_await::{await, compat};
 
-use actix_web::{AsyncResponder, HttpResponse, Json, Scope};
-use futures::{future, future::Future};
+use crate::apps::{Scope, State};
+use crate::db::messages::FindUserByName;
 
-use crate::apps::{AppState, Response, State};
-use crate::db::auth::FindUserMessage;
-
-mod auth_error;
-mod auth_form;
 mod response_data;
 mod utils;
 
-use self::auth_form::AuthForm;
-pub use self::response_data::Data;
-use self::utils::{generate_token, validate_password, validate_user};
+use self::utils::generate_token;
+use super::forms::auth::Form;
 
-fn create((form_json, state): (Json<AuthForm>, State)) -> Response {
-    let form = form_json.into_inner();
+async fn create((form, state): (Json<Form>, State)) -> WebResult<impl Responder> {
+    let data = form.into_inner().validate()?;
 
-    match form.validate() {
-        Ok((username, password)) => state
-            .db
-            .send(FindUserMessage(username))
-            .from_err()
-            .and_then(validate_user)
-            .and_then(|user| validate_password(user, password).map_err(Into::into))
-            .and_then(|user| Ok(generate_token(&user)))
-            .and_then(|response_data| Ok(HttpResponse::Ok().json(response_data)))
-            .responder(),
-        Err(response_data) => Box::new(future::ok(HttpResponse::BadRequest().json(response_data))),
-    }
+    let user = await!(state.db.send(FindUserByName(data.username)))??;
+    Form::validate_password(&user, &data.password)?;
+
+    Ok(HttpResponse::Ok().json(generate_token(&user)))
 }
 
-pub fn scope(scope: Scope<AppState>) -> Scope<AppState> {
+pub fn scope(scope: Scope) -> Scope {
     scope.resource("/create/", |r| {
-        r.post().with_config(create, |((cfg, _),)| {
+        r.post().with_config(compat(create), |((cfg, _),)| {
             cfg.limit(1024); // <- limit size of the payload
         })
     })
@@ -58,8 +45,10 @@ mod tests {
     }
 
     fn setup_test_server() -> TestServer {
+        use crate::apps::AppState;
+
         TestServer::build_with_state(|| AppState::new()).start(|app| {
-            app.resource("/create/", |r| r.post().with_async(create));
+            app.resource("/create/", |r| r.post().with(compat(create)));
         })
     }
 
