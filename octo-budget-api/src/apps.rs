@@ -14,6 +14,7 @@ pub mod budgets_app;
 pub mod records_app;
 pub mod tags_app;
 pub mod users_app;
+pub mod frontend;
 
 #[macro_export]
 macro_rules! auth_token_from_async_request {

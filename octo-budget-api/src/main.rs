@@ -17,7 +17,7 @@ mod tests;
 use actix_web::{middleware::Logger, server, App};
 use dotenv::dotenv;
 
-use crate::apps::{auth_app, budgets_app, records_app, tags_app, users_app, AppState};
+use crate::apps::{auth_app, budgets_app, frontend, records_app, tags_app, users_app, AppState};
 
 fn main() {
     dotenv().expect("Failed to parse .env file");
@@ -26,6 +26,7 @@ fn main() {
     server::new(|| {
         App::with_state(AppState::default())
             .middleware(Logger::default())
+            .scope("/app", frontend::scope)
             .scope("/auth/jwt", auth_app::scope)
             .scope("/api/records/", records_app::scope)
             .scope("/api/budgets/", budgets_app::scope)
