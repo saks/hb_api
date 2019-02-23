@@ -1,6 +1,7 @@
 use actix::{Handler, Message};
 use diesel::prelude::*;
 use failure::Error;
+use std::convert::Into;
 
 use crate::db::{models::AuthUser, schema::auth_user, DbExecutor};
 
@@ -21,6 +22,6 @@ impl Handler<FindUserById> for DbExecutor {
         auth_user::table
             .filter(auth_user::id.eq(msg.0))
             .first(connection)
-            .map_err(|e| e.into())
+            .map_err(Into::into)
     }
 }
