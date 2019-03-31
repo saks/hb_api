@@ -16,10 +16,10 @@ const DATETIME_FORMAT_OPTIONS = {
     hour12: false,
 }
 
-type Props = {
+type Props = {|
     +model: RecordModel,
     +history: RouterHistory,
-}
+|}
 
 export default class Record extends Component<Props, void> {
     get amount(): string {
