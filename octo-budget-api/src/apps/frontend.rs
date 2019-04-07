@@ -1,4 +1,5 @@
 use super::{Request, Scope};
+use crate::apps::middlewares;
 use actix_web::{
     fs::{self, NamedFile},
     http::Method,
@@ -13,6 +14,7 @@ pub fn index(_: &Request) -> Fallible<NamedFile> {
 
 pub fn scope(scope: Scope) -> Scope {
     scope
+        .middleware(middlewares::FrontendHeaders)
         .resource("/", |r| r.method(Method::GET).f(index))
         .handler(
             "/static",
