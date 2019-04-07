@@ -11,9 +11,12 @@ build:
 	cp -r ./reactapp/build ${RELEASE_BUILD_DIR}/reactapp/
 	docker build --pull -t octo-budget-builder:latest .
 
-release:
+release: build
 	snap run heroku container:push web -a octo-budget
 	snap run heroku container:release web -a octo-budget
+
+prod_logs:
+	snap run heroku logs -t -a octo-budget
 
 test:
 	@./run.sh diesel database setup

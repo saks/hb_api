@@ -36,7 +36,7 @@ fn main() {
     .bind(format!(
         "{}:{}",
         config::LISTEN_IP.as_str(),
-        config::LISTEN_PORT.as_str()
+        config::PORT.as_str()
     ))
     .expect("Cannot bind to IP:PORT")
     .run();
