@@ -1,39 +1,39 @@
 {
-    "name": "Octo Budget",
-    "short_name": "Octo Budget",
+    "name": "Octo Budget 2",
+    "short_name": "Octo Budget 2",
     "icons": [
         {
-            "src": "/app/static/octo.png",
+            "src": "/public/octo.png",
             "sizes": "128x128",
             "type": "image/png"
         },
         {
-            "src": "/app/static/octo.png",
+            "src": "/public/octo.png",
             "sizes": "144x144",
             "type": "image/png"
         },
         {
-            "src": "/app/static/octo.png",
+            "src": "/public/octo.png",
             "sizes": "152x152",
             "type": "image/png"
         },
         {
-            "src": "/app/static/octo.png",
+            "src": "/public/octo.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "/app/static/octo.png",
+            "src": "/public/octo.png",
             "sizes": "256x256",
             "type": "image/png"
         },
         {
-            "src": "/app/static/octo.png",
+            "src": "/public/octo.png",
             "sizes": "512x512",
             "type": "image/png"
         }
     ],
-    "start_url": "/app",
+    "start_url": "/public/index.html",
     "display": "standalone",
     "background_color": "#03a9f4",
     "theme_color": "#03a9f4"

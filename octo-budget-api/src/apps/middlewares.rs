@@ -1,5 +1,5 @@
 mod auth_by_token;
-mod frontend_headers;
+mod force_https;
 
 pub use auth_by_token::VerifyAuthToken;
-pub use frontend_headers::FrontendHeaders;
+pub use force_https::ForceHttps;

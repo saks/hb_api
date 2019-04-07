@@ -1,9 +1,9 @@
 {
     "name": "reactapp",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "private": true,
     "proxy": "http://localhost:8088/",
-    "homepage": "https://home-b.herokuapp.com/app/static/",
+    "homepage": "https://octo-budget.herokuapp.com/public",
     "dependencies": {
         "@babel/core": "7.1.6",
         "@svgr/webpack": "2.4.1",

@@ -14,10 +14,12 @@ mod redis;
 #[cfg(test)]
 mod tests;
 
-use actix_web::{middleware::Logger, server, App};
+use actix_web::{http::Method, middleware::Logger, server, App};
 use dotenv::dotenv;
 
-use crate::apps::{auth_app, budgets_app, frontend, records_app, tags_app, users_app, AppState};
+use crate::apps::{
+    auth_app, budgets_app, frontend, middlewares, records_app, tags_app, users_app, AppState,
+};
 
 fn main() {
     dotenv().expect("Failed to parse .env file");
@@ -25,8 +27,10 @@ fn main() {
 
     server::new(|| {
         App::with_state(AppState::default())
+            .middleware(middlewares::ForceHttps::default())
             .middleware(Logger::default())
-            .scope("/app", frontend::scope)
+            .resource("/", |r| r.method(Method::GET).f(frontend::index))
+            .scope("/public", frontend::scope)
             .scope("/auth/jwt", auth_app::scope)
             .scope("/api/records/", records_app::scope)
             .scope("/api/budgets/", budgets_app::scope)

@@ -22,6 +22,7 @@ serde_derive = "*"
 url = "*"
 tokio = "*"
 tokio-async-await = "*"
+log = "0.4"
 
 [dependencies.bigdecimal]
 version = "0.0.14" # must match version of diesel dependency
