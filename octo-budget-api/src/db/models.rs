@@ -63,7 +63,7 @@ pub struct Budget {
 #[derive(Serialize, Default)]
 pub struct SerializedBudget {
     pub name: String,
-    pub amount: f64,
+    pub amount: BigDecimal,
     pub spent: f64,
     pub left: f64,
     pub average_per_day: f64,
