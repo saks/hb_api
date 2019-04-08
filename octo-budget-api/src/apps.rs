@@ -11,6 +11,7 @@ pub mod middlewares;
 
 pub mod auth_app;
 pub mod budgets_app;
+pub mod frontend;
 pub mod records_app;
 pub mod tags_app;
 pub mod users_app;
@@ -47,9 +48,27 @@ impl Default for AppState {
 
 impl AppState {
     pub fn new() -> Self {
+        let redis = redis::start();
+
+        use futures::future::Future as _;
+
+        let redis_pass =
+            std::env::var("REDIS_PASSWORD").expect("Cannot read env var REDIS_PASSWORD");
+        let auth_cmd = actix_redis::Command(redis_async::resp_array!["AUTH", &redis_pass]);
+        actix::Arbiter::spawn(
+            redis
+                .clone()
+                .send(auth_cmd)
+                .map_err(|e| eprintln!("Cannot AUTH with REDIS: {:?}", e))
+                .and_then(|res| {
+                    println!("Redis auth result: {:?}", res);
+                    futures::future::ok(())
+                }),
+        );
+
         Self {
             db: db::start(),
-            redis: redis::start(),
+            redis,
         }
     }
 

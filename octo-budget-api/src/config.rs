@@ -17,7 +17,7 @@ config_env_var!(REDIS_URL);
 config_env_var!(DATABASE_URL);
 config_env_var!(AUTH_TOKEN_SECRET);
 config_env_var!(LISTEN_IP);
-config_env_var!(LISTEN_PORT);
+config_env_var!(PORT);
 
 use std::fmt::Display;
 pub fn user_tags_redis_key(user_id: impl Display) -> String {
