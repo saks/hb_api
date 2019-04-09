@@ -1,6 +1,7 @@
 // @flow
 
 import React, { Component } from 'react'
+import * as moment from 'moment-timezone'
 
 import { EXP } from '../constants/TransactionTypes'
 import RecordModel from '../models/Record'
@@ -36,11 +37,10 @@ export default class Record extends Component<Props, void> {
     }
 
     get date(): string {
-        const fixInMinutes = 60
-        const offsetInSeconds = (new Date().getTimezoneOffset() + fixInMinutes) * 60
-        const localTimeInSeconds = this.props.model.created_at - offsetInSeconds
-        const date = new Date(localTimeInSeconds * 1000)
-        return date.toLocaleString('en', DATETIME_FORMAT_OPTIONS)
+        const tz = moment.tz.guess()
+        const momentObject = moment.tz(this.props.model.created_at * 1000, tz)
+
+        return momentObject.toDate().toLocaleString('en', DATETIME_FORMAT_OPTIONS)
     }
 
     edit(): void {
