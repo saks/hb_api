@@ -2,7 +2,7 @@ use std::result;
 
 use actix::{Handler, Message};
 use bigdecimal::BigDecimal;
-use chrono::{Local, NaiveDateTime};
+use chrono::{Utc, NaiveDateTime};
 use failure::Error;
 use octo_budget_lib::auth_token::AuthToken;
 
@@ -22,7 +22,7 @@ pub struct CreateRecord {
 
 impl CreateRecord {
     pub fn new(data: &FormData, token: &AuthToken) -> Self {
-        let created_at = Local::now().naive_local();
+        let created_at = Utc::now().naive_local();
 
         Self {
             amount: data.amount.clone(),
