@@ -14,7 +14,7 @@ pub mod config;
 #[cfg(test)]
 mod tests;
 
-use actix_web::{http::Method, middleware::Logger, HttpServer, App};
+use actix_web::{App, HttpServer};
 use dotenv::dotenv;
 
 // use crate::apps::{
@@ -46,23 +46,29 @@ use dotenv::dotenv;
 //     .run().unwrap();
 // }
 
+use actix_web::{web, Error, HttpRequest, HttpResponse, Result};
 use actix_web_async_compat::async_compat;
 use futures::Future;
-use tokio_async_await::await;
-use actix_web::{Error, Result, HttpRequest, HttpResponse, web};
+
 
 #[async_compat]
 async fn index2(_req: HttpRequest) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().body("OK"))
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
+    dotenv().expect("Failed to parse .env file");
+    env_logger::init();
+
     HttpServer::new(|| {
-        App::new()
-            .service(web::resource("/welcome2").route(web::get().to_async(index2)))
+        App::new().service(web::resource("/welcome2").route(web::get().to_async(index2)))
     })
-    .bind("127.0.0.1:8080")
-    .unwrap()
-    .run()
-    .unwrap();
+    .bind(format!(
+        "{}:{}",
+        config::LISTEN_IP.as_str(),
+        config::PORT.as_str()
+    ))?
+    .run()?;
+
+    Ok(())
 }

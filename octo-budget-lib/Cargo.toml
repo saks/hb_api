@@ -8,6 +8,6 @@ edition = "2018"
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
-jsonwebtoken = { git = "https://github.com/azah/jsonwebtoken", brandh = "update-ring-dependency" }
+jsonwebtoken = { git = "https://github.com/Keats/jsonwebtoken", branch = "next" }
 time = "0.1"
 failure = "0.1"
