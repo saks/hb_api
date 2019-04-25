@@ -1,4 +1,4 @@
-#![feature(await_macro, futures_api, async_await)]
+#![feature(await_macro, async_await)]
 
 #[macro_use]
 extern crate diesel;
@@ -50,7 +50,6 @@ use actix_web::{web, Error, HttpRequest, HttpResponse, Result};
 use actix_web_async_compat::async_compat;
 use futures::Future;
 
-
 #[async_compat]
 async fn index2(_req: HttpRequest) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().body("OK"))
@@ -67,7 +66,8 @@ fn main() -> Result<(), std::io::Error> {
         "{}:{}",
         config::LISTEN_IP.as_str(),
         config::PORT.as_str()
-    ))?
+    ))
+    .expect("Cannot bind to IP:PORT")
     .run()?;
 
     Ok(())

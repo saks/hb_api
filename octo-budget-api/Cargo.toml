@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [dependencies]
 actix = "*"
-actix-web = "1.0.0-alpha.6"
+actix-web = "1.0.0-beta.2"
 actix-redis = { version = "0.5", default_features = false }
 bytes = "0.4"
 dotenv = "0.13"
@@ -21,7 +21,7 @@ serde = "1"
 serde_derive = "1"
 url = "1"
 tokio = "0.1"
-tokio-async-await = { git = "https://github.com/tokio-rs/tokio.git", features = [ "async-await-preview" ] }
+tokio-async-await = { version = "0.1", features = [ "async-await-preview" ] }
 log = "0.4"
 
 [dependencies.bigdecimal]

@@ -8,6 +8,6 @@ edition = "2018"
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
-jsonwebtoken = { git = "https://github.com/Keats/jsonwebtoken", branch = "next" }
+jsonwebtoken = "6"
 time = "0.1"
 failure = "0.1"
