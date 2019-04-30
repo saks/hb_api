@@ -5,14 +5,14 @@ extern crate diesel;
 
 use env_logger;
 
-// pub mod apps;
-pub mod config;
+mod apps2;
+mod config;
 // pub mod db;
 // mod errors;
 // mod redis;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 use actix_web::{App, HttpServer};
 use dotenv::dotenv;
@@ -46,6 +46,7 @@ use dotenv::dotenv;
 //     .run().unwrap();
 // }
 
+use actix_web::middleware::Logger;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Result};
 use actix_web_async_compat::async_compat;
 use futures::Future;
@@ -60,7 +61,12 @@ fn main() -> Result<(), std::io::Error> {
     env_logger::init();
 
     HttpServer::new(|| {
-        App::new().service(web::resource("/welcome2").route(web::get().to_async(index2)))
+        App::new()
+            .wrap(middlewares::force_https::ForceHttps)
+            .wrap(Logger::default())
+            .service(web::resource("/welcome2").route(web::get().to_async(index2)))
+            .service(apps2::frontend_app::index)
+            .service(apps2::frontend_app::static_files_scope())
     })
     .bind(format!(
         "{}:{}",
