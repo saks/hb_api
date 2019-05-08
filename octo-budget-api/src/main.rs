@@ -62,7 +62,9 @@ fn main() -> Result<(), std::io::Error> {
 
     HttpServer::new(|| {
         App::new()
-            .wrap(middlewares::force_https::ForceHttps)
+            .wrap(middlewares::force_https::ForceHttps::new(
+                config::is_force_https(),
+            ))
             .wrap(Logger::default())
             .service(web::resource("/welcome2").route(web::get().to_async(index2)))
             .service(apps2::frontend_app::index)

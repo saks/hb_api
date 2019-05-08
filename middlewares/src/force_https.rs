@@ -6,14 +6,15 @@ use actix_web::http::{header, uri::PathAndQuery, Uri};
 use actix_web::{error, HttpResponse, Result};
 
 const HTTPS_SCHEME: &str = "https";
-const ENV_VAR_NAME: &str = "FORCE_HTTPS";
 
 #[derive(Default, Clone, Copy)]
-pub struct ForceHttps;
+pub struct ForceHttps {
+    is_enabled: bool,
+}
 
 impl ForceHttps {
-    fn is_enabled() -> bool {
-        std::env::var(ENV_VAR_NAME).is_ok()
+    pub fn new(is_enabled: bool) -> Self {
+        Self { is_enabled }
     }
 }
 
@@ -31,7 +32,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ok(ForceSslService {
             service,
-            is_enabled: Self::is_enabled(),
+            is_enabled: self.is_enabled,
         })
     }
 }
@@ -45,7 +46,7 @@ impl<S> ForceSslService<S> {
     fn redirect_url(&self, req: &ServiceRequest) -> Option<Result<Uri>> {
         let connection_info = req.connection_info();
 
-        if self.is_enabled || HTTPS_SCHEME == connection_info.scheme() {
+        if self.is_enabled && "http" == connection_info.scheme() {
             Some(Self::https_url(req.uri(), connection_info.host()))
         } else {
             None
@@ -59,7 +60,7 @@ impl<S> ForceSslService<S> {
             .unwrap_or_else(|| "");
 
         Uri::builder()
-            .scheme("https")
+            .scheme(HTTPS_SCHEME)
             .authority(host)
             .path_and_query(path_and_query)
             .build()
@@ -103,5 +104,46 @@ where
         } else {
             Either::A(self.service.call(req))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test::{call_service, init_service, TestRequest};
+    use actix_web::{web, App, HttpResponse};
+
+    #[test]
+    fn test_wrap() {
+        let mut app = init_service(
+            App::new()
+                .wrap(ForceHttps::new(false))
+                .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
+        );
+
+        let req = TestRequest::with_uri("/v1/something/").to_request();
+        let res = call_service(&mut app, req);
+        assert!(res.status().is_success());
+    }
+
+    #[test]
+    fn test_redirect_http_request() {
+        let mut app = init_service(
+            App::new()
+                .wrap(ForceHttps::new(true))
+                .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
+        );
+
+        let req = TestRequest::with_uri("/v1/something/?a=1&a=2b=[]#/foo").to_request();
+        let res = call_service(&mut app, req);
+
+        assert_eq!(301, res.status());
+
+        let location = res.headers().get("location").unwrap().to_str().unwrap();
+
+        assert!(location.starts_with("https://"));
+
+        // fragment part of the URL will be dropped (https://github.com/hyperium/http/issues/127)
+        assert!(location.ends_with("/v1/something/?a=1&a=2b=[]"));
     }
 }

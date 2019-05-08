@@ -12,6 +12,7 @@ macro_rules! config_env_var {
 }
 
 const REDIS_KEY_USER_TAGS_PREFIX: &str = "user_tags_";
+const ENV_VAR_NAME: &str = "FORCE_HTTPS";
 
 config_env_var!(REDIS_URL);
 config_env_var!(DATABASE_URL);
@@ -26,6 +27,10 @@ pub fn user_tags_redis_key(user_id: impl Display) -> String {
         prefix = REDIS_KEY_USER_TAGS_PREFIX,
         user_id = user_id
     )
+}
+
+pub fn is_force_https() -> bool {
+    std::env::var(ENV_VAR_NAME).is_ok()
 }
 
 pub fn redis_url() -> String {
