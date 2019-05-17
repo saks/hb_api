@@ -58,7 +58,7 @@ pub enum Error {
     UnknownMsg(&'static str),
 
     #[fail(display = "Cannot get database connection: {}", _0)]
-    Connection(#[cause] r2d2::Error),
+    Connection(#[cause] diesel::r2d2::Error),
 }
 
 impl From<failure::Error> for Error {
@@ -73,8 +73,8 @@ impl From<actix::MailboxError> for Error {
     }
 }
 
-impl From<r2d2::Error> for Error {
-    fn from(error: r2d2::Error) -> Self {
+impl From<diesel::r2d2::Error> for Error {
+    fn from(error: diesel::r2d2::Error) -> Self {
         Error::Connection(error)
     }
 }

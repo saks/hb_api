@@ -3,18 +3,19 @@
 #[macro_use]
 extern crate diesel;
 
+use actix_redis::RedisActor;
 use env_logger;
 
 mod apps2;
 mod config;
-// pub mod db;
-// mod errors;
+mod db;
+mod errors;
 // mod redis;
 
 // #[cfg(test)]
 // mod tests;
 
-use actix_web::{App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 
 // use crate::apps::{
@@ -47,28 +48,46 @@ use dotenv::dotenv;
 // }
 
 use actix_web::middleware::Logger;
-use actix_web::{web, Error, HttpRequest, HttpResponse, Result};
-use actix_web_async_compat::async_compat;
-use futures::Future;
-
-#[async_compat]
-async fn index2(_req: HttpRequest) -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok().body("OK"))
-}
 
 fn main() -> Result<(), std::io::Error> {
     dotenv().expect("Failed to parse .env file");
     env_logger::init();
 
     HttpServer::new(|| {
+        let redis = std::sync::Arc::new(RedisActor::start(config::redis_url()));
+
+        // start of redis auth
+        // use futures::future::Future as _;
+        // let redis_pass =
+        //     std::env::var("REDIS_PASSWORD").expect("Cannot read env var REDIS_PASSWORD");
+        // let auth_cmd = actix_redis::Command(redis_async::resp_array!["AUTH", &redis_pass]);
+        // actix::Arbiter::spawn(
+        //     redis
+        //         .clone()
+        //         .send(auth_cmd)
+        //         .map_err(|e| eprintln!("Cannot AUTH with REDIS: {:?}", e))
+        //         .and_then(|res| {
+        //             println!("Redis auth result: {:?}", res);
+        //             futures::future::ok(())
+        //         }),
+        // );
+        // end of redis auth
+
         App::new()
+            .data(db::start())
+            .data(redis)
             .wrap(middlewares::force_https::ForceHttps::new(
                 config::is_force_https(),
             ))
             .wrap(Logger::default())
-            .service(web::resource("/welcome2").route(web::get().to_async(index2)))
             .service(apps2::frontend_app::index)
-            .service(apps2::frontend_app::static_files_scope())
+            .service(
+                web::scope("/public")
+                    .wrap(middlewares::pwa_cache_headers::PwaCacheHeaders)
+                    .service(actix_files::Files::new("/", "./reactapp/build")),
+            )
+            .service(web::scope("/auth/jwt").service(apps2::auth_app::resource))
+        // .scope("/auth/jwt", auth_app::scope)
     })
     .bind(format!(
         "{}:{}",
