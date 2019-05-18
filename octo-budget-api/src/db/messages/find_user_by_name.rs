@@ -26,3 +26,44 @@ impl Handler<FindUserByName> for DbExecutor {
             .map_err(Into::into)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::builders::UserBuilder;
+    use actix::prelude::*;
+    use futures::future;
+
+    #[test]
+    fn not_found_err() {
+        System::run(move || {
+            let fut = crate::db::start().send(FindUserByName("foo".to_string()));
+
+            actix::spawn(fut.then(|res| {
+                assert_eq!("Err(NotFound)", format!("{:?}", res.unwrap()));
+
+                System::current().stop();
+                future::result(Ok(()))
+            }));
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn found() {
+        let mut session = crate::tests::DbSession::new();
+        let user = session.create_user(UserBuilder::default());
+
+        System::run(move || {
+            let fut = crate::db::start().send(FindUserByName(user.username.to_owned()));
+
+            actix::spawn(fut.then(move |res| {
+                assert_eq!(user, res.unwrap().unwrap());
+
+                System::current().stop();
+                future::result(Ok(()))
+            }));
+        })
+        .unwrap();
+    }
+}

@@ -1,7 +1,6 @@
 use actix_web::{
     dev::HttpServiceFactory, guard::Post, web::Json, Error, HttpResponse, Resource, Result,
 };
-use actix_web_async_compat::async_compat;
 use futures::{self, Future};
 use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 

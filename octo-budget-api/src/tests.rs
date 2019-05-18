@@ -1,5 +1,5 @@
 mod db;
-pub mod redis;
+// pub mod redis;
 
 pub use self::db::DbSession;
 
@@ -47,23 +47,23 @@ where
     system.run();
 }
 
-use crate::db::models::AuthUser;
-use actix_web::{client::ClientRequest, http::Method};
-use octo_budget_lib::auth_token::AuthToken;
+// use crate::db::models::AuthUser;
+// use actix_web::{client::ClientRequest, http::Method};
+// use octo_budget_lib::auth_token::AuthToken;
 
-pub fn authenticated_request(user: &AuthUser, uri: String) -> ClientRequest {
-    let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
-        .expire_in_hours(10)
-        .to_string();
-
-    ClientRequest::build()
-        .header("Authorization", format!("JWT {}", token))
-        .uri(uri)
-        .method(Method::GET)
-        .content_type("applicaton/json")
-        .finish()
-        .unwrap()
-}
+// pub fn authenticated_request(user: &AuthUser, uri: String) -> ClientRequest {
+//     let token = AuthToken::new(user.id, crate::config::AUTH_TOKEN_SECRET.as_bytes())
+//         .expire_in_hours(10)
+//         .to_string();
+//
+//     ClientRequest::build()
+//         .header("Authorization", format!("JWT {}", token))
+//         .uri(uri)
+//         .method(Method::GET)
+//         .content_type("applicaton/json")
+//         .finish()
+//         .unwrap()
+// }
 
 pub fn setup_env() {
     use dotenv::dotenv;

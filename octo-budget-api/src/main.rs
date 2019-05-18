@@ -12,8 +12,8 @@ mod db;
 mod errors;
 // mod redis;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
