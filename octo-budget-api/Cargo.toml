@@ -9,7 +9,7 @@ actix = "*"
 actix-web = "1.0.0-beta.5"
 actix-service = "*"
 actix-files = "0.1.0-beta.4"
-actix-redis = { version = "0.5", default_features = false }
+actix-redis = { git = "https://github.com/saks/actix-redis", default_features = false }
 bytes = "0.4"
 dotenv = "0.13"
 env_logger = "0.6"
@@ -18,7 +18,7 @@ failure_derive = "0.1"
 futures = { package = "futures", version = "0.1" }
 futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 lazy_static = "1.1"
-redis-async = "0.4"
+redis-async = { git = "https://github.com/benashford/redis-async-rs" }
 serde = "1"
 serde_derive = "1"
 url = "1"

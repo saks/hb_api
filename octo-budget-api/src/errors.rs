@@ -31,7 +31,7 @@ impl Serialize for ValidationError {
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "Cannot read sorted tags from redis {}", _0)]
-    Redis(#[cause] actix_redis::Error),
+    Redis(String),
 
     #[fail(display = "Redis command failed {:?}", _0)]
     RedisCommandFailed(actix_redis::RespValue),
