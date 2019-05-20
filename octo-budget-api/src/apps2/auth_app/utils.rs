@@ -14,8 +14,14 @@ pub fn generate_token(user: &UserModel) -> Data {
 mod tests {
     use super::*;
 
+    fn setup() {
+        dotenv::dotenv().expect("Failed to parse .env file");
+    }
+
     #[test]
     fn test_generate_token() {
+        setup();
+
         let user = make_user_with_pass("foo");
         let data = generate_token(&make_user_with_pass("foo"));
         let token = AuthToken::new(user.id, config::AUTH_TOKEN_SECRET.as_bytes()).to_string();
@@ -25,6 +31,8 @@ mod tests {
     }
 
     fn make_user_with_pass(password: &'static str) -> UserModel {
+        setup();
+
         use chrono::naive::NaiveDateTime;
         use djangohashers;
 
