@@ -10,6 +10,7 @@ macro_rules! test_server {
             actix_http::HttpService::new(
                 actix_web::App::new()
                     .data(crate::db::start())
+                    .data(crate::redis::start())
                     .service($service),
             )
         })

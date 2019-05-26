@@ -10,7 +10,7 @@ actix-web = { version = "1.0.0-rc", default_features = false }
 actix-service = "0.4"
 actix-http = "0.2.0"
 actix-files = "0.1.0-beta.4"
-actix-redis = { version = "0.5", default_features = false }
+actix-redis = { git = "https://github.com/actix/actix-redis", default_features = false }
 bytes = "0.4"
 dotenv = "0.13"
 env_logger = "0.6"
@@ -24,6 +24,7 @@ serde = "1"
 serde_derive = "1"
 url = "1"
 log = "0.4"
+r2d2 = "*"
 
 [dependencies.bigdecimal]
 version = "0.0.14" # must match version of diesel dependency

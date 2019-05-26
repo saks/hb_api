@@ -6,8 +6,8 @@ use crate::config;
 
 pub type Redis = Arc<Addr<RedisActor>>;
 
-pub fn start() -> std::sync::Arc<actix::address::Addr<actix_redis::redis::RedisActor>> {
-    std::sync::Arc::new(RedisActor::start(config::redis_url()))
+pub fn start() -> Redis {
+    Arc::new(RedisActor::start(config::redis_url()))
 }
 
-// pub mod helpers;
+pub mod helpers;

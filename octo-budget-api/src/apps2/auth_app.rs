@@ -1,6 +1,4 @@
-use actix_web::{
-    dev::HttpServiceFactory, guard::Post, web::Json, Error, HttpResponse, Resource, Result,
-};
+use actix_web::{dev::HttpServiceFactory, web::Json, Error, HttpResponse, Result};
 use futures::{self, Future};
 use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 
@@ -32,6 +30,8 @@ async fn __async_create(form: Json<Form>, db: Pg) -> Result<HttpResponse> {
 
 impl HttpServiceFactory for Service {
     fn register(self, config: &mut actix_web::dev::AppService) {
+        use actix_web::{guard::Post, Resource};
+
         HttpServiceFactory::register(
             Resource::new("/create/").guard(Post()).to_async(create),
             config,

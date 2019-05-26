@@ -10,7 +10,7 @@ mod apps2;
 mod config;
 mod db;
 mod errors;
-// mod redis;
+mod redis;
 
 #[cfg(test)]
 mod tests;
@@ -54,7 +54,7 @@ fn main() -> Result<(), std::io::Error> {
     env_logger::init();
 
     HttpServer::new(|| {
-        let redis = std::sync::Arc::new(RedisActor::start(config::redis_url()));
+        // let redis = std::sync::Arc::new(RedisActor::start(config::redis_url()));
 
         // start of redis auth
         // use futures::future::Future as _;
@@ -75,7 +75,7 @@ fn main() -> Result<(), std::io::Error> {
 
         App::new()
             .data(db::start())
-            .data(redis)
+            .data(redis::start())
             .wrap(middlewares::force_https::ForceHttps::new(
                 config::is_force_https(),
             ))
@@ -87,7 +87,7 @@ fn main() -> Result<(), std::io::Error> {
                     .service(actix_files::Files::new("/", "./reactapp/build")),
             )
             .service(web::scope("/auth/jwt").service(apps2::AuthService))
-        // .scope("/auth/jwt", auth_app::scope)
+            .service(web::scope("/api/tags").service(apps2::TagsService))
     })
     .bind(format!(
         "{}:{}",
