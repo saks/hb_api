@@ -166,10 +166,9 @@ impl DbSession {
         }
     }
 
-    pub fn create_user(&mut self, builder: UserBuilder) -> AuthUser {
+    pub fn create_user(&self, builder: UserBuilder) -> AuthUser {
         use crate::db::schema::auth_user::dsl::*;
         use diesel::*;
-        use djangohashers;
 
         let user = builder.finish();
         let new_password = djangohashers::make_password(&user.password);

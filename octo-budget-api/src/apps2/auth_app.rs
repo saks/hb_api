@@ -13,7 +13,7 @@ mod response_data;
 mod utils;
 
 #[allow(non_camel_case_types)]
-pub struct resource;
+pub struct Service;
 
 fn create(form: Json<Form>, db: Pg) -> impl Future<Item = HttpResponse, Error = Error> {
     __async_create(form, db).boxed().compat()
@@ -30,7 +30,7 @@ async fn __async_create(form: Json<Form>, db: Pg) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(generate_token(&user)))
 }
 
-impl HttpServiceFactory for resource {
+impl HttpServiceFactory for Service {
     fn register(self, config: &mut actix_web::dev::AppService) {
         HttpServiceFactory::register(
             Resource::new("/create/").guard(Post()).to_async(create),
@@ -38,3 +38,6 @@ impl HttpServiceFactory for resource {
         )
     }
 }
+
+#[cfg(test)]
+mod tests;

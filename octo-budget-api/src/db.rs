@@ -20,6 +20,7 @@ pub fn start() -> Postgres {
         let manager = ConnectionManager::<PgConnection>::new(DATABASE_URL.as_str());
 
         let pool = Pool::builder()
+            .min_idle(Some(1))
             .max_size(1) // max pool size
             .build(manager)
             .expect("Failed to create database connection pool.");

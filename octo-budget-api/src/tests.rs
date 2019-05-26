@@ -4,6 +4,19 @@ mod db;
 pub use self::db::DbSession;
 
 #[macro_export]
+macro_rules! test_server {
+    ($service:ident) => {{
+        actix_http_test::TestServer::new(|| {
+            actix_http::HttpService::new(
+                actix_web::App::new()
+                    .data(crate::db::start())
+                    .service($service),
+            )
+        })
+    }};
+}
+
+#[macro_export]
 macro_rules! tags_vec {
     ( $( $x:expr ),* ) => {
         {
@@ -44,7 +57,7 @@ where
         })
     });
 
-    system.run();
+    system.run().unwrap();
 }
 
 // use crate::db::models::AuthUser;

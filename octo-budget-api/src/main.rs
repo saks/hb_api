@@ -86,7 +86,7 @@ fn main() -> Result<(), std::io::Error> {
                     .wrap(middlewares::pwa_cache_headers::PwaCacheHeaders)
                     .service(actix_files::Files::new("/", "./reactapp/build")),
             )
-            .service(web::scope("/auth/jwt").service(apps2::auth_app::resource))
+            .service(web::scope("/auth/jwt").service(apps2::AuthService))
         // .scope("/auth/jwt", auth_app::scope)
     })
     .bind(format!(

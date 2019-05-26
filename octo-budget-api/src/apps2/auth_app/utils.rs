@@ -34,7 +34,6 @@ mod tests {
         setup();
 
         use chrono::naive::NaiveDateTime;
-        use djangohashers;
 
         UserModel {
             id: 123,

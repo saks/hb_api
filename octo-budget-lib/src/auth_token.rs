@@ -49,7 +49,7 @@ impl<'a> AuthToken<'a> {
     pub fn data(&self) -> Data {
         use time::{now_utc, Duration};
 
-        let exp = (now_utc() + Duration::days(self.expire_in_hours))
+        let exp = (now_utc() + Duration::hours(self.expire_in_hours))
             .to_timespec()
             .sec;
 
