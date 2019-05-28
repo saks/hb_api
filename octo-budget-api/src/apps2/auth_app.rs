@@ -1,4 +1,4 @@
-use actix_web::{dev::HttpServiceFactory, web::Json, Error, HttpResponse, Result};
+use actix_web::{dev::HttpServiceFactory, web::Json, Error, HttpResponse, Resource, Result};
 use futures::{self, Future};
 use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 

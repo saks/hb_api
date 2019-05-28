@@ -7,3 +7,4 @@ pub use auth_app::Service as AuthService;
 pub use tags_app::Service as TagsService;
 
 pub mod forms;
+pub mod helpers;

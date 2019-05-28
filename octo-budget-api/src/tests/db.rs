@@ -43,16 +43,28 @@ pub fn connection_without_transaction() -> PgConnection {
     PgConnection::establish(&database_url).unwrap()
 }
 
+// use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
+
 pub struct DbSession {
     conn: PgConnection,
     with_transaction: bool,
+    // pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl DbSession {
     pub fn new() -> Self {
+        // let database_url = database_url_from_env("DATABASE_URL");
+        // let manager = ConnectionManager::<PgConnection>::new(database_url.as_str());
+        //
+        // let pool = Pool::builder()
+        //     .max_size(1) // max pool size
+        //     .build(manager)
+        //     .expect("Failed to create database connection pool.");
+
         DbSession {
             conn: connection_without_transaction(),
             with_transaction: false,
+            // pool,
         }
     }
 

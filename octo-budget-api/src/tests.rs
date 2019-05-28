@@ -1,5 +1,5 @@
 mod db;
-// pub mod redis;
+pub mod redis;
 
 pub use self::db::DbSession;
 
