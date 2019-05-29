@@ -1,36 +1,62 @@
-use actix_web::{dev::HttpServiceFactory, web, Error, HttpResponse, Result};
+use actix_web::{dev::HttpServiceFactory, web, Error, HttpRequest, HttpResponse, Result};
 use futures::{self, Future};
 use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 use serde_derive::{Deserialize, Serialize};
 
-type Redis = web::Data<octo_redis::Db>;
-
-// use crate::db::messages::{GetUserTags, SetUserTags};
+use super::helpers::sort_tags;
+use crate::db::messages::{GetUserTags, SetUserTags};
+use crate::db::Pg;
 use crate::redis::helpers::read_redis_tags;
+use crate::redis::Redis;
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct Data {
     tags: Vec<String>,
 }
 
+fn ordered_tags(user_tags: Vec<String>, redis_tags: Vec<String>) -> Data {
+    let tags = sort_tags(redis_tags, user_tags);
+    Data { tags }
+}
+
 pub struct Service;
 
-fn index(redis: Redis) -> impl Future<Item = HttpResponse, Error = Error> {
-    __async_create(redis).boxed().compat()
-}
-
-fn update(redis: Redis) -> impl Future<Item = HttpResponse, Error = Error> {
-    __async_create(redis).boxed().compat()
-}
-
-async fn __async_create(redis: Redis) -> Result<HttpResponse> {
+fn index(
+    redis: Redis,
+    pg: Pg,
+    _req: HttpRequest,
+) -> impl Future<Item = HttpResponse, Error = Error> {
     // let user_id = crate::auth_token_from_async_request!(req).user_id;
-    let user_id = 123;
-    dbg!(read_redis_tags(user_id, redis).await?);
-    // let msg = octo_redis::Command::get("foo");
-    // let res = octo_redis::send(redis.get_ref(), msg).await?;
-    // dbg!(res);
-    Ok(HttpResponse::Ok().body("{\"from\": \"tags app\"}"))
+    let user_id = 9;
+    __async_index(redis, pg, user_id).boxed().compat()
+}
+
+async fn __async_index(redis: Redis, pg: Pg, user_id: i32) -> Result<HttpResponse> {
+    let redis_tags = read_redis_tags(user_id, redis).await?;
+    let user_tags = Box::new(pg.send(GetUserTags::new(user_id)))
+        .compat()
+        .await??;
+
+    Ok(HttpResponse::Ok().json(ordered_tags(user_tags, redis_tags)))
+}
+
+fn update(
+    redis: Redis,
+    pg: Pg,
+    _req: HttpRequest,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // let user_id = crate::auth_token_from_async_request!(req).user_id;
+    let user_id = 9;
+    __async_update(redis, pg, user_id).boxed().compat()
+}
+
+async fn __async_update(redis: Redis, pg: Pg, user_id: i32) -> Result<HttpResponse> {
+    let redis_tags = read_redis_tags(user_id, redis).await?;
+    let user_tags = Box::new(pg.send(GetUserTags::new(user_id)))
+        .compat()
+        .await??;
+
+    Ok(HttpResponse::Ok().json(ordered_tags(user_tags, redis_tags)))
 }
 
 impl HttpServiceFactory for Service {

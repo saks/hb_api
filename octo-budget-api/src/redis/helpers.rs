@@ -45,56 +45,14 @@ use crate::errors::Error;
 
 pub async fn read_redis_tags(user_id: i32, redis: Redis) -> Result<Vec<String>, Error> {
     let redis_key = crate::config::user_tags_redis_key(user_id);
-    let result = octo_redis::cmd("zrevrange")
+
+    octo_redis::cmd("zrevrange")
         .arg(redis_key)
         .arg("0")
         .arg("-1")
-        .send(redis.get_ref().to_owned())
-        .await?;
-
-    match result {
-        octo_redis::Value::Bulk(vec) => {
-            let x: Vec<String> = vec.into_iter().collect();
-            // println!("bulk: `{:?}'", vec);
-        }
-        octo_redis::Value::Data(vec) => {
-            println!("data: `{:?}'", vec);
-        }
-        _ => { println!("other") }
-        // _ @ x => Err(octo_redis::Error::UnexpecetdRedisResponse(x)),
-    }
-
-    // match result {
-    //     redis::kj
-    // }
-    // let cmd = octo_redis::Command(
-    //     octo_redis::Command::cmd("zrevrange")
-    //         .arg(redis_key)
-    //         .arg("0")
-    //         .arg("-1")
-    //         .to_owned(),
-    // );
-    //
-    // let x = redis.send(cmd);
-    // use std::convert::TryInto;
-    // let db: octo_redis::Db = redis.into();
-    //     use crate::errors::Error::BadRedisResponse;
-    //
-    //
-    //     let command = Command(resp_array!["zrevrange", redis_key, "0", "-1"]);
-    //     let response = Box::new(redis.send(command))
-    //         .compat()
-    //         .await?
-    //         .map_err(Error::Redis)?;
-    //
-    //     let tags = match response {
-    //         // Here we assume that if returned value is of Array type, then query has succeeded.
-    //         res @ Array(..) => Vec::from_resp(res).map_err(|e| BadRedisResponse(format!("{:?}", e))),
-    //         res => Err(BadRedisResponse(format!("{:?}", res))),
-    //     }?;
-    //
-    //     Ok(tags)
-    Ok(vec![])
+        .send::<Vec<String>>(redis.get_ref().to_owned())
+        .await
+        .map_err(Into::into)
 }
 //
 // async fn execute_redis_commands2(commands: Vec<Vec<&str>>, redis: Redis) -> Result<(), Error> {
