@@ -9,9 +9,9 @@ mod apps2;
 mod config;
 mod db;
 mod errors;
-// mod redis;
+mod redis;
 // mod redis2;
-use octo_redis::RedisActor;
+// use octo_redis::RedisActor;
 
 #[cfg(test)]
 mod tests;
@@ -55,31 +55,9 @@ fn main() -> Result<(), std::io::Error> {
     env_logger::init();
 
     HttpServer::new(move || {
-        // let red = redis2::get_connection();
-        // let red = std::sync::Arc::new(red.clone());
-        // let redis = std::sync::Arc::new(RedisActor::start(config::redis_url()));
-
-        // start of redis auth
-        // use futures::future::Future as _;
-        // let redis_pass =
-        //     std::env::var("REDIS_PASSWORD").expect("Cannot read env var REDIS_PASSWORD");
-        // let auth_cmd = actix_redis::Command(redis_async::resp_array!["AUTH", &redis_pass]);
-        // actix::Arbiter::spawn(
-        //     redis
-        //         .clone()
-        //         .send(auth_cmd)
-        //         .map_err(|e| eprintln!("Cannot AUTH with REDIS: {:?}", e))
-        //         .and_then(|res| {
-        //             println!("Redis auth result: {:?}", res);
-        //             futures::future::ok(())
-        //         }),
-        // );
-        // end of redis auth
-
-        // .data(redis::start())
         App::new()
             .data(db::start())
-            .data(RedisActor::start("redis://127.0.0.1/"))
+            .data(redis::start())
             .wrap(middlewares::force_https::ForceHttps::new(
                 config::is_force_https(),
             ))

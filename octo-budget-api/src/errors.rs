@@ -31,7 +31,7 @@ impl Serialize for ValidationError {
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "Cannot read sorted tags from redis {}", _0)]
-    Redis(actix_redis::Error),
+    Redis(octo_redis::Error),
 
     #[fail(display = "Redis command failed {:?}", _0)]
     RedisCommandFailed(actix_redis::RespValue),
@@ -62,6 +62,12 @@ pub enum Error {
 
     #[fail(display = "Cannot get database connection: {}", _0)]
     Connection2(#[cause] diesel::r2d2::Error),
+}
+
+impl From<octo_redis::Error> for Error {
+    fn from(error: octo_redis::Error) -> Self {
+        Error::Redis(error)
+    }
 }
 
 impl From<failure::Error> for Error {

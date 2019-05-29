@@ -34,21 +34,22 @@ pub fn is_force_https() -> bool {
 }
 
 pub fn redis_url() -> String {
-    use url::Url;
-
-    let redis_url = REDIS_URL.as_str();
-    let url = Url::parse(REDIS_URL.as_str())
-        .unwrap_or_else(|_| panic!("Cannot parse redis url: `{}'", redis_url));
-
-    let host = url
-        .host_str()
-        .unwrap_or_else(|| panic!("bad redis host: `{}'", redis_url));
-
-    let port = url
-        .port()
-        .unwrap_or_else(|| panic!("bad redis port: `{}'", redis_url));
-
-    format!("{}:{}", host, port)
+    // use url::Url;
+    //
+    // let redis_url = REDIS_URL.as_str();
+    // let url = Url::parse(REDIS_URL.as_str())
+    //     .unwrap_or_else(|_| panic!("Cannot parse redis url: `{}'", redis_url));
+    //
+    // let host = url
+    //     .host_str()
+    //     .unwrap_or_else(|| panic!("bad redis host: `{}'", redis_url));
+    //
+    // let port = url
+    //     .port()
+    //     .unwrap_or_else(|| panic!("bad redis port: `{}'", redis_url));
+    //
+    // format!("{}:{}", host, port)
+    REDIS_URL.to_string()
 }
 
 lazy_static! {

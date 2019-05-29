@@ -2,10 +2,13 @@
 
 use actix::prelude::*;
 use failure::Fail;
-use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
+// use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
+use futures03::compat::Future01CompatExt as _;
 use redis::r#async::SharedConnection;
 use redis::Cmd;
 use std::sync::Arc;
+
+pub use redis::Value;
 
 pub struct RedisActor {
     addr: String,
@@ -20,12 +23,24 @@ pub enum Error {
     ActixMailbox(#[cause] actix::MailboxError),
     #[fail(display = "Redis error {}", _0)]
     Redis(#[cause] redis::RedisError),
+    #[fail(display = "Redis error {:?}", _0)]
+    UnexpecetdRedisResponse(Value),
 }
 
 impl actix_http::ResponseError for Error {}
 
 use futures::Future;
-pub async fn send(db: Db, msg: Command) -> Result<redis::Value, Error> {
+pub async fn send2(db: Db, msg: Command) -> Result<Value, Error> {
+    let fut = db.send(msg);
+    let res = Box::new(fut).compat().await;
+
+    match res {
+        Ok(Ok(value)) => Ok(value),
+        Err(e) => Err(Error::ActixMailbox(e)),
+        Ok(Err(e)) => Err(Error::Redis(e)),
+    }
+}
+pub async fn send(db: &Db, msg: Command) -> Result<Value, Error> {
     let fut = db.send(msg);
     let res = Box::new(fut).compat().await;
 
@@ -74,20 +89,43 @@ impl Actor for RedisActor {
     }
 }
 
-pub struct Command(pub Cmd);
+pub struct Cmd2 {
+    inner: Cmd,
+}
 
-impl Command {
-    pub fn get(key: &str) -> Self {
-        Self(redis::cmd("GET").arg(key).clone())
+impl Cmd2 {
+    pub fn new(command: &str) -> Self {
+        let mut inner = redis::Cmd::new();
+        inner.arg(command);
+
+        Self { inner }
+    }
+
+    pub fn arg<T: redis::ToRedisArgs>(self, arg: T) -> Self {
+        let mut inner = self.inner;
+        inner.arg(arg);
+
+        Self { inner }
+    }
+
+    pub fn send(self, addr: Db) -> impl std::future::Future<Output = Result<Value, Error>> {
+        let cmd = Command(self.inner);
+        send2(addr, cmd)
     }
 }
 
+pub fn cmd(command: &str) -> Cmd2 {
+    Cmd2::new(command)
+}
+
+pub struct Command(pub Cmd);
+
 impl Message for Command {
-    type Result = Result<redis::Value, redis::RedisError>;
+    type Result = Result<Value, redis::RedisError>;
 }
 
 impl Handler<Command> for RedisActor {
-    type Result = ResponseFuture<redis::Value, redis::RedisError>;
+    type Result = ResponseFuture<Value, redis::RedisError>;
 
     fn handle(&mut self, cmd: Command, _: &mut Self::Context) -> Self::Result {
         match &self.conn {
@@ -95,14 +133,49 @@ impl Handler<Command> for RedisActor {
                 // println!("executing command");
 
                 let conn = (**conn).clone();
-                let fut = cmd
-                    .0
-                    .query_async::<_, redis::Value>(conn)
-                    .map(|(_conn, res)| res);
+                let fut = cmd.0.query_async::<_, Value>(conn).map(|(_conn, res)| res);
 
                 Box::new(fut)
             }
             None => panic!("No redis connection in RedisActor!"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures03::future::{FutureExt, TryFutureExt};
+    use redis::Commands;
+
+    fn setup() -> redis::Connection {
+        let client = redis::Client::open("redis://127.0.0.1/").expect("Failed build client");
+        client.get_connection().expect("Failed to connect")
+    }
+
+    #[test]
+    fn foo() {
+        let conn = setup();
+        let _: bool = conn.set("foo", "ZZZ!!!").unwrap();
+
+        let sys = System::new("test");
+        let addr = RedisActor::start("redis://127.0.0.1/");
+        let msg: String = cmd("GET").arg("foo").send(addr);
+
+        Arbiter::spawn(
+            msg.unit_error()
+                .boxed()
+                .compat()
+                .map(|res| {
+                    assert_eq!("ZZZ!!!", res.unwrap());
+                    System::current().stop();
+                })
+                .map_err(|e| {
+                    dbg!(e);
+                    System::current().stop();
+                }),
+        );
+
+        sys.run().expect("failed to run system");
     }
 }

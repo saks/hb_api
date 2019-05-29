@@ -1,35 +1,35 @@
-use actix_redis::{Command, Error as RedisError, RespValue};
+// use actix_redis::{Command, Error as RedisError, RespValue};
 // use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
-use futures03::{compat::Future01CompatExt as _, FutureExt as _};
-use redis_async::{
-    resp::{FromResp, RespValue::Array},
-    resp_array,
-};
+// use futures03::{compat::Future01CompatExt as _, FutureExt as _};
+// use redis_async::{
+//     resp::{FromResp, RespValue::Array},
+//     resp_array,
+// };
 
 use super::Redis;
 use crate::errors::Error;
-
-pub async fn increment_tags(user_id: i32, tags: Vec<String>, redis: Redis) -> Result<(), Error> {
-    let key = crate::config::user_tags_redis_key(user_id);
-
-    let commands = tags
-        .iter()
-        .map(|tag| resp_array!["zincrby", &key, "1", tag])
-        .collect::<Vec<_>>();
-
-    execute_redis_commands(commands, redis).await
-}
-
-pub async fn increment_tags2(user_id: i32, tags: Vec<String>, redis: Redis) -> Result<(), Error> {
-    let key = crate::config::user_tags_redis_key(user_id);
-
-    let commands = tags
-        .iter()
-        .map(|tag| vec!["zincrby", &key, "1", &tag])
-        .collect::<Vec<_>>();
-
-    execute_redis_commands2(commands, redis).await
-}
+//
+// pub async fn increment_tags(user_id: i32, tags: Vec<String>, redis: Redis) -> Result<(), Error> {
+//     let key = crate::config::user_tags_redis_key(user_id);
+//
+//     let commands = tags
+//         .iter()
+//         .map(|tag| resp_array!["zincrby", &key, "1", tag])
+//         .collect::<Vec<_>>();
+//
+//     execute_redis_commands(commands, redis).await
+// }
+//
+// pub async fn increment_tags2(user_id: i32, tags: Vec<String>, redis: Redis) -> Result<(), Error> {
+//     let key = crate::config::user_tags_redis_key(user_id);
+//
+//     let commands = tags
+//         .iter()
+//         .map(|tag| vec!["zincrby", &key, "1", &tag])
+//         .collect::<Vec<_>>();
+//
+//     execute_redis_commands2(commands, redis).await
+// }
 // pub async fn decrement_tags(user_id: i32, tags: Vec<String>, redis: Redis) -> Result<(), Error> {
 //     let key = crate::config::user_tags_redis_key(user_id);
 //
@@ -44,77 +44,111 @@ pub async fn increment_tags2(user_id: i32, tags: Vec<String>, redis: Redis) -> R
 // }
 
 pub async fn read_redis_tags(user_id: i32, redis: Redis) -> Result<Vec<String>, Error> {
-    use crate::errors::Error::BadRedisResponse;
-
     let redis_key = crate::config::user_tags_redis_key(user_id);
-
-    let command = Command(resp_array!["zrevrange", redis_key, "0", "-1"]);
-    let response = Box::new(redis.send(command))
-        .compat()
-        .await?
-        .map_err(Error::Redis)?;
-
-    let tags = match response {
-        // Here we assume that if returned value is of Array type, then query has succeeded.
-        res @ Array(..) => Vec::from_resp(res).map_err(|e| BadRedisResponse(format!("{:?}", e))),
-        res => Err(BadRedisResponse(format!("{:?}", res))),
-    }?;
-
-    Ok(tags)
-}
-
-async fn execute_redis_commands2(commands: Vec<Vec<&str>>, redis: Redis) -> Result<(), Error> {
-    let responses = commands
-        .into_iter()
-        .map(|vec| RespValue::Array(vec.into_iter().map(|e| e.into()).collect::<Vec<_>>()))
-        .map(|cmd| redis.send(Command(cmd)))
-        .collect::<Vec<_>>();
-
-    let responses = Box::new(futures::future::join_all(responses))
-        .compat()
+    let result = octo_redis::cmd("zrevrange")
+        .arg(redis_key)
+        .arg("0")
+        .arg("-1")
+        .send(redis.get_ref().to_owned())
         .await?;
 
-    let results = responses
-        .into_iter()
-        .collect::<Result<Vec<RespValue>, RedisError>>()
-        .map_err(Error::Redis)?;
+    match result {
+        octo_redis::Value::Bulk(vec) => {
+            let x: Vec<String> = vec.into_iter().collect();
+            // println!("bulk: `{:?}'", vec);
+        }
+        octo_redis::Value::Data(vec) => {
+            println!("data: `{:?}'", vec);
+        }
+        _ => { println!("other") }
+        // _ @ x => Err(octo_redis::Error::UnexpecetdRedisResponse(x)),
+    }
 
-    results
-        .into_iter()
-        .map(|resp| match resp {
-            e @ RespValue::Error(..) => Err(Error::RedisCommandFailed(e)),
-            _ => Ok(()),
-        })
-        .collect::<Result<Vec<_>, Error>>()?;
-
-    Ok(())
+    // match result {
+    //     redis::kj
+    // }
+    // let cmd = octo_redis::Command(
+    //     octo_redis::Command::cmd("zrevrange")
+    //         .arg(redis_key)
+    //         .arg("0")
+    //         .arg("-1")
+    //         .to_owned(),
+    // );
+    //
+    // let x = redis.send(cmd);
+    // use std::convert::TryInto;
+    // let db: octo_redis::Db = redis.into();
+    //     use crate::errors::Error::BadRedisResponse;
+    //
+    //
+    //     let command = Command(resp_array!["zrevrange", redis_key, "0", "-1"]);
+    //     let response = Box::new(redis.send(command))
+    //         .compat()
+    //         .await?
+    //         .map_err(Error::Redis)?;
+    //
+    //     let tags = match response {
+    //         // Here we assume that if returned value is of Array type, then query has succeeded.
+    //         res @ Array(..) => Vec::from_resp(res).map_err(|e| BadRedisResponse(format!("{:?}", e))),
+    //         res => Err(BadRedisResponse(format!("{:?}", res))),
+    //     }?;
+    //
+    //     Ok(tags)
+    Ok(vec![])
 }
-
-async fn execute_redis_commands(commands: Vec<RespValue>, redis: Redis) -> Result<(), Error> {
-    let responses = commands
-        .into_iter()
-        .map(|cmd| redis.send(Command(cmd)))
-        .collect::<Vec<_>>();
-
-    let responses = Box::new(futures::future::join_all(responses))
-        .compat()
-        .await?;
-
-    let results = responses
-        .into_iter()
-        .collect::<Result<Vec<RespValue>, RedisError>>()
-        .map_err(Error::Redis)?;
-
-    results
-        .into_iter()
-        .map(|resp| match resp {
-            e @ RespValue::Error(..) => Err(Error::RedisCommandFailed(e)),
-            _ => Ok(()),
-        })
-        .collect::<Result<Vec<_>, Error>>()?;
-
-    Ok(())
-}
+//
+// async fn execute_redis_commands2(commands: Vec<Vec<&str>>, redis: Redis) -> Result<(), Error> {
+//     let responses = commands
+//         .into_iter()
+//         .map(|vec| RespValue::Array(vec.into_iter().map(|e| e.into()).collect::<Vec<_>>()))
+//         .map(|cmd| redis.send(Command(cmd)))
+//         .collect::<Vec<_>>();
+//
+//     let responses = Box::new(futures::future::join_all(responses))
+//         .compat()
+//         .await?;
+//
+//     let results = responses
+//         .into_iter()
+//         .collect::<Result<Vec<RespValue>, RedisError>>()
+//         .map_err(Error::Redis)?;
+//
+//     results
+//         .into_iter()
+//         .map(|resp| match resp {
+//             e @ RespValue::Error(..) => Err(Error::RedisCommandFailed(e)),
+//             _ => Ok(()),
+//         })
+//         .collect::<Result<Vec<_>, Error>>()?;
+//
+//     Ok(())
+// }
+//
+// async fn execute_redis_commands(commands: Vec<RespValue>, redis: Redis) -> Result<(), Error> {
+//     let responses = commands
+//         .into_iter()
+//         .map(|cmd| redis.send(Command(cmd)))
+//         .collect::<Vec<_>>();
+//
+//     let responses = Box::new(futures::future::join_all(responses))
+//         .compat()
+//         .await?;
+//
+//     let results = responses
+//         .into_iter()
+//         .collect::<Result<Vec<RespValue>, RedisError>>()
+//         .map_err(Error::Redis)?;
+//
+//     results
+//         .into_iter()
+//         .map(|resp| match resp {
+//             e @ RespValue::Error(..) => Err(Error::RedisCommandFailed(e)),
+//             _ => Ok(()),
+//         })
+//         .collect::<Result<Vec<_>, Error>>()?;
+//
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
@@ -127,21 +161,21 @@ mod tests {
 
     #[test]
     fn my_test() {
-        redis::flushall();
+        // redis::flushall();
 
-        let c = redis::get_connection();
+        // let c = redis::get_connection();
         // let fut = async {
         //     let x = read_redis_tags(1, c).await;
         //
         //     Ok(())
         // };
 
-        async fn xxx() -> Result<usize, String> {
-            Ok(123)
-        }
-
-        let cmds = vec![vec!["info"]];
-        let fut = execute_redis_commands2(cmds, c);
+        // async fn xxx() -> Result<usize, String> {
+        //     Ok(123)
+        // }
+        //
+        // let cmds = vec![vec!["info"]];
+        // let fut = execute_redis_commands2(cmds, c);
 
         // fut.then(|x| {
         //     dbg!(&x);
