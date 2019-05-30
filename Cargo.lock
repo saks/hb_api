@@ -1250,6 +1250,7 @@ dependencies = [
  "actix-web 1.0.0-rc (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "octo-budget-lib 0.1.0",
 ]
 
 [[package]]

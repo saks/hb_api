@@ -8,6 +8,7 @@ use crate::db::messages::{GetUserTags, SetUserTags};
 use crate::db::Pg;
 use crate::redis::helpers::read_redis_tags;
 use crate::redis::Redis;
+use octo_budget_lib::auth_token::AuthToken;
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct Data {
@@ -24,14 +25,14 @@ pub struct Service;
 fn index(
     redis: Redis,
     pg: Pg,
-    _req: HttpRequest,
+    req: HttpRequest,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    // let user_id = crate::auth_token_from_async_request!(req).user_id;
-    let user_id = 9;
-    __async_index(redis, pg, user_id).boxed().compat()
+    let token = req.extensions().get::<AuthToken>().map(|t| t.user_id);
+    return __async_index(redis, pg, token).boxed().compat();
 }
 
-async fn __async_index(redis: Redis, pg: Pg, user_id: i32) -> Result<HttpResponse> {
+async fn __async_index(redis: Redis, pg: Pg, user_id: Option<i32>) -> Result<HttpResponse> {
+    let user_id = user_id.ok_or_else(|| HttpResponse::Unauthorized().finish())?;
     let redis_tags = read_redis_tags(user_id, redis).await?;
     let user_tags = Box::new(pg.send(GetUserTags::new(user_id)))
         .compat()

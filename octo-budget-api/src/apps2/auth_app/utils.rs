@@ -6,7 +6,7 @@ use crate::db::models::AuthUser as UserModel;
 
 pub fn generate_token(user: &UserModel) -> Data {
     let secret = config::AUTH_TOKEN_SECRET.as_bytes();
-    let token = AuthToken::new(user.id, secret).to_string();
+    let token = AuthToken::new(user.id).to_string(secret);
     Data::from_token(token)
 }
 

@@ -31,7 +31,7 @@ impl<AppState> Middleware<AppState> for VerifyAuthToken {
         match parts.next() {
             Some(token) => AuthToken::from(token, config::AUTH_TOKEN_SECRET.as_bytes())
                 .map(|auth_token| {
-                    req.extensions_mut().insert(auth_token);
+                    req.extensions_mut().insert(auth_token); // TODO: insert UserId type (wrapper around i32)
                     Started::Done
                 })
                 .map_err(|_| ErrorUnauthorized("TODO: bad token error")),

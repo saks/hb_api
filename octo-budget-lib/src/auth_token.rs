@@ -1,32 +1,28 @@
 use failure::Error;
-use serde::{Serialize as SerdeSerialize, Serializer};
 use serde_derive::{Deserialize, Serialize};
 
 const DEFAULT_EXPIRE_IN_HOURS: i64 = 24;
 
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct AuthToken<'a> {
+pub struct AuthToken {
     pub user_id: i32,
-    secret: &'a [u8],
     expire_in_hours: i64,
 }
 
-impl<'a> AuthToken<'a> {
-    pub fn new(user_id: i32, secret: &'a [u8]) -> Self {
+impl AuthToken {
+    pub fn new(user_id: i32) -> Self {
         let expire_in_hours = DEFAULT_EXPIRE_IN_HOURS;
 
         Self {
             user_id,
             expire_in_hours,
-            secret,
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn to_string(&self, secret: &[u8]) -> String {
         use jsonwebtoken::{encode, Header};
 
         let headers = &Header::default();
-        let secret = self.secret;
         let data = self.data();
 
         encode(headers, &data, secret).expect("Failed to generate token")
@@ -37,13 +33,13 @@ impl<'a> AuthToken<'a> {
         self
     }
 
-    pub fn from(token: &str, secret: &'a [u8]) -> Result<Self, Error> {
+    pub fn from(token: &str, secret: &[u8]) -> Result<Self, Error> {
         use jsonwebtoken::{decode, Validation};
 
         let token_data = decode::<Data>(token, secret, &Validation::default())?;
         let user_id = token_data.claims.user_id;
 
-        Ok(Self::new(user_id, secret))
+        Ok(Self::new(user_id))
     }
 
     pub fn data(&self) -> Data {
@@ -57,15 +53,6 @@ impl<'a> AuthToken<'a> {
             exp,
             user_id: self.user_id,
         }
-    }
-}
-
-impl<'a> SerdeSerialize for AuthToken<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -87,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_create_token() {
-        let token = AuthToken::new(TEST_USER_ID, TEST_SECRET).to_string();
+        let token = AuthToken::new(TEST_USER_ID).to_string(TEST_SECRET);
         assert_eq!(128, token.len());
 
         let decoded = decode::<Data>(&token, TEST_SECRET, &Validation::default()).unwrap();
@@ -97,7 +84,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "InvalidSignature")]
     fn test_create_token_with_invalid_secret() {
-        let token = AuthToken::new(TEST_USER_ID, TEST_SECRET).to_string();
+        let token = AuthToken::new(TEST_USER_ID).to_string(TEST_SECRET);
         decode::<Data>(&token, b"secret", &Validation::default()).unwrap();
     }
 
@@ -124,8 +111,8 @@ mod tests {
     }
 
     fn make_token(hours_from_now: i64, secret: &[u8]) -> String {
-        AuthToken::new(TEST_USER_ID, secret)
+        AuthToken::new(TEST_USER_ID)
             .expire_in_hours(hours_from_now)
-            .to_string()
+            .to_string(secret)
     }
 }

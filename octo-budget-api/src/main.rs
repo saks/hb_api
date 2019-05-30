@@ -69,7 +69,13 @@ fn main() -> Result<(), std::io::Error> {
                     .service(actix_files::Files::new("/", "./reactapp/build")),
             )
             .service(web::scope("/auth/jwt").service(apps2::AuthService))
-            .service(web::scope("/api/tags").service(apps2::TagsService))
+            .service(
+                web::scope("/api/tags")
+                    .wrap(middlewares::auth_by_token::AuthByToken::new(
+                        config::AUTH_TOKEN_SECRET.as_str(),
+                    ))
+                    .service(apps2::TagsService),
+            )
     })
     .bind(format!(
         "{}:{}",
