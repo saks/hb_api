@@ -1,11 +1,24 @@
+use actix_http::Payload;
+use actix_web::{
+    error::{ErrorUnauthorized, ParseError},
+    FromRequest, HttpRequest,
+};
 use failure::Error;
+use futures::future::{err, ok, Future};
+use log::error;
 use serde_derive::{Deserialize, Serialize};
-// use actix_web::extract::FromRequest;
+use std::fmt;
 
 const DEFAULT_EXPIRE_IN_HOURS: i64 = 24;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Copy, Clone)]
 pub struct UserId(i32);
+
+impl fmt::Display for UserId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl From<i32> for UserId {
     fn from(id: i32) -> Self {
@@ -33,9 +46,61 @@ impl PartialEq<UserId> for i32 {
     }
 }
 
-// impl FromRequest for UserId {
-//
-// }
+impl UserId {
+    fn auth(req: &HttpRequest) -> actix_web::Result<Self> {
+        let config = req.app_data::<ApiJwtTokenAuthConfig>().ok_or_else(|| {
+            error!("Application is not configured with JWT secret!");
+            ErrorUnauthorized(ParseError::Header)
+        })?; // TODO: add beter error
+
+        let auth_header = req
+            .headers()
+            .get(actix_web::http::header::AUTHORIZATION)
+            .ok_or_else(|| ErrorUnauthorized(ParseError::Header))?
+            .to_str()
+            .map_err(ErrorUnauthorized)?;
+
+        let mut parts = auth_header.split_whitespace();
+
+        if let Some(token_type) = parts.next() {
+            if token_type != "JWT" {
+                return Err(ErrorUnauthorized("Wrong token type!"));
+            }
+        }
+
+        match parts.next() {
+            Some(token) => AuthToken::from(token, config.secret)
+                .map(|auth_token| auth_token.user_id())
+                .map_err(|_| ErrorUnauthorized("Bad token!")),
+            None => Err(ErrorUnauthorized("Wrong token format!")),
+        }
+    }
+}
+
+#[derive(Default, Debug)] // TODO: do I need Default
+pub struct ApiJwtTokenAuthConfig {
+    secret: &'static [u8],
+}
+
+impl ApiJwtTokenAuthConfig {
+    pub fn new(secret: &'static [u8]) -> Self {
+        Self { secret }
+    }
+}
+
+impl FromRequest for UserId {
+    type Error = actix_web::Error;
+    type Future = Box<Future<Item = Self, Error = Self::Error>>;
+    type Config = ApiJwtTokenAuthConfig;
+
+    #[inline]
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        Box::new(match UserId::auth(req) {
+            Ok(user_id) => ok(user_id),
+            Err(e) => err(e),
+        })
+    }
+}
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct AuthToken {

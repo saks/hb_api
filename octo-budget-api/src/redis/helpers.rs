@@ -8,6 +8,7 @@
 
 use super::Redis;
 use crate::errors::Error;
+use octo_budget_lib::auth_token::UserId;
 //
 // pub async fn increment_tags(user_id: i32, tags: Vec<String>, redis: Redis) -> Result<(), Error> {
 //     let key = crate::config::user_tags_redis_key(user_id);
@@ -43,7 +44,7 @@ use crate::errors::Error;
 //     execute_redis_commands(commands, redis).await
 // }
 
-pub async fn read_redis_tags(user_id: i32, redis: Redis) -> Result<Vec<String>, Error> {
+pub async fn read_redis_tags(user_id: UserId, redis: Redis) -> Result<Vec<String>, Error> {
     let redis_key = crate::config::user_tags_redis_key(user_id);
 
     octo_redis::cmd("zrevrange")

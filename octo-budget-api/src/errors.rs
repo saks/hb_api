@@ -1,6 +1,7 @@
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use failure_derive::Fail;
+use octo_budget_lib::auth_token::UserId;
 use serde::{Serialize, Serializer};
 
 #[derive(Fail, Debug, Clone, Copy, PartialEq)]
@@ -40,10 +41,10 @@ pub enum Error {
     BadRedisResponse(String),
 
     #[fail(display = "Cannot find user by id: `{}'", _0)]
-    UserNotFound(i32),
+    UserNotFound(UserId),
 
     #[fail(display = "Cannot update {} with id: `{}'", _0, _1)]
-    RecordNotUpdated(&'static str, i32),
+    RecordNotUpdated(&'static str, UserId),
 
     #[fail(display = "Cannot find record")]
     RecordNotFound,
