@@ -1,16 +1,51 @@
 use failure::Error;
 use serde_derive::{Deserialize, Serialize};
+// use actix_web::extract::FromRequest;
 
 const DEFAULT_EXPIRE_IN_HOURS: i64 = 24;
 
+#[derive(Debug, PartialEq, Serialize, Deserialize, Copy, Clone)]
+pub struct UserId(i32);
+
+impl From<i32> for UserId {
+    fn from(id: i32) -> Self {
+        Self(id)
+    }
+}
+
+impl From<UserId> for i32 {
+    fn from(id: UserId) -> i32 {
+        id.0
+    }
+}
+
+impl std::ops::Deref for UserId {
+    type Target = i32;
+
+    fn deref(&self) -> &i32 {
+        &self.0
+    }
+}
+
+impl PartialEq<UserId> for i32 {
+    fn eq(&self, id: &UserId) -> bool {
+        &id.0 == self
+    }
+}
+
+// impl FromRequest for UserId {
+//
+// }
+
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct AuthToken {
-    pub user_id: i32,
+    user_id: UserId,
     expire_in_hours: i64,
 }
 
 impl AuthToken {
     pub fn new(user_id: i32) -> Self {
+        let user_id = user_id.into();
         let expire_in_hours = DEFAULT_EXPIRE_IN_HOURS;
 
         Self {
@@ -19,7 +54,11 @@ impl AuthToken {
         }
     }
 
-    pub fn to_string(&self, secret: &[u8]) -> String {
+    pub fn user_id(&self) -> UserId {
+        self.user_id
+    }
+
+    pub fn encrypt(&self, secret: &[u8]) -> String {
         use jsonwebtoken::{encode, Header};
 
         let headers = &Header::default();
@@ -51,7 +90,7 @@ impl AuthToken {
 
         Data {
             exp,
-            user_id: self.user_id,
+            user_id: self.user_id.into(),
         }
     }
 }
@@ -74,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_create_token() {
-        let token = AuthToken::new(TEST_USER_ID).to_string(TEST_SECRET);
+        let token = AuthToken::new(TEST_USER_ID).encrypt(TEST_SECRET);
         assert_eq!(128, token.len());
 
         let decoded = decode::<Data>(&token, TEST_SECRET, &Validation::default()).unwrap();
@@ -84,7 +123,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "InvalidSignature")]
     fn test_create_token_with_invalid_secret() {
-        let token = AuthToken::new(TEST_USER_ID).to_string(TEST_SECRET);
+        let token = AuthToken::new(TEST_USER_ID).encrypt(TEST_SECRET);
         decode::<Data>(&token, b"secret", &Validation::default()).unwrap();
     }
 
@@ -113,6 +152,6 @@ mod tests {
     fn make_token(hours_from_now: i64, secret: &[u8]) -> String {
         AuthToken::new(TEST_USER_ID)
             .expire_in_hours(hours_from_now)
-            .to_string(secret)
+            .encrypt(secret)
     }
 }

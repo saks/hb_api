@@ -7,12 +7,13 @@ use actix_web::{
 };
 use futures::future::{ok, Future, FutureResult};
 use futures::Poll;
-use octo_budget_lib::auth_token::AuthToken;
+use octo_budget_lib::auth_token::{AuthToken, UserId};
 
 // There are two step in middleware processing.
 // 1. Middleware initialization, middleware factory get called with
 //    next service in chain as parameter.
 // 2. Middleware's call method get called with normal request.
+
 pub struct AuthByToken {
     secret: &'static [u8],
 }
@@ -38,8 +39,8 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = S::Error;
-    type InitError = ();
     type Transform = AuthByTokenMiddleware<S>;
+    type InitError = ();
     type Future = FutureResult<Self::Transform, Self::InitError>;
 
     fn new_transform(&self, service: S) -> Self::Future {
@@ -75,8 +76,7 @@ impl<S> AuthByTokenMiddleware<S> {
         match parts.next() {
             Some(token) => AuthToken::from(token, self.secret)
                 .map(|auth_token| {
-                    dbg!(&auth_token);
-                    req.extensions_mut().insert(auth_token);
+                    req.extensions_mut().insert(auth_token.user_id());
                     ()
                 })
                 .map_err(|_| ErrorUnauthorized("TODO: bad token error")),
@@ -107,5 +107,25 @@ where
         }
 
         Box::new(self.service.call(req).and_then(|res| Ok(res)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test::{call_service, init_service, TestRequest};
+    use actix_web::{web, App, HttpResponse};
+
+    #[test]
+    fn authenticated() {
+        let secret = "foo";
+        let user_id = 123;
+        let token = AuthToken::new(user_id).encrypt(secret.as_bytes());
+
+        let mut app = init_service(
+            App::new()
+                .wrap(AuthByToken::new(secret))
+                .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
+        );
     }
 }

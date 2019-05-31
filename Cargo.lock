@@ -1455,6 +1455,7 @@ dependencies = [
 name = "octo-budget-lib"
 version = "0.1.0"
 dependencies = [
+ "actix-web 1.0.0-rc (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonwebtoken 6.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
