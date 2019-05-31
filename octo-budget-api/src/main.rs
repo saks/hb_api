@@ -74,6 +74,7 @@ fn main() -> Result<(), std::io::Error> {
             )
             .service(web::scope("/auth/jwt").service(apps2::AuthService))
             .service(web::scope("/api/tags").service(apps2::TagsService))
+            .service(web::scope("/api/user").service(apps2::users_app::show))
     })
     .bind(format!(
         "{}:{}",
