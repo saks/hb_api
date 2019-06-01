@@ -11,6 +11,9 @@ macro_rules! test_server {
                 actix_web::App::new()
                     .data(crate::db::start())
                     .data(crate::redis::start())
+                    .data(octo_budget_lib::auth_token::ApiJwtTokenAuthConfig::new(
+                        crate::config::AUTH_TOKEN_SECRET.as_bytes(),
+                    ))
                     .service($service),
             )
         })
@@ -43,23 +46,23 @@ macro_rules! assert_response_body_eq {
     };
 }
 
-pub fn run_future<F: 'static, Fut: 'static>(fut: Fut, callback: F)
-where
-    Fut: futures::Future,
-    F: Fn(Result<Fut::Item, Fut::Error>),
-{
-    let system = actix::System::new("test");
-
-    actix::Arbiter::spawn({
-        fut.then(move |res| {
-            callback(res);
-            actix::System::current().stop();
-            futures::future::ok(())
-        })
-    });
-
-    system.run().unwrap();
-}
+//pub fn run_future<F: 'static, Fut: 'static>(fut: Fut, callback: F)
+//where
+//    Fut: futures::Future,
+//    F: Fn(Result<Fut::Item, Fut::Error>),
+//{
+//    let system = actix::System::new("test");
+//
+//    actix::Arbiter::spawn({
+//        fut.then(move |res| {
+//            callback(res);
+//            actix::System::current().stop();
+//            futures::future::ok(())
+//        })
+//    });
+//
+//    system.run().unwrap();
+//}
 
 // use crate::db::models::AuthUser;
 // use actix_web::{client::ClientRequest, http::Method};

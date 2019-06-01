@@ -1,7 +1,7 @@
 use actix_web::{dev::HttpServiceFactory, web::Json, Error, HttpResponse, Result};
 use futures::{self, Future};
 use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use super::helpers::sort_tags;
 use crate::db::messages::{GetUserTags, SetUserTags};

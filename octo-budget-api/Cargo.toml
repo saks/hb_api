@@ -21,8 +21,7 @@ futures = { package = "futures", version = "0.1" }
 futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 lazy_static = "1.1"
 redis-async = "0.4.5"
-serde = "1"
-serde_derive = "1"
+serde = { version = "1", features = ["derive"] }
 url = "1"
 log = "0.4"
 r2d2 = "*"
@@ -59,3 +58,4 @@ version = "1.0"
 [dev-dependencies]
 awc = "0.2.0"
 actix-http-test = "0.2.0"
+redis = "*"

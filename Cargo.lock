@@ -1432,9 +1432,9 @@ dependencies = [
  "octo-budget-lib 0.1.0",
  "octo-redis 0.1.0",
  "r2d2 0.8.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis-async 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
