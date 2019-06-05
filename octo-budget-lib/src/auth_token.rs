@@ -90,7 +90,7 @@ impl ApiJwtTokenAuthConfig {
 
 impl FromRequest for UserId {
     type Error = actix_web::Error;
-    type Future = Box<Future<Item = Self, Error = Self::Error>>;
+    type Future = Box<dyn Future<Item = Self, Error = Self::Error>>;
     type Config = ApiJwtTokenAuthConfig;
 
     #[inline]

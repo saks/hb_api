@@ -6,10 +6,10 @@ version = "0.1.0"
 
 [dependencies]
 actix = "*"
-actix-web = { version = "1.0.0-rc", default_features = false }
+actix-web = { version = "1.0", default_features = false }
 actix-service = "0.4"
-actix-http = "0.2.0"
-actix-files = "0.1.0-beta.4"
+actix-http = "0.2"
+actix-files = "0.1"
 actix-redis = { git = "https://github.com/actix/actix-redis", default_features = false }
 actix-rt = "*"
 bytes = "0.4"
@@ -56,6 +56,6 @@ path = "../middlewares"
 version = "1.0"
 
 [dev-dependencies]
-awc = "0.2.0"
-actix-http-test = "0.2.0"
+awc = "0.2"
+actix-http-test = "0.2"
 redis = "*"
