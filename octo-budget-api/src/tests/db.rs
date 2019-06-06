@@ -1,7 +1,6 @@
 use bigdecimal::BigDecimal;
 use chrono::naive::NaiveDateTime;
 use diesel::{Connection, PgConnection};
-use std::env;
 
 use crate::db::{
     builders::UserBuilder,
@@ -21,16 +20,6 @@ macro_rules! get_db_message_result {
     }};
 }
 
-fn database_url_from_env(env_var_name: &str) -> String {
-    match env::var(env_var_name) {
-        Ok(val) => {
-            println!(r#"cargo:rustc-cfg=feature="backend_specific_database_url""#);
-            val
-        }
-        _ => env::var("DATABASE_URL").expect("DATABASE_URL must be set in order to run tests"),
-    }
-}
-
 // pub fn connection() -> PgConnection {
 //     let connection = connection_without_transaction();
 //
@@ -39,7 +28,7 @@ fn database_url_from_env(env_var_name: &str) -> String {
 // }
 
 pub fn connection_without_transaction() -> PgConnection {
-    let database_url = database_url_from_env("DATABASE_URL");
+    let database_url = crate::config::DATABASE_URL.to_string();
     PgConnection::establish(&database_url).unwrap()
 }
 

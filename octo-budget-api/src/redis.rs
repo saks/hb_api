@@ -7,7 +7,7 @@ pub type Redis = Data<Addr>;
 
 pub fn start() -> Addr {
     config::redis_url();
-    RedisActor::start(config::redis_url())
+    RedisActor::start(config::REDIS_URL.to_string())
 }
 
 pub mod helpers;
