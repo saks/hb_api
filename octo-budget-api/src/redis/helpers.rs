@@ -12,10 +12,9 @@ pub async fn increment_tags(user_id: UserId, tags: Vec<String>, redis: Redis) ->
         pipeline.add_command(&cmd("zincrby").arg(&key).arg("1").arg(tag));
     }
 
-    let pipeline_res = pipeline
-        .send::<Vec<bool>>(redis.get_ref().to_owned())
+    let _ = pipeline
+        .send::<Vec<String>>(redis.get_ref().to_owned())
         .await?;
-    dbg!(pipeline_res);
 
     Ok(())
 }
@@ -31,10 +30,9 @@ pub async fn decrement_tags(user_id: UserId, tags: Vec<String>, redis: Redis) ->
 
     pipeline.add_command(&cmd("zremrangebyscore").arg(&key).arg("0").arg("0"));
 
-    let pipeline_res = pipeline
-        .send::<Vec<bool>>(redis.get_ref().to_owned())
+    let _ = pipeline
+        .send::<Vec<String>>(redis.get_ref().to_owned())
         .await?;
-    dbg!(pipeline_res);
 
     Ok(())
 }
@@ -55,12 +53,12 @@ pub async fn read_redis_tags(user_id: UserId, redis: Redis) -> Result<Vec<String
 mod tests {
     use super::*;
     use crate::apps2::helpers::sort_tags;
+    use crate::tags_vec;
     use actix::prelude::*;
     use actix_service::ServiceExt;
     use actix_web::web::Data;
     use futures::future;
     use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
-    //    use futures_util::try_stream::TryStreamExt;
     use redis::{self, Commands as _};
 
     mod test_redis {
@@ -172,8 +170,7 @@ mod tests {
                 .compat();
 
             actix::spawn(fut.then(|res| {
-                let tags: Vec<String> = res.unwrap().unwrap();
-                //                assert_eq!(vec!["zzz", "xxx"], tags);
+                let _: Vec<String> = res.unwrap().unwrap();
 
                 System::current().stop();
                 future::result(Ok(()))
@@ -234,95 +231,115 @@ mod tests {
     //         );
     //     }
 
-    //    #[test]
-    //    fn decrement_tags_happy_path() {
-    //        use futures::future::Future;
-    //
-    //        let session = test_redis::Session::new();
-    //        let user_id = "1";
-    //
-    //        session.zadd(user_id, "5", "xxx");
-    //        session.zadd(user_id, "4", "foo");
-    //        session.zadd(user_id, "6", "zzz");
-    //
-    //        System::run(|| {
-    //            let addr = Data::new(crate::redis::start());
-    //            let fut = read_redis_tags(1.into(), addr)
-    //                .unit_error()
-    //                .boxed()
-    //                .compat();
-    //
-    //            let fut = fut.and_then(|res| {
-    //                increment_tags(1.into(), tags_vec!["zzz"], addr)
-    //                    .unit_err()
-    //                    .boxed()
-    //                    .compat()
-    //            });
-    //
-    //            //            let fut = fut.map_err(|e| dbg!(e)).map(move |res| {
-    //            //                let tags: Vec<String> = res.unwrap().unwrap();
-    //            //                dbg!(tags);
-    //            ////                assert_eq!(vec!["zzz", "xxx", "foo"], tags);
-    //            //            }).and_then(move |res| {
-    //            //                increment_tags(1.into(), tags_vec!["zzz"], addr)
-    //            //
-    //            //                System::current().stop();
-    //            //                future::result(Ok(()))
-    //            //            });
-    //
-    //            //            use actix::prelude::ContextFutureSpawner;
-    //
-    //            // check result BEFORE decrementing
-    //            actix::spawn(fut);
-    //        })
-    //        .expect("failed to run system");
-    //
-    //        //             tests::run_future(
-    //        //                 Compat::new(read_redis_tags(1, redis::get_connection())),
-    //        //                 |result: Result<Vec<String>, Error>| {
-    //        //                     assert_eq!(vec!["zzz", "xxx", "foo"], result.unwrap());
-    //        //                 },
-    //        //             );
-    //        //
-    //        //             for _ in 0..3 {
-    //        //                 let fut = decrement_tags(1, crate::tags_vec!["zzz"], redis::get_connection());
-    //        //                 tests::run_future(Compat::new(fut), |res| assert!(res.is_ok()));
-    //        //             }
-    //        //
-    //        //             // check result AFTER decrementing
-    //        //             tests::run_future(
-    //        //                 Compat::new(read_redis_tags(1, redis::get_connection())),
-    //        //                 |result: Result<Vec<String>, Error>| {
-    //        //                     assert_eq!(vec!["xxx", "foo", "zzz"], result.unwrap());
-    //        //                 },
-    //        //             );
-    //    }
+    #[test]
+    fn decrement_tags_happy_path() {
+        let session = test_redis::Session::new();
+        let user_id = "1";
 
-    //     #[test]
-    //     fn decrement_tags_and_delete_zeros_happy_path() {
-    //         redis::flushall();
-    //
-    //         // prepare sort order for tags:
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "2", "xxx"]);
-    //         redis::exec_cmd(vec!["ZADD", "user_tags_1", "1", "foo"]);
-    //
-    //         // check result BEFORE decrementing
-    //         tests::run_future(
-    //             Compat::new(read_redis_tags(1, redis::get_connection())),
-    //             |result: Result<Vec<String>, Error>| {
-    //                 assert_eq!(vec!["xxx", "foo"], result.unwrap());
-    //             },
-    //         );
-    //
-    //         let fut = decrement_tags(1, crate::tags_vec!["xxx", "foo"], redis::get_connection());
-    //         tests::run_future(Compat::new(fut), |res| assert!(res.is_ok()));
-    //
-    //         // check result AFTER decrementing
-    //         tests::run_future(
-    //             Compat::new(read_redis_tags(1, redis::get_connection())),
-    //             |result: Result<Vec<String>, Error>| {
-    //                 assert_eq!(vec!["xxx"], result.unwrap());
-    //             },
-    //         );
-    //     }
+        session.zadd(user_id, "5", "xxx");
+        session.zadd(user_id, "4", "foo");
+        session.zadd(user_id, "6", "zzz");
+
+        System::run(|| {
+            let addr = Data::new(crate::redis::start());
+
+            // first, let's check initial state
+            let fut = read_redis_tags(1.into(), addr)
+                .unit_error()
+                .boxed()
+                .compat()
+                .and_then(move |res| {
+                    let addr = Data::new(crate::redis::start());
+                    let tags: Vec<String> = res.unwrap();
+                    assert_eq!(vec!["zzz", "xxx", "foo"], tags);
+
+                    // now let's decrement zzz
+                    decrement_tags(1.into(), tags_vec!["zzz"], addr)
+                        .unit_error()
+                        .boxed()
+                        .compat()
+                })
+                .and_then(move |res| {
+                    res.expect("failed to decrement tags");
+
+                    let addr = Data::new(crate::redis::start());
+                    // and decrement zzz again
+                    decrement_tags(1.into(), tags_vec!["zzz"], addr)
+                        .unit_error()
+                        .boxed()
+                        .compat()
+                })
+                .and_then(move |res| {
+                    res.expect("failed to decrement tags");
+
+                    let addr = Data::new(crate::redis::start());
+                    // let's check tags order again
+                    read_redis_tags(1.into(), addr)
+                        .unit_error()
+                        .boxed()
+                        .compat()
+                })
+                .and_then(|res| {
+                    let tags: Vec<String> = res.unwrap();
+                    // zzz is no longer the first one
+                    assert_eq!(vec!["xxx", "zzz", "foo"], tags);
+
+                    System::current().stop();
+                    future::result(Ok(()))
+                });
+
+            actix::spawn(fut);
+        })
+        .expect("failed to run system");
+    }
+
+    #[test]
+    fn decrement_tags_and_delete_zeros_happy_path() {
+        let session = test_redis::Session::new();
+        let user_id = "1";
+
+        // prepare sort order for tags:
+        session.zadd(user_id, "2", "xxx");
+        session.zadd(user_id, "1", "foo");
+
+        System::run(|| {
+            let addr = Data::new(crate::redis::start());
+
+            // first, let's check initial state
+            let fut = read_redis_tags(1.into(), addr)
+                .unit_error()
+                .boxed()
+                .compat()
+                .and_then(move |res| {
+                    let addr = Data::new(crate::redis::start());
+                    let tags: Vec<String> = res.unwrap();
+                    assert_eq!(vec!["xxx", "foo"], tags);
+
+                    decrement_tags(1.into(), tags_vec!["xxx", "foo"], addr)
+                        .unit_error()
+                        .boxed()
+                        .compat()
+                })
+                .and_then(move |res| {
+                    res.expect("failed to decrement tags");
+
+                    let addr = Data::new(crate::redis::start());
+                    // let's check tags order again
+                    read_redis_tags(1.into(), addr)
+                        .unit_error()
+                        .boxed()
+                        .compat()
+                })
+                .and_then(|res| {
+                    let tags: Vec<String> = res.unwrap();
+                    assert_eq!(vec!["xxx"], tags);
+
+                    System::current().stop();
+                    future::result(Ok(()))
+                });
+
+            actix::spawn(fut);
+        })
+        .expect("failed to run system");
+    }
 }

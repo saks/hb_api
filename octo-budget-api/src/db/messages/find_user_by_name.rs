@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn found() {
-        let mut session = crate::tests::DbSession::new();
+        let session = crate::tests::DbSession::new();
         let user = session.create_user(UserBuilder::default());
 
         System::run(move || {

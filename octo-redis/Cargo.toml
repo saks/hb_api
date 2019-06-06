@@ -14,3 +14,4 @@ futures = "*"
 futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 failure = "*"
 actix-http = "0.2"
+log = "*"

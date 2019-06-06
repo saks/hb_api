@@ -2,11 +2,11 @@ use std::result;
 
 use actix::{Handler, Message};
 use bigdecimal::BigDecimal;
-use chrono::{Utc, NaiveDateTime};
+use chrono::{NaiveDateTime, Utc};
 use failure::Error;
-use octo_budget_lib::auth_token::AuthToken;
+use octo_budget_lib::auth_token::UserId;
 
-use crate::apps::forms::record::FormData;
+use crate::apps2::forms::record::FormData;
 use crate::db::DbExecutor;
 
 pub type CreateRecordResult = result::Result<(), Error>;
@@ -21,15 +21,16 @@ pub struct CreateRecord {
 }
 
 impl CreateRecord {
-    pub fn new(data: &FormData, token: &AuthToken) -> Self {
+    pub fn new(data: &FormData, user_id: UserId) -> Self {
         let created_at = Utc::now().naive_local();
+        let user_id: i32 = user_id.into();
 
         Self {
             amount: data.amount.clone(),
             amount_currency: data.amount_currency.clone(),
             tags: data.tags.clone(),
             transaction_type: data.transaction_type.clone(),
-            user_id: token.user_id,
+            user_id,
             created_at,
         }
     }

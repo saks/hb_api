@@ -1,11 +1,23 @@
 use actix_http::Error;
-use actix_web::{dev::HttpServiceFactory, web::Query, HttpResponse, Result};
+use actix_web::{
+    dev::HttpServiceFactory,
+    web::{Json, Query},
+    HttpResponse, Result,
+};
 use futures::Future;
 use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 use octo_budget_lib::auth_token::UserId;
 
+use super::forms::record::Form;
 use super::index_params::Params;
-use crate::db::{messages::GetRecords, Pg};
+use crate::db::{
+    messages::{CreateRecord, GetRecords},
+    Pg,
+};
+use crate::redis::{
+    helpers::{decrement_tags, increment_tags},
+    Redis,
+};
 
 pub struct Service;
 
@@ -23,6 +35,17 @@ async fn index(params: Query<Params>, pg: Pg, user_id: UserId) -> Result<HttpRes
     Ok(HttpResponse::Ok().json(records))
 }
 
+async fn create(form: Json<Form>, pg: Pg, redis: Redis, user_id: UserId) -> Result<HttpResponse> {
+    let data = form.into_inner().validate()?;
+
+    Box::new(pg.send(CreateRecord::new(&data, user_id)))
+        .compat()
+        .await??;
+    increment_tags(user_id, data.tags, redis).await?;
+
+    Ok(HttpResponse::Ok().json(""))
+}
+
 fn __index(
     params: Query<Params>,
     pg: Pg,
@@ -31,10 +54,19 @@ fn __index(
     index(params, pg, user_id).boxed().compat()
 }
 
+fn __create(
+    form: Json<Form>,
+    pg: Pg,
+    redis: Redis,
+    user_id: UserId,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    create(form, pg, redis, user_id).boxed().compat()
+}
+
 impl HttpServiceFactory for Service {
     fn register(self, config: &mut actix_web::dev::AppService) {
         use actix_web::{
-            guard::{Get, Put},
+            guard::{Get, Post},
             Resource,
         };
 
@@ -42,6 +74,12 @@ impl HttpServiceFactory for Service {
             Resource::new("/record-detail/")
                 .guard(Get())
                 .to_async(__index),
+            config,
+        );
+        HttpServiceFactory::register(
+            Resource::new("/record-detail/")
+                .guard(Post())
+                .to_async(__create),
             config,
         );
     }
@@ -63,7 +101,7 @@ mod tests {
 
     #[test]
     fn index_return_empty_list() {
-        let mut session = tests::DbSession::new();
+        let session = tests::DbSession::new();
         let mut srv = setup();
 
         let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));

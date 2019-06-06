@@ -1,4 +1,5 @@
 use actix::prelude::*;
+use log::debug;
 use redis::r#async::SharedConnection;
 use std::sync::Arc;
 
@@ -23,7 +24,7 @@ impl RedisActor {
 impl Supervised for RedisActor {
     fn restarting(&mut self, _: &mut Self::Context) {
         // TODO
-        dbg!("restarting...");
+        debug!("restarting...");
     }
 }
 
@@ -37,11 +38,11 @@ impl Actor for RedisActor {
             .get_shared_async_connection()
             .into_actor(self)
             .map(|conn, act, _ctx| {
-                println!("Connected to redis!");
+                debug!("Connected to redis!");
                 act.conn = Some(Arc::new(conn.clone()));
             })
             .map_err(|err, _act, ctx| {
-                println!("Failed to connect to redis!: {:?}", err);
+                debug!("Failed to connect to redis!: {:?}", err);
                 let timeout = std::time::Duration::new(1, 0);
                 ctx.run_later(timeout, |_, ctx| ctx.stop());
             })
