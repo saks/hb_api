@@ -2,6 +2,23 @@ mod db;
 pub mod redis;
 
 pub use self::db::DbSession;
+use actix_web::client::ClientRequest;
+use octo_budget_lib::auth_token::AuthToken;
+
+// ClientRequestExt
+pub trait RequestJwtAuthExt {
+    fn jwt_auth(mut self, user_id: i32) -> Self;
+}
+
+impl RequestJwtAuthExt for ClientRequest {
+    fn jwt_auth(mut self, user_id: i32) -> Self {
+        let token = AuthToken::new(user_id)
+            .expire_in_hours(10)
+            .encrypt(crate::config::AUTH_TOKEN_SECRET.as_bytes());
+
+        self.header("Authorization", format!("JWT {}", token))
+    }
+}
 
 #[macro_export]
 macro_rules! test_server {

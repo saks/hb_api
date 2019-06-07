@@ -2,14 +2,15 @@ use crate::errors::Error;
 use actix::{Handler, Message as ActixMessage};
 
 use crate::db::{models::Record, DbExecutor};
+use octo_budget_lib::auth_token::UserId;
 
 pub struct Message {
-    user_id: i32,
+    user_id: UserId,
     id: i32,
 }
 
 impl Message {
-    pub fn new(id: i32, user_id: i32) -> Self {
+    pub fn new(id: i32, user_id: UserId) -> Self {
         Message { id, user_id }
     }
 }
@@ -26,9 +27,10 @@ impl Handler<Message> for DbExecutor {
         use diesel::prelude::*;
 
         let connection = &self.pool.get()?;
+        let owner_id: i32 = msg.user_id.into();
 
         records_record
-            .filter(user_id.eq(msg.user_id))
+            .filter(user_id.eq(user_id))
             .filter(id.eq(msg.id))
             .first(connection)
             .map_err(|e| match e {

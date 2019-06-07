@@ -2,9 +2,9 @@ use std::result;
 
 use actix::{Handler, Message as ActixMessage};
 use bigdecimal::BigDecimal;
-use octo_budget_lib::auth_token::AuthToken;
+use octo_budget_lib::auth_token::{AuthToken, UserId};
 
-use crate::apps::forms::record::FormData;
+use crate::apps2::forms::record::FormData;
 use crate::db::DbExecutor;
 use crate::errors::Error;
 
@@ -13,18 +13,18 @@ pub struct Message {
     amount_currency: String,
     tags: Vec<String>,
     transaction_type: String,
-    user_id: i32,
+    user_id: UserId,
     id: i32,
 }
 
 impl Message {
-    pub fn new(id: i32, data: &FormData, token: &AuthToken) -> Self {
+    pub fn new(id: i32, data: &FormData, user_id: UserId) -> Self {
         Self {
             amount: data.amount.clone(),
             amount_currency: data.amount_currency.clone(),
             tags: data.tags.clone(),
             transaction_type: data.transaction_type.clone(),
-            user_id: token.user_id,
+            user_id,
             id,
         }
     }
@@ -42,9 +42,10 @@ impl Handler<Message> for DbExecutor {
         use diesel::prelude::*;
 
         let connection = &self.pool.get()?;
+        let current_user_id: i32 = msg.user_id.into();
 
         let target = records_record
-            .filter(user_id.eq(msg.user_id))
+            .filter(user_id.eq(current_user_id))
             .filter(id.eq(msg.id));
 
         let result = diesel::update(target)
@@ -80,7 +81,7 @@ mod tests {
             amount_currency: "CAD".into(),
             tags: vec![],
             transaction_type: "INC".into(),
-            user_id: 1,
+            user_id: 1.into(),
             id: 1,
         };
 
@@ -104,7 +105,7 @@ mod tests {
             amount_currency: "CAD".into(),
             tags: vec![],
             transaction_type: "INC".into(),
-            user_id: user.id,
+            user_id: user.id.into(),
             id: records[0].id,
         };
 
@@ -124,7 +125,7 @@ mod tests {
             amount_currency: "USD".into(),
             tags: vec!["foo".to_string()],
             transaction_type: "INC".into(),
-            user_id: user.id,
+            user_id: user.id.into(),
             id: record.id,
         };
 

@@ -1,5 +1,6 @@
 use bigdecimal::BigDecimal;
 use chrono::naive::NaiveDateTime;
+use diesel::*;
 use diesel::{Connection, PgConnection};
 
 use crate::db::{
@@ -68,9 +69,16 @@ impl DbSession {
         &self.conn
     }
 
+    pub fn count_records(&self) -> i64 {
+        use crate::db::schema::records_record::table as records;
+        use crate::db::schema::*;
+        use diesel::dsl::*;
+
+        records.count().first(&self.conn).unwrap()
+    }
+
     pub fn create_budget(&mut self, budget: Budget) {
         use crate::db::schema::budgets_budget::dsl::*;
-        use diesel::*;
 
         insert_into(budgets_budget)
             .values((
@@ -121,7 +129,7 @@ impl DbSession {
             .unwrap();
     }
 
-    pub fn create_records2(&mut self, id_of_the_user: i32, count: usize) -> Vec<Record> {
+    pub fn create_records2(&self, id_of_the_user: i32, count: usize) -> Vec<Record> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::*;
 
@@ -145,6 +153,17 @@ impl DbSession {
         }
 
         result
+    }
+
+    pub fn find_record(&self, record_id: i32) -> Record {
+        use crate::db::schema::records_record::table as records;
+        use crate::db::schema::*;
+        use diesel::*;
+
+        records
+            .find(record_id)
+            .first(&self.conn)
+            .expect("failed to find record")
     }
 
     pub fn create_records(&mut self, id_of_the_user: i32, count: u32) {

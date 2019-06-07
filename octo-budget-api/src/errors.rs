@@ -44,7 +44,7 @@ pub enum Error {
     UserNotFound(UserId),
 
     #[fail(display = "Cannot update {} with id: `{}'", _0, _1)]
-    RecordNotUpdated(&'static str, UserId),
+    RecordNotUpdated(&'static str, i32),
 
     #[fail(display = "Cannot find record")]
     RecordNotFound,
