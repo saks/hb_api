@@ -1,0 +1,40 @@
+{
+  "addons": [
+
+  ],
+  "buildpacks": [
+
+  ],
+  "env": {
+    "AUTH_TOKEN_SECRET": {
+      "required": true
+    },
+    "DATABASE_URL": {
+      "required": true
+    },
+    "FORCE_HTTPS": {
+      "required": true
+    },
+    "REDIS_PASSWORD": {
+      "required": true
+    },
+    "REDIS_URL": {
+      "required": true
+    },
+    "RUST_BACKTRACE": {
+      "required": true
+    },
+    "RUST_LOG": {
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "name": "hb_api",
+  "scripts": {
+  },
+  "stack": "container"
+}
