@@ -1,11 +1,12 @@
 use crate::db::{schema::auth_user, DbExecutor};
 use crate::errors::Error;
 use actix::{Handler, Message};
+use octo_budget_lib::auth_token::UserId;
 
 pub type TagsResult = Result<Vec<String>, Error>;
 
 pub struct GetUserTags {
-    user_id: i32,
+    user_id: UserId,
 }
 
 impl Message for GetUserTags {
@@ -13,7 +14,7 @@ impl Message for GetUserTags {
 }
 
 impl GetUserTags {
-    pub fn new(user_id: i32) -> Self {
+    pub fn new(user_id: UserId) -> Self {
         GetUserTags { user_id }
     }
 }
@@ -25,10 +26,11 @@ impl Handler<GetUserTags> for DbExecutor {
         use diesel::prelude::*;
 
         let connection = &self.pool.get()?;
+        let user_id: i32 = msg.user_id.into();
 
         auth_user::table
             .select(auth_user::tags)
-            .filter(auth_user::id.eq(msg.user_id))
+            .filter(auth_user::id.eq(user_id))
             .first(connection)
             .map_err(|e| match e {
                 diesel::result::Error::NotFound => Error::UserNotFound(msg.user_id),

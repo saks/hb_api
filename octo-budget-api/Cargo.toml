@@ -6,30 +6,25 @@ version = "0.1.0"
 
 [dependencies]
 actix = "*"
-actix-web = "0.7"
-actix-redis = "*"
-bytes = "*"
+actix-web = { version = "1.0", default_features = false }
+actix-service = "0.4"
+actix-http = "0.2"
+actix-files = "0.1"
 dotenv = "0.13"
 env_logger = "0.6"
 failure = "0.1"
-failure_derive = "0.1"
-futures = "0.1"
+futures = { package = "futures", version = "0.1" }
+futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 lazy_static = "1.1"
-r2d2 = "0.8"
-redis-async = "*"
-serde = "*"
-serde_derive = "*"
-url = "*"
-tokio = "*"
-tokio-async-await = "*"
+serde = { version = "1", features = ["derive"] }
+url = "1"
 log = "0.4"
+r2d2 = "*"
+octo-redis = { path = "../octo-redis" }
 
 [dependencies.bigdecimal]
 version = "0.0.14" # must match version of diesel dependency
 features = ["serde"]
-
-[dependencies.actix-web-async-await]
-git = "https://github.com/saks/actix-web-async-await"
 
 [dependencies.chrono]
 features = ["serde"]
@@ -37,7 +32,7 @@ version = "*"
 
 [dependencies.diesel]
 features = ["numeric", "chrono", "postgres", "r2d2"]
-version = "1.3"
+version = "1.4"
 
 [dependencies.djangohashers]
 features = ["fpbkdf2"]
@@ -46,5 +41,13 @@ version = "1"
 [dependencies.octo-budget-lib]
 path = "../octo-budget-lib"
 
+[dependencies.middlewares]
+path = "../middlewares"
+
 [dependencies.serde_json]
 version = "1.0"
+
+[dev-dependencies]
+actix-http-test = "0.2"
+redis = "*"
+bytes = "0.4"

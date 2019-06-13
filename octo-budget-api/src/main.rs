@@ -1,41 +1,47 @@
-#![feature(await_macro, futures_api, async_await)]
+#![feature(await_macro, async_await)]
 
 #[macro_use]
 extern crate diesel;
 
-use env_logger;
-
-pub mod apps;
-pub mod config;
-pub mod db;
+mod apps;
+mod config;
+mod db;
 mod errors;
 mod redis;
 
 #[cfg(test)]
 mod tests;
 
-use actix_web::{http::Method, middleware::Logger, server, App};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
+use octo_budget_lib::auth_token::ApiJwtTokenAuthConfig;
 
-use crate::apps::{
-    auth_app, budgets_app, frontend, middlewares, records_app, tags_app, users_app, AppState,
-};
-
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     dotenv().expect("Failed to parse .env file");
     env_logger::init();
 
-    server::new(|| {
-        App::with_state(AppState::default())
-            .middleware(middlewares::ForceHttps::default())
-            .middleware(Logger::default())
-            .resource("/", |r| r.method(Method::GET).f(frontend::index))
-            .scope("/public", frontend::scope)
-            .scope("/auth/jwt", auth_app::scope)
-            .scope("/api/records/", records_app::scope)
-            .scope("/api/budgets/", budgets_app::scope)
-            .scope("/api/tags/", tags_app::scope)
-            .scope("/api/user/", users_app::scope)
+    HttpServer::new(move || {
+        App::new()
+            .data(db::start())
+            .data(redis::start())
+            .data(ApiJwtTokenAuthConfig::new(
+                config::AUTH_TOKEN_SECRET.as_bytes(),
+            ))
+            .wrap(middlewares::force_https::ForceHttps::new(
+                config::is_force_https(),
+            ))
+            .wrap(Logger::default())
+            .service(apps::frontend_app::index)
+            .service(
+                web::scope("/public")
+                    .wrap(middlewares::pwa_cache_headers::PwaCacheHeaders)
+                    .service(actix_files::Files::new("/", "./reactapp/build")),
+            )
+            .service(web::scope("/auth/jwt").service(apps::AuthService))
+            .service(web::scope("/api/tags").service(apps::TagsService))
+            .service(web::scope("/api/user").service(apps::users_app::show))
+            .service(web::scope("/api/records").service(apps::RecordsService))
+            .service(web::scope("/api/budgets").service(apps::BudgetsService))
     })
     .bind(format!(
         "{}:{}",
@@ -43,5 +49,7 @@ fn main() {
         config::PORT.as_str()
     ))
     .expect("Cannot bind to IP:PORT")
-    .run();
+    .run()?;
+
+    Ok(())
 }

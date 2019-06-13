@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::naive::NaiveDateTime;
+use diesel::*;
 use diesel::{Connection, PgConnection};
-use std::env;
 
 use crate::db::{
     builders::UserBuilder,
@@ -17,18 +17,9 @@ macro_rules! get_db_message_result {
                 System::current().stop();
                 future::result(Ok(()))
             }));
-        });
+        })
+        .expect("failed to start system");
     }};
-}
-
-fn database_url_from_env(env_var_name: &str) -> String {
-    match env::var(env_var_name) {
-        Ok(val) => {
-            println!(r#"cargo:rustc-cfg=feature="backend_specific_database_url""#);
-            val
-        }
-        _ => env::var("DATABASE_URL").expect("DATABASE_URL must be set in order to run tests"),
-    }
 }
 
 // pub fn connection() -> PgConnection {
@@ -39,20 +30,32 @@ fn database_url_from_env(env_var_name: &str) -> String {
 // }
 
 pub fn connection_without_transaction() -> PgConnection {
-    let database_url = database_url_from_env("DATABASE_URL");
+    let database_url = crate::config::DATABASE_URL.to_string();
     PgConnection::establish(&database_url).unwrap()
 }
+
+// use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 
 pub struct DbSession {
     conn: PgConnection,
     with_transaction: bool,
+    // pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl DbSession {
     pub fn new() -> Self {
+        // let database_url = database_url_from_env("DATABASE_URL");
+        // let manager = ConnectionManager::<PgConnection>::new(database_url.as_str());
+        //
+        // let pool = Pool::builder()
+        //     .max_size(1) // max pool size
+        //     .build(manager)
+        //     .expect("Failed to create database connection pool.");
+
         DbSession {
             conn: connection_without_transaction(),
             with_transaction: false,
+            // pool,
         }
     }
 
@@ -67,9 +70,14 @@ impl DbSession {
         &self.conn
     }
 
+    pub fn count_records(&self) -> i64 {
+        use crate::db::schema::records_record::table as records;
+
+        records.count().first(&self.conn).unwrap()
+    }
+
     pub fn create_budget(&mut self, budget: Budget) {
         use crate::db::schema::budgets_budget::dsl::*;
-        use diesel::*;
 
         insert_into(budgets_budget)
             .values((
@@ -120,7 +128,7 @@ impl DbSession {
             .unwrap();
     }
 
-    pub fn create_records2(&mut self, id_of_the_user: i32, count: usize) -> Vec<Record> {
+    pub fn create_records2(&self, id_of_the_user: i32, count: usize) -> Vec<Record> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::*;
 
@@ -146,6 +154,16 @@ impl DbSession {
         result
     }
 
+    pub fn find_record(&self, record_id: i32) -> Record {
+        use crate::db::schema::records_record::table as records;
+        use diesel::*;
+
+        records
+            .find(record_id)
+            .first(&self.conn)
+            .expect("failed to find record")
+    }
+
     pub fn create_records(&mut self, id_of_the_user: i32, count: u32) {
         use crate::db::schema::records_record::dsl::*;
         use diesel::*;
@@ -166,10 +184,9 @@ impl DbSession {
         }
     }
 
-    pub fn create_user(&mut self, builder: UserBuilder) -> AuthUser {
+    pub fn create_user(&self, builder: UserBuilder) -> AuthUser {
         use crate::db::schema::auth_user::dsl::*;
         use diesel::*;
-        use djangohashers;
 
         let user = builder.finish();
         let new_password = djangohashers::make_password(&user.password);

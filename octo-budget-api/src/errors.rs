@@ -1,6 +1,7 @@
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use failure_derive::Fail;
+use failure::Fail;
+use octo_budget_lib::auth_token::UserId;
 use serde::{Serialize, Serializer};
 
 #[derive(Fail, Debug, Clone, Copy, PartialEq)]
@@ -31,16 +32,10 @@ impl Serialize for ValidationError {
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "Cannot read sorted tags from redis {}", _0)]
-    Redis(#[cause] actix_redis::Error),
-
-    #[fail(display = "Redis command failed {:?}", _0)]
-    RedisCommandFailed(actix_redis::RespValue),
-
-    #[fail(display = "Bad response from redis `{}'", _0)]
-    BadRedisResponse(String),
+    Redis(octo_redis::Error),
 
     #[fail(display = "Cannot find user by id: `{}'", _0)]
-    UserNotFound(i32),
+    UserNotFound(UserId),
 
     #[fail(display = "Cannot update {} with id: `{}'", _0, _1)]
     RecordNotUpdated(&'static str, i32),
@@ -59,6 +54,15 @@ pub enum Error {
 
     #[fail(display = "Cannot get database connection: {}", _0)]
     Connection(#[cause] r2d2::Error),
+
+    #[fail(display = "Cannot get database connection: {}", _0)]
+    Connection2(#[cause] diesel::r2d2::Error),
+}
+
+impl From<octo_redis::Error> for Error {
+    fn from(error: octo_redis::Error) -> Self {
+        Error::Redis(error)
+    }
 }
 
 impl From<failure::Error> for Error {
@@ -76,6 +80,12 @@ impl From<actix::MailboxError> for Error {
 impl From<r2d2::Error> for Error {
     fn from(error: r2d2::Error) -> Self {
         Error::Connection(error)
+    }
+}
+
+impl From<diesel::r2d2::Error> for Error {
+    fn from(error: diesel::r2d2::Error) -> Self {
+        Error::Connection2(error)
     }
 }
 

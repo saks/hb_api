@@ -2,14 +2,15 @@ use std::result;
 
 use actix::{Handler, Message};
 use bigdecimal::BigDecimal;
-use chrono::{Utc, NaiveDateTime};
+use chrono::{NaiveDateTime, Utc};
 use failure::Error;
-use octo_budget_lib::auth_token::AuthToken;
+use octo_budget_lib::auth_token::UserId;
 
 use crate::apps::forms::record::FormData;
+use crate::db::models::Record;
 use crate::db::DbExecutor;
 
-pub type CreateRecordResult = result::Result<(), Error>;
+pub type CreateRecordResult = result::Result<i32, Error>;
 
 pub struct CreateRecord {
     amount: BigDecimal,
@@ -21,15 +22,16 @@ pub struct CreateRecord {
 }
 
 impl CreateRecord {
-    pub fn new(data: &FormData, token: &AuthToken) -> Self {
+    pub fn new(data: &FormData, user_id: UserId) -> Self {
         let created_at = Utc::now().naive_local();
+        let user_id: i32 = user_id.into();
 
         Self {
             amount: data.amount.clone(),
             amount_currency: data.amount_currency.clone(),
             tags: data.tags.clone(),
             transaction_type: data.transaction_type.clone(),
-            user_id: token.user_id,
+            user_id,
             created_at,
         }
     }
@@ -49,7 +51,7 @@ impl Handler<CreateRecord> for DbExecutor {
 
         let connection = &self.pool.get()?;
 
-        insert_into(records_record)
+        let record: Record = insert_into(records_record)
             .values((
                 amount.eq(msg.amount),
                 amount_currency.eq(msg.amount_currency),
@@ -58,9 +60,9 @@ impl Handler<CreateRecord> for DbExecutor {
                 transaction_type.eq(msg.transaction_type),
                 user_id.eq(msg.user_id),
             ))
-            .execute(connection)?;
+            .get_result(connection)?;
 
-        Ok(())
+        Ok(record.id)
     }
 }
 

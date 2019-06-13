@@ -6,7 +6,7 @@ use actix_web::{
 use futures::future::{ok, Future, FutureResult};
 use futures::Poll;
 
-const MAX_AGE: &str = "max-age=60";
+const MAX_AGE: &str = "max-age=31536000";
 const NO_CACHE: &str = "no-cache";
 
 // There are two step in middleware processing.
@@ -72,7 +72,7 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = S::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.service.poll_ready()
@@ -86,5 +86,70 @@ where
                 .insert(header::CACHE_CONTROL, header_value);
             Ok(res)
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test::{call_service, init_service, TestRequest};
+    use actix_web::{web, App, HttpResponse};
+
+    macro_rules! assert_cache_header {
+        ( $expected:expr, $req:expr ) => {{
+            let header = $req
+                .headers()
+                .get("cache-control")
+                .unwrap()
+                .to_str()
+                .unwrap();
+
+            assert_eq!($expected, header);
+        }};
+    }
+
+    #[test]
+    fn test_wrap() {
+        let mut app = init_service(
+            App::new()
+                .wrap(PwaCacheHeaders)
+                .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
+        );
+
+        let req = TestRequest::with_uri("/v1/something/").to_request();
+        let res = call_service(&mut app, req);
+
+        assert!(res.status().is_success());
+        assert_cache_header!(MAX_AGE, res);
+    }
+
+    #[test]
+    fn should_not_cache_manifest() {
+        let mut app = init_service(
+            App::new()
+                .wrap(PwaCacheHeaders)
+                .service(web::resource("/manifest.json").to(|| HttpResponse::Ok())),
+        );
+
+        let req = TestRequest::with_uri("/manifest.json").to_request();
+        let res = call_service(&mut app, req);
+
+        assert!(res.status().is_success());
+        assert_cache_header!("no-cache", res);
+    }
+
+    #[test]
+    fn should_not_cache_service_worker() {
+        let mut app = init_service(
+            App::new()
+                .wrap(PwaCacheHeaders)
+                .service(web::resource("/service-worker.js").to(|| HttpResponse::Ok())),
+        );
+
+        let req = TestRequest::with_uri("/service-worker.js").to_request();
+        let res = call_service(&mut app, req);
+
+        assert!(res.status().is_success());
+        assert_cache_header!("no-cache", res);
     }
 }

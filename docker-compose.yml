@@ -12,9 +12,9 @@ services:
       POSTGRES_DB: "test"
     ports:
       - 5432
+
   redis:
     image: "redis:alpine"
-    command: "sh -c 'redis-server --requirepass \"$REDIS_PASSWORD\"'"
     volumes:
       - "redis_data:/data"
     ports:

@@ -1,79 +1,51 @@
-use actix_web::{HttpResponse, Query, Responder, Result};
-use actix_web_async_await::{await, compat};
+use actix_http::Error;
+use actix_web::{web::Query, HttpResponse, Result};
+use futures::Future;
+use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
+use octo_budget_lib::auth_token::UserId;
 
-use crate::apps::index_params::Params;
-use crate::apps::{middlewares::VerifyAuthToken, Request, Scope, State};
-use crate::db::messages::GetBudgets;
+use super::index_params::Params;
+use crate::db::{messages::GetBudgets, Pg};
 
-async fn index((params, state, req): (Query<Params>, State, Request)) -> Result<impl Responder> {
-    let token = crate::auth_token_from_async_request!(req);
+async fn index(params: Query<Params>, pg: Pg, user_id: UserId) -> Result<HttpResponse> {
     let params = params.into_inner().validate()?;
 
     let message = GetBudgets {
         page: params.page,
         per_page: params.per_page,
-        user_id: token.user_id,
+        user_id: user_id.into(),
     };
 
-    let result = await!(state.db.send(message))??;
+    let budgets = Box::new(pg.send(message)).compat().await??;
 
-    Ok(HttpResponse::Ok().json(result))
+    Ok(HttpResponse::Ok().json(budgets))
 }
 
-pub fn scope(scope: Scope) -> Scope {
-    scope
-        .middleware(VerifyAuthToken::default())
-        .resource("/budget-detail/", |r| r.get().with(compat(index)))
-}
-
-#[cfg(test)]
-mod tests {
+pub mod service {
     use super::*;
-    use crate::{assert_response_body_eq, db::builders::UserBuilder, tests};
-    use actix_web::{client::ClientRequest, http::StatusCode, test::TestServer};
+    use actix_web::dev::HttpServiceFactory;
 
-    fn setup_test_server() -> TestServer {
-        use crate::apps::{middlewares::VerifyAuthToken, AppState};
+    pub struct Service;
 
-        TestServer::build_with_state(|| AppState::new()).start(|app| {
-            app.middleware(VerifyAuthToken::default())
-                .resource("/budget-detail/", |r| r.get().with(compat(index)));
-        })
+    fn __index(
+        params: Query<Params>,
+        pg: Pg,
+        user_id: UserId,
+    ) -> impl Future<Item = HttpResponse, Error = Error> {
+        index(params, pg, user_id).boxed().compat()
     }
 
-    fn setup() -> TestServer {
-        tests::setup_env();
-        setup_test_server()
+    impl HttpServiceFactory for Service {
+        fn register(self, config: &mut actix_web::dev::AppService) {
+            use actix_web::{guard::Get, Resource};
+
+            HttpServiceFactory::register(
+                Resource::new("/budget-detail/")
+                    .guard(Get())
+                    .to_async(__index),
+                config,
+            );
+        }
     }
 
-    #[test]
-    fn test_auth_required_for_index() {
-        let mut srv = setup();
-
-        let request = ClientRequest::build()
-            .uri(&srv.url("/budget-detail/"))
-            .finish()
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    }
-
-    #[test]
-    fn empty_list() {
-        let mut session = tests::DbSession::new();
-        let mut srv = setup();
-
-        let user = session.create_user(UserBuilder::default());
-        let request = tests::authenticated_request(&user, srv.url("/budget-detail/"));
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::OK, response.status(), "wrong status code");
-        assert_response_body_eq!(
-            srv,
-            response,
-            r#"{"total":0,"results":[],"next":false,"previous":false}"#
-        );
-    }
 }

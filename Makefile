@@ -23,9 +23,11 @@ release: build prepare_release
 prod_logs:
 	snap run heroku logs -t -a octo-budget
 
-test:
-	@./run.sh diesel database setup
+test: test_db_prepare
 	@./run.sh cargo test
+
+test_db_prepare:
+	@./run.sh diesel database setup
 
 server:
 	@./run.sh cargo run --bin octo-budget-api

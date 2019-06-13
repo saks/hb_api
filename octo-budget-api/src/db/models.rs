@@ -1,7 +1,7 @@
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{NaiveDate, NaiveDateTime};
-use serde::ser::{Serialize, SerializeStruct, Serializer};
-use serde_derive::Serialize;
+use serde::ser::{SerializeStruct, Serializer};
+use serde::Serialize;
 
 use crate::db::schema::{auth_user, budgets_budget, records_record};
 

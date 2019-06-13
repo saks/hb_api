@@ -1,17 +1,11 @@
 [package]
-name = "octo-budget-lib"
+name = "middlewares"
 version = "0.1.0"
 authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-serde = "*"
-serde_derive = "*"
-serde_json = "*"
-jsonwebtoken = "6"
-time = "0.1"
-failure = "0.1"
 actix-web = "1.0"
-actix-http = "0.2"
+actix-service = "0.4"
 futures = "0.1"
 log = "0.4"
