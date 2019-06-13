@@ -10,17 +10,12 @@ actix-web = { version = "1.0", default_features = false }
 actix-service = "0.4"
 actix-http = "0.2"
 actix-files = "0.1"
-actix-redis = { git = "https://github.com/actix/actix-redis", default_features = false }
-actix-rt = "*"
-bytes = "0.4"
 dotenv = "0.13"
 env_logger = "0.6"
 failure = "0.1"
-failure_derive = "0.1"
 futures = { package = "futures", version = "0.1" }
 futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 lazy_static = "1.1"
-redis-async = "0.4.5"
 serde = { version = "1", features = ["derive"] }
 url = "1"
 log = "0.4"
@@ -30,9 +25,6 @@ octo-redis = { path = "../octo-redis" }
 [dependencies.bigdecimal]
 version = "0.0.14" # must match version of diesel dependency
 features = ["serde"]
-
-[dependencies.actix_web_async_compat]
-git = "https://github.com/saks/actix_web_async_compat"
 
 [dependencies.chrono]
 features = ["serde"]
@@ -56,6 +48,6 @@ path = "../middlewares"
 version = "1.0"
 
 [dev-dependencies]
-awc = "0.2"
 actix-http-test = "0.2"
 redis = "*"
+bytes = "0.4"

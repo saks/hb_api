@@ -1,6 +1,6 @@
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use failure_derive::Fail;
+use failure::Fail;
 use octo_budget_lib::auth_token::UserId;
 use serde::{Serialize, Serializer};
 

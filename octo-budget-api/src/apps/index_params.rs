@@ -2,7 +2,7 @@ const DEFAULT_PER_PAGE: i64 = 10;
 const DEFAULT_PAGE: i64 = 1;
 
 use actix_web::{error::ResponseError, HttpResponse};
-use failure_derive::Fail;
+use failure::Fail;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Clone, Default)]

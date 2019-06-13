@@ -1,11 +1,14 @@
 use super::response_data::Data as ResponseData;
 use super::*;
-use crate::db::builders::UserBuilder;
-use crate::test_server;
-use crate::tests::{setup_env, DbSession};
+use crate::{
+    db::builders::UserBuilder,
+    test_server,
+    tests::{setup_env, DbSession},
+};
 use actix_http_test::TestServerRuntime;
 use actix_web::http::{header, StatusCode};
 use serde_json::{json, Value};
+use service::Service;
 
 fn setup() -> TestServerRuntime {
     setup_env();

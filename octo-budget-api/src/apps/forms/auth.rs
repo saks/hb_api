@@ -1,5 +1,5 @@
 use actix_web::{error::ResponseError, http::StatusCode, HttpResponse};
-use failure_derive::Fail;
+use failure::Fail;
 use serde::{Deserialize, Serialize};
 
 use crate::db::models::AuthUser;

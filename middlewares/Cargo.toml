@@ -7,7 +7,5 @@ edition = "2018"
 [dependencies]
 actix-web = "1.0"
 actix-service = "0.4"
-actix-files = "0.1"
 futures = "0.1"
 log = "0.4"
-octo-budget-lib = { path = "../octo-budget-lib" }

@@ -1,6 +1,5 @@
 use actix_http::Error;
 use actix_web::{
-    dev::HttpServiceFactory,
     web::{Json, Path, Query},
     HttpResponse, Result,
 };
@@ -69,68 +68,73 @@ async fn update(
     Ok(HttpResponse::Ok().json(""))
 }
 
-fn __index(
-    params: Query<Params>,
-    pg: Pg,
-    user_id: UserId,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    index(params, pg, user_id).boxed().compat()
-}
+pub mod service {
+    use super::*;
+    use actix_web::dev::HttpServiceFactory;
 
-fn __create(
-    form: Json<Form>,
-    pg: Pg,
-    redis: Redis,
-    user_id: UserId,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    create(form, pg, redis, user_id).boxed().compat()
-}
-
-fn __update(
-    params: Path<i32>,
-    form: Json<Form>,
-    db: Pg,
-    redis: Redis,
-    user_id: UserId,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    update(params, form, db, redis, user_id).boxed().compat()
-}
-
-pub struct Service;
-
-impl HttpServiceFactory for Service {
-    fn register(self, config: &mut actix_web::dev::AppService) {
-        use actix_web::{
-            guard::{Get, Post, Put},
-            Resource,
-        };
-
-        HttpServiceFactory::register(
-            Resource::new("/record-detail/")
-                .guard(Get())
-                .to_async(__index),
-            config,
-        );
-        HttpServiceFactory::register(
-            Resource::new("/record-detail/")
-                .guard(Post())
-                .to_async(__create),
-            config,
-        );
-        HttpServiceFactory::register(
-            Resource::new("/record-detail/{id}/")
-                .guard(Put())
-                .to_async(__update),
-            config,
-        );
+    fn __index(
+        params: Query<Params>,
+        pg: Pg,
+        user_id: UserId,
+    ) -> impl Future<Item = HttpResponse, Error = Error> {
+        index(params, pg, user_id).boxed().compat()
     }
+
+    fn __create(
+        form: Json<Form>,
+        pg: Pg,
+        redis: Redis,
+        user_id: UserId,
+    ) -> impl Future<Item = HttpResponse, Error = Error> {
+        create(form, pg, redis, user_id).boxed().compat()
+    }
+
+    fn __update(
+        params: Path<i32>,
+        form: Json<Form>,
+        db: Pg,
+        redis: Redis,
+        user_id: UserId,
+    ) -> impl Future<Item = HttpResponse, Error = Error> {
+        update(params, form, db, redis, user_id).boxed().compat()
+    }
+
+    pub struct Service;
+
+    impl HttpServiceFactory for Service {
+        fn register(self, config: &mut actix_web::dev::AppService) {
+            use actix_web::{
+                guard::{Get, Post, Put},
+                Resource,
+            };
+
+            HttpServiceFactory::register(
+                Resource::new("/record-detail/")
+                    .guard(Get())
+                    .to_async(__index),
+                config,
+            );
+            HttpServiceFactory::register(
+                Resource::new("/record-detail/")
+                    .guard(Post())
+                    .to_async(__create),
+                config,
+            );
+            HttpServiceFactory::register(
+                Resource::new("/record-detail/{id}/")
+                    .guard(Put())
+                    .to_async(__update),
+                config,
+            );
+        }
+    }
+
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Service;
-    use crate::tests::RequestJwtAuthExt as _;
-    use crate::{db::builders::UserBuilder, test_server, tests};
+    use super::service::Service;
+    use crate::{db::builders::UserBuilder, test_server, tests, tests::RequestJwtAuthExt as _};
     use actix_http::http::Method;
     use actix_http_test::TestServerRuntime;
     use actix_web::http::StatusCode;
