@@ -1,0 +1,24 @@
+language: rust
+dist: xenial
+rust:
+  - nightly-2019-06-11
+cache: cargo
+addons:
+  postgresql: "10"
+  apt:
+    packages:
+    - postgresql-10
+    - postgresql-client-10
+env:
+  global:
+    - REDIS_URL=redis://127.0.0.1/
+    - RUST_TEST_THREADS=1
+    - DATABASE_URL=postgres://postgres@127.0.0.1:5432/test_db
+services:
+  - redis-server
+  - postgresql
+before_script:
+  - cargo install diesel_cli --no-default-features --features postgres; true
+  - diesel database setup
+script:
+  - cargo test --verbose --all
