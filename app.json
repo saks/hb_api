@@ -30,6 +30,10 @@
         },
         "RUST_LOG": {
             "required": false
+        },
+        "LISTEN_IP": {
+            "required": true,
+            "value": "0.0.0.0"
         }
     },
     "formation": {
