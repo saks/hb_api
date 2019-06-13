@@ -1,40 +1,47 @@
 {
-  "addons": [
-
-  ],
-  "buildpacks": [
-
-  ],
-  "env": {
-    "AUTH_TOKEN_SECRET": {
-      "required": true
+    "addons": [
+        {
+            "plan": "heroku-postgresql:hobby-dev",
+            "as": "DATABASE"
+        },
+        {
+            "plan": "heroku-redis:hobby-dev",
+            "as": "REDIS"
+        }
+    ],
+    "buildpacks": [{ "url": "https://github.com/emk/heroku-buildpack-rust" }],
+    "env": {
+        "AUTH_TOKEN_SECRET": {
+            "required": true,
+            "generator": "secret"
+        },
+        "DATABASE_URL": {
+            "required": true
+        },
+        "FORCE_HTTPS": {
+            "required": true,
+            "value": "true"
+        },
+        "REDIS_URL": {
+            "required": true
+        },
+        "RUST_BACKTRACE": {
+            "required": false
+        },
+        "RUST_LOG": {
+            "required": false
+        },
+        "LISTEN_IP": {
+            "required": true,
+            "value": "0.0.0.0"
+        }
     },
-    "DATABASE_URL": {
-      "required": true
+    "formation": {
+        "web": {
+            "quantity": 1
+        }
     },
-    "FORCE_HTTPS": {
-      "required": true
-    },
-    "REDIS_PASSWORD": {
-      "required": true
-    },
-    "REDIS_URL": {
-      "required": true
-    },
-    "RUST_BACKTRACE": {
-      "required": true
-    },
-    "RUST_LOG": {
-      "required": true
-    }
-  },
-  "formation": {
-    "web": {
-      "quantity": 1
-    }
-  },
-  "name": "hb_api",
-  "scripts": {
-  },
-  "stack": "container"
+    "name": "hb_api",
+    "scripts": {},
+    "stack": "heroku-18"
 }
