@@ -1,177 +1,202 @@
-use actix_web::{HttpResponse, Json, Path, Query, Responder, Result as WebResult};
-use actix_web_async_await::{await, compat};
+use actix_http::Error;
+use actix_web::{
+    dev::HttpServiceFactory,
+    web::{Json, Path, Query},
+    HttpResponse, Result,
+};
+use futures::Future;
+use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
+use octo_budget_lib::auth_token::UserId;
 
-use crate::apps::{forms::record::Form, middlewares::VerifyAuthToken, Request, Scope, State};
-use crate::redis::helpers::{decrement_tags, increment_tags};
-
+use super::forms::record::Form;
 use super::index_params::Params;
-use crate::db::messages::{CreateRecord, FindRecord, GetRecords, UpdateRecord};
+use crate::db::{
+    messages::{CreateRecord, FindRecord, GetRecords, UpdateRecord},
+    Pg,
+};
+use crate::redis::{
+    helpers::{decrement_tags, increment_tags},
+    Redis,
+};
 
-async fn index((params, state, req): (Query<Params>, State, Request)) -> WebResult<impl Responder> {
-    let token = crate::auth_token_from_async_request!(req);
+async fn index(params: Query<Params>, pg: Pg, user_id: UserId) -> Result<HttpResponse> {
     let params = params.into_inner().validate()?;
 
     let message = GetRecords {
         page: params.page,
         per_page: params.per_page,
-        user_id: token.user_id,
+        user_id: user_id.into(),
     };
 
-    let result = await!(state.db.send(message))?;
+    let records = Box::new(pg.send(message)).compat().await??;
 
-    Ok(HttpResponse::Ok().json(result?))
+    Ok(HttpResponse::Ok().json(records))
 }
 
-async fn create((form, state, req): (Json<Form>, State, Request)) -> WebResult<impl Responder> {
-    let token = crate::auth_token_from_async_request!(req);
+async fn create(form: Json<Form>, pg: Pg, redis: Redis, user_id: UserId) -> Result<HttpResponse> {
+    use serde_json::json;
+
     let data = form.into_inner().validate()?;
 
-    await!(state.db.send(CreateRecord::new(&data, &token)))??;
-    await!(increment_tags(token.user_id, data.tags, state.redis()))?;
+    let id = Box::new(pg.send(CreateRecord::new(&data, user_id)))
+        .compat()
+        .await??;
+    increment_tags(user_id, data.tags, redis).await?;
 
-    Ok(HttpResponse::Ok().json(""))
+    Ok(HttpResponse::Ok().json(json!({ "id": id })))
 }
 
 async fn update(
-    (params, form, state, req): (Path<i32>, Json<Form>, State, Request),
-) -> WebResult<impl Responder> {
-    let token = crate::auth_token_from_async_request!(req);
+    params: Path<i32>,
+    form: Json<Form>,
+    db: Pg,
+    redis: Redis,
+    user_id: UserId,
+) -> Result<HttpResponse> {
+    let record_id = params.into_inner();
     let data = form.into_inner().validate()?;
-    let id = params.into_inner();
 
-    let record = await!(state.db.send(FindRecord::new(id, token.user_id)))??;
-    await!(state.db.send(UpdateRecord::new(record.id, &data, &token)))??;
+    let record = Box::new(db.send(FindRecord::new(record_id, user_id)))
+        .compat()
+        .await??;
+    Box::new(db.send(UpdateRecord::new(record.id, &data, user_id)))
+        .compat()
+        .await??;
 
-    await!(decrement_tags(token.user_id, record.tags, state.redis()))?;
-    await!(increment_tags(token.user_id, data.tags, state.redis()))?;
+    decrement_tags(user_id, record.tags, redis.clone()).await?;
+    increment_tags(user_id, data.tags, redis).await?;
 
     Ok(HttpResponse::Ok().json(""))
 }
 
-pub fn scope(scope: Scope) -> Scope {
-    scope
-        .middleware(VerifyAuthToken::default())
-        .resource("/record-detail/", |r| {
-            r.get().with(compat(index));
-            r.post().with(compat(create));
-        })
-        .resource("record-detail/{id}/", |r| {
-            r.put().with(compat(update));
-        })
+fn __index(
+    params: Query<Params>,
+    pg: Pg,
+    user_id: UserId,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    index(params, pg, user_id).boxed().compat()
+}
+
+fn __create(
+    form: Json<Form>,
+    pg: Pg,
+    redis: Redis,
+    user_id: UserId,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    create(form, pg, redis, user_id).boxed().compat()
+}
+
+fn __update(
+    params: Path<i32>,
+    form: Json<Form>,
+    db: Pg,
+    redis: Redis,
+    user_id: UserId,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    update(params, form, db, redis, user_id).boxed().compat()
+}
+
+pub struct Service;
+
+impl HttpServiceFactory for Service {
+    fn register(self, config: &mut actix_web::dev::AppService) {
+        use actix_web::{
+            guard::{Get, Post, Put},
+            Resource,
+        };
+
+        HttpServiceFactory::register(
+            Resource::new("/record-detail/")
+                .guard(Get())
+                .to_async(__index),
+            config,
+        );
+        HttpServiceFactory::register(
+            Resource::new("/record-detail/")
+                .guard(Post())
+                .to_async(__create),
+            config,
+        );
+        HttpServiceFactory::register(
+            Resource::new("/record-detail/{id}/")
+                .guard(Put())
+                .to_async(__update),
+            config,
+        );
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{assert_response_body_eq, db::builders::UserBuilder, tests};
-    use actix_web::{
-        client::ClientRequest,
-        http::{Method, StatusCode},
-        test::TestServer,
-    };
+    use super::Service;
+    use crate::tests::RequestJwtAuthExt as _;
+    use crate::{db::builders::UserBuilder, test_server, tests};
+    use actix_http::http::Method;
+    use actix_http_test::TestServerRuntime;
+    use actix_web::http::StatusCode;
+    use bigdecimal::BigDecimal;
+    use serde_json::{json, Value};
 
-    fn setup() -> TestServer {
+    fn setup() -> TestServerRuntime {
         tests::setup_env();
-        setup_test_server()
-    }
-
-    fn setup_test_server() -> TestServer {
-        use crate::apps::{middlewares::VerifyAuthToken, AppState};
-
-        TestServer::build_with_state(|| AppState::new()).start(|app| {
-            app.middleware(VerifyAuthToken::default())
-                .resource("/record-detail/", |r| {
-                    r.get().with(compat(index));
-                    r.post().with(compat(create));
-                })
-                .resource("/record-detail/{id}/", |r| {
-                    r.put().with(compat(update));
-                });
-        })
+        test_server!(Service)
     }
 
     #[test]
-    fn auth_required_for_records_index() {
+    fn index_return_empty_list() {
+        let session = tests::DbSession::new();
         let mut srv = setup();
 
-        let request = ClientRequest::build()
-            .uri(&srv.url("/record-detail/"))
-            .finish()
-            .unwrap();
+        let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
 
-        let response = srv.execute(request.send()).unwrap();
+        let request = srv.get("/record-detail/").jwt_auth(user.id).send();
 
-        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    }
+        let mut response = srv.block_on(request).expect("failed to send request");
+        let response_body = srv
+            .block_on(response.json::<Value>())
+            .expect("failed to parse response");
 
-    #[test]
-    fn auth_required_for_records_create() {
-        let mut srv = setup();
+        assert_eq!(StatusCode::OK, response.status(), "wrong status code");
 
-        let request = ClientRequest::build()
-            .uri(&srv.url("/record-detail/"))
-            .method(Method::POST)
-            .finish()
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    }
-
-    #[test]
-    fn auth_required_for_records_update() {
-        let mut srv = setup();
-
-        let request = ClientRequest::build()
-            .uri(&srv.url("/record-detail/123"))
-            .method(Method::PUT)
-            .finish()
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    }
-
-    #[test]
-    fn wrong_json_schema_error_for_create() {
-        let mut session = tests::DbSession::new();
-        let mut srv = setup();
-
-        let user = session.create_user(UserBuilder::default());
-        let mut request = tests::authenticated_request(&user, srv.url("/record-detail/"));
-        request.set_body(r#"{}"#);
-        request.set_method(Method::POST);
-
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::BAD_REQUEST, response.status());
-        assert_response_body_eq!(srv, response, r#""#);
+        assert_eq!(
+            json!({"total": 0, "results": [], "next": false, "previous": false}),
+            response_body
+        );
     }
 
     #[test]
     fn create_happy_path() {
-        let mut session = tests::DbSession::new();
+        let session = tests::DbSession::new();
         let mut srv = setup();
 
         let user = session.create_user(UserBuilder::default());
-        let mut request = tests::authenticated_request(&user, srv.url("/record-detail/"));
-        request.set_body(
-            r###"{
-            "user":"",
-            "amount":{"amount":123,"currency":{"code":"CAD","name":"Canadian Dollar"}},
-            "transaction_type":"EXP",
-            "tags":["foo"],
-            "created_at":0
-        }"###,
-        );
-        request.set_method(Method::POST);
 
-        let response = srv.execute(request.send()).unwrap();
+        let payload = json!({
+            "amount": {"amount": 999.12, "currency": { "code": "CAD", "name": "Canadian Dollar" }},
+            "transaction_type": "EXP",
+            "tags": ["foo"],
+        });
 
-        assert_eq!(StatusCode::OK, response.status());
-        assert_response_body_eq!(srv, response, "\"\"");
+        let request = srv
+            .post("/record-detail/")
+            .jwt_auth(user.id)
+            .send_json(&payload);
+
+        let mut response = srv.block_on(request).expect("failed to send request");
+
+        assert_eq!(StatusCode::OK, response.status(), "wrong status code");
+
+        let response_body = srv
+            .block_on(response.json::<Value>())
+            .expect("failed to parse response");
+
+        // make sure that record was created properly
+        let new_record_id = response_body.get("id").unwrap().as_i64().unwrap() as i32;
+        let updated_record = session.find_record(new_record_id);
+
+        assert_eq!(BigDecimal::from(999.12), updated_record.amount);
+        assert_eq!("EXP", updated_record.transaction_type);
+        assert_eq!(vec!["foo"], updated_record.tags);
     }
 
     #[test]
@@ -182,98 +207,73 @@ mod tests {
         let user = session.create_user(UserBuilder::default());
         let record = session.create_record2(user.id);
 
-        let url = srv.url(format!("/record-detail/{}/", record.id).as_str());
-        let mut request = tests::authenticated_request(&user, url);
-        request.set_body(
-            r###"{
-            "user":"",
-            "amount":{"amount":123,"currency":{"code":"CAD","name":"Canadian Dollar"}},
-            "transaction_type":"EXP",
-            "tags":["foo"],
-            "created_at":0
-        }"###,
-        );
-        request.set_method(Method::PUT);
+        let payload = json!({
+            "amount": {"amount": 999, "currency": { "code": "CAD", "name": "Canadian Dollar" }},
+            "transaction_type": "INC",
+            "tags": ["foo"],
+        });
 
-        let response = srv.execute(request.send()).unwrap();
+        let url = srv.url(format!("/record-detail/{}/", record.id).as_ref());
+        let request = srv
+            .request(Method::PUT, url)
+            .jwt_auth(user.id)
+            .send_json(&payload);
 
-        assert_eq!(StatusCode::OK, response.status());
-        assert_response_body_eq!(srv, response, "\"\"");
-    }
-
-    #[test]
-    fn validation_error_for_update() {
-        let mut session = tests::DbSession::new();
-        let mut srv = setup();
-
-        let user = session.create_user(UserBuilder::default());
-        let record = session.create_record2(user.id);
-
-        let url = srv.url(format!("/record-detail/{}/", record.id).as_str());
-        let mut request = tests::authenticated_request(&user, url);
-        request.set_body(
-            r###"{
-            "user":"",
-            "amount":{"amount":123,"currency":{"code":"USD","name":"Canadian Dollar"}},
-            "transaction_type":"INC",
-            "tags":["foo"],
-            "created_at":0
-        }"###,
-        );
-        request.set_method(Method::PUT);
-
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::BAD_REQUEST, response.status());
-        assert_response_body_eq!(
-            srv,
-            response,
-            "{\"currency_code\":[\"\\\"USD\\\" is not a valid choice.\"]}"
-        );
-    }
-
-    #[test]
-    fn valiadtion_errors_for_create() {
-        let mut session = tests::DbSession::new();
-        let mut srv = setup();
-
-        let user = session.create_user(UserBuilder::default());
-        let mut request = tests::authenticated_request(&user, srv.url("/record-detail/"));
-        request.set_body(
-            r###"{
-            "user":"",
-            "amount":{"amount":123,"currency":{"code":"USD","name":"Canadian Dollar"}},
-            "transaction_type":"INC",
-            "tags":["foo"],
-            "created_at":0
-        }"###,
-        );
-        request.set_method(Method::POST);
-
-        let response = srv.execute(request.send()).unwrap();
-
-        assert_eq!(StatusCode::BAD_REQUEST, response.status());
-        assert_response_body_eq!(
-            srv,
-            response,
-            "{\"currency_code\":[\"\\\"USD\\\" is not a valid choice.\"]}"
-        );
-    }
-
-    #[test]
-    fn index_return_empty_list() {
-        let mut session = tests::DbSession::new();
-        let mut srv = setup();
-
-        let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
-        let request = tests::authenticated_request(&user, srv.url("/record-detail/"));
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = srv.block_on(request).expect("failed to send request");
 
         assert_eq!(StatusCode::OK, response.status(), "wrong status code");
-        assert_response_body_eq!(
-            srv,
-            response,
-            r#"{"total":0,"results":[],"next":false,"previous":false}"#
+
+        let response_body = srv
+            .block_on(response.json::<Value>())
+            .expect("failed to parse response");
+
+        assert_eq!(json!(""), response_body);
+
+        // make sure that record was updated
+        let updated_record = session.find_record(record.id);
+
+        assert_eq!(BigDecimal::from(999), updated_record.amount);
+        assert_eq!("INC", updated_record.transaction_type);
+        assert_eq!(vec!["foo"], updated_record.tags);
+    }
+
+    #[test]
+    fn index_requires_auth() {
+        let mut srv = setup();
+        let request = srv.get("/record-detail/").send();
+        let response = srv.block_on(request).expect("failed to send request");
+
+        assert_eq!(
+            StatusCode::UNAUTHORIZED,
+            response.status(),
+            "wrong status code"
+        );
+    }
+
+    #[test]
+    fn update_requires_auth() {
+        let mut srv = setup();
+        let url = srv.url("/record-detail/123/");
+        let request = srv.request(Method::PUT, url).send_json(&json!({}));
+        let response = srv.block_on(request).expect("failed to send request");
+
+        assert_eq!(
+            StatusCode::UNAUTHORIZED,
+            response.status(),
+            "wrong status code"
+        );
+    }
+
+    #[test]
+    fn create_requires_auth() {
+        let mut srv = setup();
+        let request = srv.post("/record-detail/").send_json(&json!({}));
+        let response = srv.block_on(request).expect("failed to send request");
+
+        assert_eq!(
+            StatusCode::UNAUTHORIZED,
+            response.status(),
+            "wrong status code"
         );
     }
 }

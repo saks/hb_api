@@ -1,5 +1,4 @@
 use serde::Serialize;
-use serde_derive::Serialize;
 
 #[derive(Serialize, Debug)]
 pub struct Data<M: Serialize> {

@@ -6,7 +6,7 @@ use crate::db::models::AuthUser as UserModel;
 
 pub fn generate_token(user: &UserModel) -> Data {
     let secret = config::AUTH_TOKEN_SECRET.as_bytes();
-    let token = AuthToken::new(user.id, secret).to_string();
+    let token = AuthToken::new(user.id).encrypt(secret);
     Data::from_token(token)
 }
 
@@ -14,19 +14,26 @@ pub fn generate_token(user: &UserModel) -> Data {
 mod tests {
     use super::*;
 
+    fn setup() {
+        dotenv::dotenv().expect("Failed to parse .env file");
+    }
+
     #[test]
     fn test_generate_token() {
+        setup();
+
         let user = make_user_with_pass("foo");
         let data = generate_token(&make_user_with_pass("foo"));
-        let token = AuthToken::new(user.id, config::AUTH_TOKEN_SECRET.as_bytes()).to_string();
+        let token = AuthToken::new(user.id).encrypt(config::AUTH_TOKEN_SECRET.as_bytes());
         let expected_data = Data::from_token(token);
 
         assert_eq!(expected_data, data);
     }
 
     fn make_user_with_pass(password: &'static str) -> UserModel {
+        setup();
+
         use chrono::naive::NaiveDateTime;
-        use djangohashers;
 
         UserModel {
             id: 123,

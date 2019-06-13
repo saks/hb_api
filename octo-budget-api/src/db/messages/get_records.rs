@@ -3,7 +3,7 @@ use actix::{Handler, Message};
 use failure::Error;
 use std::result;
 
-use crate::apps2::index_response::Data;
+use crate::apps::index_response::Data;
 
 pub type ResponseData = Data<RecordModel>;
 pub type GetRecordsResult = result::Result<ResponseData, Error>;
@@ -56,9 +56,8 @@ impl Handler<GetRecords> for DbExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::builders::UserBuilder;
-    use crate::{get_db_message_result, tests::DbSession};
-    use actix::{Arbiter, System};
+    use crate::{db::builders::UserBuilder, tests::DbSession};
+    use actix::System;
     use futures::{future, Future};
 
     #[test]

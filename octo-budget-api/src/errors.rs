@@ -34,12 +34,6 @@ pub enum Error {
     #[fail(display = "Cannot read sorted tags from redis {}", _0)]
     Redis(octo_redis::Error),
 
-    #[fail(display = "Redis command failed {:?}", _0)]
-    RedisCommandFailed(actix_redis::RespValue),
-
-    #[fail(display = "Bad response from redis `{}'", _0)]
-    BadRedisResponse(String),
-
     #[fail(display = "Cannot find user by id: `{}'", _0)]
     UserNotFound(UserId),
 

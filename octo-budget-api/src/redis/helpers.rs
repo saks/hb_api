@@ -52,14 +52,12 @@ pub async fn read_redis_tags(user_id: UserId, redis: Redis) -> Result<Vec<String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::apps2::helpers::sort_tags;
     use crate::tags_vec;
     use actix::prelude::*;
-    use actix_service::ServiceExt;
     use actix_web::web::Data;
     use futures::future;
-    use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
-    use redis::{self, Commands as _};
+    use futures03::{FutureExt as _, TryFutureExt as _};
+    use redis;
 
     mod test_redis {
         use serde::export::fmt::Display;

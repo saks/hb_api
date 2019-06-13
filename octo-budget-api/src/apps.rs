@@ -1,78 +1,17 @@
-use actix_web::{FutureResponse, HttpRequest, HttpResponse, Scope as WebScope, State as WebState};
+// apps
+mod auth_app;
+mod budgets_app;
+pub mod frontend_app;
+pub mod records_app;
+mod tags_app;
+pub mod users_app;
 
-use crate::db::{self as db, Postgres};
-use crate::redis::{self as redis, Redis};
+pub use auth_app::Service as AuthService;
+pub use budgets_app::Service as BudgetsService;
+pub use records_app::Service as RecordsService;
+pub use tags_app::Service as TagsService;
 
 pub mod forms;
 pub mod helpers;
 pub mod index_params;
 pub mod index_response;
-pub mod middlewares;
-
-pub mod auth_app;
-pub mod budgets_app;
-pub mod frontend;
-pub mod records_app;
-pub mod tags_app;
-pub mod users_app;
-
-#[macro_export]
-macro_rules! auth_token_from_async_request {
-    ($request:ident) => {
-        match $request
-            .extensions_mut()
-            .remove::<octo_budget_lib::auth_token::AuthToken>()
-        {
-            Some(token) => token,
-            _ => return Ok(HttpResponse::Unauthorized().finish()),
-        }
-    };
-}
-
-// type aliases, just for convenience
-pub type State = WebState<AppState>;
-pub type Scope = WebScope<AppState>;
-pub type Request = HttpRequest<AppState>;
-pub type Response = FutureResponse<HttpResponse>;
-
-pub struct AppState {
-    db: Postgres,
-    redis: Redis,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AppState {
-    pub fn new() -> Self {
-        let redis = redis::start();
-
-        use futures::future::Future as _;
-
-        let redis_pass =
-            std::env::var("REDIS_PASSWORD").expect("Cannot read env var REDIS_PASSWORD");
-        let auth_cmd = actix_redis::Command(redis_async::resp_array!["AUTH", &redis_pass]);
-        actix::Arbiter::spawn(
-            redis
-                .clone()
-                .send(auth_cmd)
-                .map_err(|e| eprintln!("Cannot AUTH with REDIS: {:?}", e))
-                .and_then(|res| {
-                    println!("Redis auth result: {:?}", res);
-                    futures::future::ok(())
-                }),
-        );
-
-        Self {
-            db: db::start(),
-            redis,
-        }
-    }
-
-    pub fn redis(&self) -> Redis {
-        self.redis.clone()
-    }
-}

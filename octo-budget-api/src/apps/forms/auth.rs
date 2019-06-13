@@ -1,6 +1,6 @@
 use actix_web::{error::ResponseError, http::StatusCode, HttpResponse};
 use failure_derive::Fail;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::db::models::AuthUser;
 use crate::errors::ValidationError;
@@ -13,8 +13,6 @@ pub struct Form {
 
 impl Form {
     pub fn validate_password(user: &AuthUser, password: &str) -> Result<(), ValidationErrors> {
-        use djangohashers;
-
         match djangohashers::check_password(password, &user.password) {
             Ok(true) => Ok(()),
             _ => Err(ValidationErrors::bad_password()),
@@ -45,7 +43,7 @@ impl std::fmt::Display for ValidationErrors {
 }
 
 impl ResponseError for ValidationErrors {
-    fn error_response(&self) -> HttpResponse {
+    fn render_response(&self) -> HttpResponse {
         let status_code = if self.non_field_errors.is_empty() {
             StatusCode::BAD_REQUEST
         } else {
@@ -123,7 +121,6 @@ mod tests {
 
     fn make_user_with_pass(password: &'static str) -> AuthUser {
         use chrono::naive::NaiveDateTime;
-        use djangohashers;
 
         AuthUser {
             id: 123,

@@ -27,7 +27,6 @@ impl Handler<Message> for DbExecutor {
         use diesel::prelude::*;
 
         let connection = &self.pool.get()?;
-        let owner_id: i32 = msg.user_id.into();
 
         records_record
             .filter(user_id.eq(user_id))

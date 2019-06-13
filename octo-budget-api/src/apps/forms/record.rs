@@ -1,7 +1,7 @@
 use actix_web::{error::ResponseError, HttpResponse};
 use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 use failure_derive::Fail;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct Form {

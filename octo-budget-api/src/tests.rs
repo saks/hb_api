@@ -7,11 +7,11 @@ use octo_budget_lib::auth_token::AuthToken;
 
 // ClientRequestExt
 pub trait RequestJwtAuthExt {
-    fn jwt_auth(mut self, user_id: i32) -> Self;
+    fn jwt_auth(self, user_id: i32) -> Self;
 }
 
 impl RequestJwtAuthExt for ClientRequest {
-    fn jwt_auth(mut self, user_id: i32) -> Self {
+    fn jwt_auth(self, user_id: i32) -> Self {
         let token = AuthToken::new(user_id)
             .expire_in_hours(10)
             .encrypt(crate::config::AUTH_TOKEN_SECRET.as_bytes());

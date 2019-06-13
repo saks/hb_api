@@ -3,7 +3,7 @@ const DEFAULT_PAGE: i64 = 1;
 
 use actix_web::{error::ResponseError, HttpResponse};
 use failure_derive::Fail;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Params {
@@ -54,22 +54,25 @@ pub struct Data {
 
 impl Params {
     // TODO: add tests
-    pub fn validate(self) -> Result<Data, ValidationErrors> {
+    pub fn validate(&self) -> Result<Data, ValidationErrors> {
         let Self { page, per_page } = self;
         let mut errors = ValidationErrors::default();
 
-        if page < 0 {
+        if page < &0 {
             errors.page.push("Must be a positive number".to_string());
         }
 
-        if per_page < 0 {
+        if per_page < &0 {
             errors
                 .per_page
                 .push("Must be a positive number".to_string());
         }
 
         if errors.is_empty() {
-            Ok(Data { page, per_page })
+            Ok(Data {
+                page: *page,
+                per_page: *per_page,
+            })
         } else {
             Err(errors)
         }

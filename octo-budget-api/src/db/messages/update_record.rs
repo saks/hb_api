@@ -2,9 +2,9 @@ use std::result;
 
 use actix::{Handler, Message as ActixMessage};
 use bigdecimal::BigDecimal;
-use octo_budget_lib::auth_token::{AuthToken, UserId};
+use octo_budget_lib::auth_token::UserId;
 
-use crate::apps2::forms::record::FormData;
+use crate::apps::forms::record::FormData;
 use crate::db::DbExecutor;
 use crate::errors::Error;
 
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn happy_path() {
-        let mut session = DbSession::new();
+        let session = DbSession::new();
         let user = session.create_user(UserBuilder::default().password("dummy password"));
         let records = session.create_records2(user.id, 1);
 

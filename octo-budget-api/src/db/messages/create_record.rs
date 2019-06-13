@@ -6,8 +6,8 @@ use chrono::{NaiveDateTime, Utc};
 use failure::Error;
 use octo_budget_lib::auth_token::UserId;
 
-use crate::apps2::forms::record::FormData;
-use crate::db::models::{AuthUser, Record};
+use crate::apps::forms::record::FormData;
+use crate::db::models::Record;
 use crate::db::DbExecutor;
 
 pub type CreateRecordResult = result::Result<i32, Error>;

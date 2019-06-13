@@ -17,7 +17,8 @@ macro_rules! get_db_message_result {
                 System::current().stop();
                 future::result(Ok(()))
             }));
-        });
+        })
+        .expect("failed to start system");
     }};
 }
 
@@ -71,8 +72,6 @@ impl DbSession {
 
     pub fn count_records(&self) -> i64 {
         use crate::db::schema::records_record::table as records;
-        use crate::db::schema::*;
-        use diesel::dsl::*;
 
         records.count().first(&self.conn).unwrap()
     }
@@ -157,7 +156,6 @@ impl DbSession {
 
     pub fn find_record(&self, record_id: i32) -> Record {
         use crate::db::schema::records_record::table as records;
-        use crate::db::schema::*;
         use diesel::*;
 
         records
