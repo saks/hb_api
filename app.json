@@ -9,7 +9,10 @@
             "as": "REDIS"
         }
     ],
-    "buildpacks": [{ "url": "https://github.com/emk/heroku-buildpack-rust" }],
+    "buildpacks": [
+        { "url": "https://github.com/emk/heroku-buildpack-rust" },
+        { "url": "heroku/nodejs" }
+    ],
     "env": {
         "AUTH_TOKEN_SECRET": {
             "required": true,
@@ -42,6 +45,8 @@
         }
     },
     "name": "hb_api",
-    "scripts": {},
+    "scripts": {
+        "postdeploy": "make build_client"
+    },
     "stack": "heroku-18"
 }
