@@ -1,4 +1,6 @@
-"scripts": {
-  "start": "echo start",
-  "build": "echo build"
+{
+  "scripts": {
+    "start": "echo start",
+    "build": "echo build"
+  }
 }
