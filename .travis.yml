@@ -18,7 +18,7 @@ services:
   - redis-server
   - postgresql
 before_script:
-  - cargo install diesel_cli --no-default-features --features postgres; true
+  - cargo install diesel_cli --no-default-features --features postgres || echo "already installed"
   - diesel database setup
 script:
   - cargo test --verbose --all

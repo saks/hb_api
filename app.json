@@ -46,7 +46,7 @@
     },
     "name": "hb_api",
     "scripts": {
-        "postdeploy": "make build_client"
+        "postdeploy": "diesel database setup"
     },
     "stack": "heroku-18"
 }
