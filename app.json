@@ -9,7 +9,6 @@
             "as": "REDIS"
         }
     ],
-    "buildpacks": [],
     "env": {
         "AUTH_TOKEN_SECRET": {
             "required": true,

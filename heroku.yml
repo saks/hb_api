@@ -1,0 +1,7 @@
+build:
+  config:
+    FOO: bar
+
+build:
+  docker:
+    web: Dockerfile.fake
