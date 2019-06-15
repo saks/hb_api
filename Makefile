@@ -20,6 +20,10 @@ release: build prepare_release
 	snap run heroku container:push web -a octo-budget
 	snap run heroku container:release web -a octo-budget
 
+docker_release_pr:
+	heroku container:login
+	heroku container:push web --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
+
 prod_logs:
 	snap run heroku logs -t -a octo-budget
 
@@ -38,4 +42,4 @@ psql:
 redis_cli:
 	@docker-compose exec redis redis-cli
 
-.PHONY: test server
+.PHONY: test server docker_release_pr

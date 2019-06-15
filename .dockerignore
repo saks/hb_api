@@ -1,6 +1,8 @@
 ./reactapp
 ./node_modules
-./target
+./target/debug
+./target/release/build
+./target/release/deps
 ./octo-budget-api/target
 ./octo-budget-lib/target
 ./octo-budget-frontend/target

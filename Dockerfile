@@ -11,6 +11,6 @@ ENV DATABASE_POOL_SIZE 1
 ENV LISTEN_IP 0.0.0.0
 ENV PORT 8088
 
-ADD ./release_build ./
+ADD ./target/release/octo-budget-api ./
 
 CMD ["./octo-budget-api"]
