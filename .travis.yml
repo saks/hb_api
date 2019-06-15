@@ -4,11 +4,11 @@ rust:
   - nightly-2019-06-11
 cache: cargo
 addons:
-  postgresql: "10"
+  postgresql: '10'
   apt:
     packages:
-    - postgresql-10
-    - postgresql-client-10
+      - postgresql-10
+      - postgresql-client-10
 env:
   global:
     - REDIS_URL=redis://127.0.0.1/
@@ -17,8 +17,10 @@ env:
 services:
   - redis-server
   - postgresql
+  - docker
 before_script:
   - cargo install diesel_cli --no-default-features --features postgres || echo "already installed"
   - diesel database setup
 script:
   - cargo test --verbose --all
+  - make build_server
