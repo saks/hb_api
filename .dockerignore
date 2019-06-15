@@ -1,4 +1,4 @@
-./reactapp
+./reactapp/node_modules
 ./node_modules
 ./target/debug
 ./target/release/build

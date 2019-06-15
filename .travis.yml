@@ -2,7 +2,9 @@ language: rust
 dist: xenial
 rust:
   - nightly-2019-06-11
-cache: cargo
+cache:
+  - cargo
+  - yarn
 env:
   global:
     - REDIS_URL=redis://127.0.0.1/
@@ -16,6 +18,7 @@ before_script:
   - cargo install diesel_cli --no-default-features --features postgres || echo "already installed"
   - diesel database setup
 script:
-  - cargo test --verbose --all
+  - cargo test --all
   - make build_server
+  - make build_client
   - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then make docker_release_pr; fi'

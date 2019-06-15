@@ -8,7 +8,7 @@ build_server:
 	cargo build --release --bin octo-budget-api
 
 build_client:
-	cd reactapp && yarn build
+	cd reactapp && yarn install && yarn build
 
 prepare_release:
 	rm -rf ${RELEASE_BUILD_DIR}
