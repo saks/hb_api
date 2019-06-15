@@ -18,5 +18,4 @@ before_script:
 script:
   - cargo test --verbose --all
   - make build_server
-  - env
   - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then make docker_release_pr; fi'

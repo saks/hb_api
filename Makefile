@@ -23,6 +23,7 @@ release: build prepare_release
 docker_release_pr:
 	heroku container:login
 	heroku container:push web --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
+	heroku container:release web --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
 
 prod_logs:
 	snap run heroku logs -t -a octo-budget

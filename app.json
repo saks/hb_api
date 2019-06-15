@@ -9,10 +9,7 @@
             "as": "REDIS"
         }
     ],
-    "buildpacks": [
-        { "url": "https://github.com/emk/heroku-buildpack-rust" },
-        { "url": "heroku/nodejs" }
-    ],
+    "buildpacks": [],
     "env": {
         "AUTH_TOKEN_SECRET": {
             "required": true,
@@ -45,8 +42,6 @@
         }
     },
     "name": "hb_api",
-    "scripts": {
-        "postdeploy": "diesel database setup"
-    },
-    "stack": "heroku-18"
+    "scripts": {},
+    "stack": "container"
 }
