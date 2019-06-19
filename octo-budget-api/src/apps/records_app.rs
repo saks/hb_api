@@ -217,9 +217,8 @@ mod tests {
             "tags": ["foo"],
         });
 
-        let url = srv.url(format!("/record-detail/{}/", record.id).as_ref());
         let request = srv
-            .request(Method::PUT, url)
+            .put(format!("/record-detail/{}/", record.id))
             .jwt_auth(user.id)
             .send_json(&payload);
 

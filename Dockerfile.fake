@@ -1,1 +1,3 @@
-FROM alpine
+FROM scratch
+
+ENV FOO=123
