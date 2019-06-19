@@ -20,6 +20,12 @@ release: build prepare_release
 	snap run heroku container:push web -a octo-budget
 	snap run heroku container:release web -a octo-budget
 
+docker_release_staging:
+	heroku container:login
+	heroku container:push web --app octo-budget-staging
+	heroku container:release web --app octo-budget-staging
+	heroku run diesel migration run --app octo-budget-staging
+
 docker_release_pr:
 	heroku container:login
 	heroku container:push web --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
