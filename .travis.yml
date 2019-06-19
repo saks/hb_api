@@ -3,8 +3,9 @@ dist: xenial
 rust:
   - nightly-2019-06-18
 cache:
-  - cargo
-  - yarn
+  cargo: true
+  directories:
+    - reactapp/node_modules
 addons:
   postgresql: "10"
   apt:
