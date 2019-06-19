@@ -13,5 +13,7 @@ ENV PORT 8088
 
 ADD ./target/release/octo-budget-api ./
 ADD ./reactapp/build/ ./reactapp/build
+ADD ./migrations ./migrations
+ADD ./target/diesel /usr/local/bin/
 
 CMD ["./octo-budget-api"]

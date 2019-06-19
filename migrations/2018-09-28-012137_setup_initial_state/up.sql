@@ -18,21 +18,21 @@ SET row_security = off;
 -- Name: postgres; Type: COMMENT; Schema: -; Owner: postgres
 --
 
-COMMENT ON DATABASE postgres IS 'default administrative connection database';
+-- COMMENT ON DATABASE postgres IS 'default administrative connection database';
 
 
 --
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner:
 --
 
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+-- CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner:
 --
 
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+-- COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 SET search_path = public, pg_catalog;

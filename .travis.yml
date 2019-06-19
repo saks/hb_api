@@ -22,6 +22,7 @@ services:
   - docker
 before_script:
   - cargo install diesel_cli --no-default-features --features postgres || echo "already installed"
+  - cp $(which diesel) ./target # make it available for "docker build"
   - diesel database setup
 script:
   - cargo test --all
