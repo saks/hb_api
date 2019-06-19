@@ -9,9 +9,20 @@
             "as": "REDIS"
         }
     ],
-    "buildpacks": [{ "url": "https://github.com/emk/heroku-buildpack-rust" }],
     "env": {
         "AUTH_TOKEN_SECRET": {
+            "required": true,
+            "generator": "secret"
+        },
+        "ADMIN_DEFAULT_USERNAME": {
+            "required": true,
+            "value": "mlzadmin"
+        },
+        "ADMIN_DEFAULT_EMAIL": {
+            "required": true,
+            "value": "mlz@admin.foo"
+        },
+        "ADMIN_DEFAULT_PASSWORD": {
             "required": true,
             "generator": "secret"
         },
@@ -43,5 +54,5 @@
     },
     "name": "hb_api",
     "scripts": {},
-    "stack": "heroku-18"
+    "stack": "container"
 }

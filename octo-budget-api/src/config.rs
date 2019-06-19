@@ -117,6 +117,11 @@ mod tests {
 
     #[test]
     fn get_redis_url_from_docker_compose() {
+        if env::var("CI").is_ok() {
+            // don't run this test on CI
+            return;
+        }
+
         env::remove_var(REDIS_URL_ENV_VAR);
 
         assert!(get_redis_url().starts_with("redis://0.0.0.0:"));
@@ -134,6 +139,11 @@ mod tests {
 
     #[test]
     fn get_database_url_from_docker_compose() {
+        if env::var("CI").is_ok() {
+            // don't run this test on CI
+            return;
+        }
+
         env::remove_var(DATABASE_URL_ENV_VAR);
 
         assert!(get_database_url().starts_with("postgres://rustapp:mysecretpassword@0.0.0.0:"));

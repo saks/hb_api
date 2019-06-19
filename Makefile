@@ -5,10 +5,10 @@ RELEASE_BUILD_DIR=./release_build/
 build: build_client build_server
 
 build_server:
-	cargo build --release --bin octo-budget-api
+	cargo build --release --bins
 
 build_client:
-	cd reactapp && yarn build
+	cd reactapp && yarn install && yarn build
 
 prepare_release:
 	rm -rf ${RELEASE_BUILD_DIR}
@@ -19,6 +19,13 @@ prepare_release:
 release: build prepare_release
 	snap run heroku container:push web -a octo-budget
 	snap run heroku container:release web -a octo-budget
+
+docker_release_pr:
+	heroku container:login
+	heroku container:push web --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
+	heroku container:release web --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
+	heroku run diesel database setup --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
+	heroku run './db_seed 2>-' --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
 
 prod_logs:
 	snap run heroku logs -t -a octo-budget
@@ -38,4 +45,4 @@ psql:
 redis_cli:
 	@docker-compose exec redis redis-cli
 
-.PHONY: test server
+.PHONY: test server docker_release_pr

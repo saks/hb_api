@@ -6,9 +6,8 @@ use diesel::{
 };
 
 pub mod messages;
-pub mod models;
+pub use models::{self, schema};
 pub mod pagination;
-pub mod schema;
 
 pub type Postgres = Addr<DbExecutor>;
 pub type Pg = web::Data<Postgres>;

@@ -18,21 +18,21 @@ SET row_security = off;
 -- Name: postgres; Type: COMMENT; Schema: -; Owner: postgres
 --
 
-COMMENT ON DATABASE postgres IS 'default administrative connection database';
+-- COMMENT ON DATABASE postgres IS 'default administrative connection database';
 
 
 --
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner:
 --
 
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+-- CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner:
 --
 
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+-- COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 SET search_path = public, pg_catalog;
@@ -51,7 +51,6 @@ CREATE TABLE auth_group (
 );
 
 
-ALTER TABLE auth_group OWNER TO postgres;
 
 --
 -- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -65,7 +64,6 @@ CREATE SEQUENCE auth_group_id_seq
     CACHE 1;
 
 
-ALTER TABLE auth_group_id_seq OWNER TO postgres;
 
 --
 -- Name: auth_group_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -85,7 +83,6 @@ CREATE TABLE auth_group_permissions (
 );
 
 
-ALTER TABLE auth_group_permissions OWNER TO postgres;
 
 --
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -99,7 +96,6 @@ CREATE SEQUENCE auth_group_permissions_id_seq
     CACHE 1;
 
 
-ALTER TABLE auth_group_permissions_id_seq OWNER TO postgres;
 
 --
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -120,7 +116,6 @@ CREATE TABLE auth_permission (
 );
 
 
-ALTER TABLE auth_permission OWNER TO postgres;
 
 --
 -- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -134,7 +129,6 @@ CREATE SEQUENCE auth_permission_id_seq
     CACHE 1;
 
 
-ALTER TABLE auth_permission_id_seq OWNER TO postgres;
 
 --
 -- Name: auth_permission_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -163,7 +157,6 @@ CREATE TABLE auth_user (
 );
 
 
-ALTER TABLE auth_user OWNER TO postgres;
 
 --
 -- Name: auth_user_groups; Type: TABLE; Schema: public; Owner: postgres
@@ -176,7 +169,6 @@ CREATE TABLE auth_user_groups (
 );
 
 
-ALTER TABLE auth_user_groups OWNER TO postgres;
 
 --
 -- Name: auth_user_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -190,7 +182,6 @@ CREATE SEQUENCE auth_user_groups_id_seq
     CACHE 1;
 
 
-ALTER TABLE auth_user_groups_id_seq OWNER TO postgres;
 
 --
 -- Name: auth_user_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -211,7 +202,6 @@ CREATE SEQUENCE auth_user_id_seq
     CACHE 1;
 
 
-ALTER TABLE auth_user_id_seq OWNER TO postgres;
 
 --
 -- Name: auth_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -231,7 +221,6 @@ CREATE TABLE auth_user_user_permissions (
 );
 
 
-ALTER TABLE auth_user_user_permissions OWNER TO postgres;
 
 --
 -- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -245,7 +234,6 @@ CREATE SEQUENCE auth_user_user_permissions_id_seq
     CACHE 1;
 
 
-ALTER TABLE auth_user_user_permissions_id_seq OWNER TO postgres;
 
 --
 -- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -270,7 +258,6 @@ CREATE TABLE budgets_budget (
 );
 
 
-ALTER TABLE budgets_budget OWNER TO postgres;
 
 --
 -- Name: budgets_budget_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -284,7 +271,6 @@ CREATE SEQUENCE budgets_budget_id_seq
     CACHE 1;
 
 
-ALTER TABLE budgets_budget_id_seq OWNER TO postgres;
 
 --
 -- Name: budgets_budget_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -310,7 +296,6 @@ CREATE TABLE django_admin_log (
 );
 
 
-ALTER TABLE django_admin_log OWNER TO postgres;
 
 --
 -- Name: django_admin_log_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -324,7 +309,6 @@ CREATE SEQUENCE django_admin_log_id_seq
     CACHE 1;
 
 
-ALTER TABLE django_admin_log_id_seq OWNER TO postgres;
 
 --
 -- Name: django_admin_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -344,7 +328,6 @@ CREATE TABLE django_content_type (
 );
 
 
-ALTER TABLE django_content_type OWNER TO postgres;
 
 --
 -- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -358,7 +341,6 @@ CREATE SEQUENCE django_content_type_id_seq
     CACHE 1;
 
 
-ALTER TABLE django_content_type_id_seq OWNER TO postgres;
 
 --
 -- Name: django_content_type_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -379,7 +361,6 @@ CREATE TABLE django_migrations (
 );
 
 
-ALTER TABLE django_migrations OWNER TO postgres;
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -393,7 +374,6 @@ CREATE SEQUENCE django_migrations_id_seq
     CACHE 1;
 
 
-ALTER TABLE django_migrations_id_seq OWNER TO postgres;
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -413,7 +393,6 @@ CREATE TABLE django_session (
 );
 
 
-ALTER TABLE django_session OWNER TO postgres;
 
 --
 -- Name: records_record; Type: TABLE; Schema: public; Owner: postgres
@@ -430,7 +409,6 @@ CREATE TABLE records_record (
 );
 
 
-ALTER TABLE records_record OWNER TO postgres;
 
 --
 -- Name: records_record_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -443,8 +421,6 @@ CREATE SEQUENCE records_record_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE records_record_id_seq OWNER TO postgres;
 
 --
 -- Name: records_record_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres

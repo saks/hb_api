@@ -3,6 +3,7 @@
     "version": "0.2.0",
     "private": true,
     "proxy": "http://localhost:8088/",
+    "license": "LicenseRef-MIT-Style-1",
     "homepage": "https://octo-budget.herokuapp.com/public",
     "dependencies": {
         "@babel/core": "7.1.6",

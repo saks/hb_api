@@ -6,4 +6,6 @@ members = [
     "octo-budget-frontend",
     "octo-redis",
     "middlewares",
+    "db_seed",
+    "models",
 ]
