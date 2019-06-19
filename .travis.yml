@@ -5,6 +5,12 @@ rust:
 cache:
   - cargo
   - yarn
+addons:
+  postgresql: "10"
+  apt:
+    packages:
+      - postgresql-10
+      - postgresql-client-10
 env:
   global:
     - REDIS_URL=redis://127.0.0.1/
