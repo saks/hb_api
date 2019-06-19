@@ -1,11 +1,12 @@
 language: rust
 dist: xenial
-rust:
-  - nightly-2019-06-18
+rust: nightly-2019-06-18
+
 cache:
   cargo: true
   directories:
     - reactapp/node_modules
+
 addons:
   postgresql: "10"
   apt:
@@ -17,14 +18,17 @@ env:
     - REDIS_URL=redis://127.0.0.1/
     - RUST_TEST_THREADS=1
     - DATABASE_URL=postgres://postgres@127.0.0.1:5432/test_db
+
 services:
   - redis-server
   - postgresql
   - docker
+
 before_script:
   - cargo install diesel_cli --no-default-features --features postgres || echo "already installed"
   - cp $(which diesel) ./target # make it available for "docker build"
   - diesel database setup
+
 script:
   - cargo test --all
   - make build_server
