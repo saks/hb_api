@@ -1,3 +1,1 @@
-FROM scratch
-
-ENV FOO=123
+FROM registry.heroku.com/octo-budget-production/web:latest
