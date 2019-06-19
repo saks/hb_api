@@ -11,6 +11,7 @@ ENV DATABASE_POOL_SIZE 1
 ENV LISTEN_IP 0.0.0.0
 ENV PORT 8088
 
+ADD ./target/release/db_seed ./
 ADD ./target/release/octo-budget-api ./
 ADD ./reactapp/build/ ./reactapp/build
 ADD ./migrations ./migrations

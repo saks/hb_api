@@ -1,9 +1,13 @@
+#[macro_use]
+extern crate diesel;
+
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
 
-use crate::db::schema::{auth_user, budgets_budget, records_record};
+pub mod schema;
+use schema::{auth_user, budgets_budget, records_record};
 
 #[derive(Queryable, Serialize, Debug, Clone, PartialEq, Insertable)]
 #[table_name = "auth_user"]
@@ -19,20 +23,6 @@ pub struct AuthUser {
     pub password: String,
     pub tags: Vec<String>,
     pub username: String,
-}
-
-impl AuthUser {
-    #[cfg(test)]
-    pub fn reload(self, session: crate::tests::DbSession) -> AuthUser {
-        use diesel::prelude::*;
-
-        let connection = session.conn();
-
-        auth_user::table
-            .filter(auth_user::id.eq(&self.id))
-            .first(connection)
-            .unwrap()
-    }
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq, Insertable)]

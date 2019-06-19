@@ -14,6 +14,18 @@
             "required": true,
             "generator": "secret"
         },
+        "ADMIN_DEFAULT_USERNAME": {
+            "required": true,
+            "value": "mlzadmin"
+        },
+        "ADMIN_DEFAULT_EMAIL": {
+            "required": true,
+            "value": "mlz@admin.foo"
+        },
+        "ADMIN_DEFAULT_PASSWORD": {
+            "required": true,
+            "generator": "secret"
+        },
         "DATABASE_URL": {
             "required": true
         },
