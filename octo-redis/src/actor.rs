@@ -1,6 +1,6 @@
 use actix::prelude::*;
 use log::debug;
-use redis::r#async::SharedConnection;
+use redis::aio::SharedConnection;
 use std::sync::Arc;
 
 pub struct RedisActor {

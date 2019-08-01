@@ -68,30 +68,30 @@ mod tests {
             pub fn new() -> Self {
                 let url = crate::config::redis_url();
                 let client = redis::Client::open(url.as_str()).expect("failed to create client");
-                let conn = client.get_connection().expect("failed to connect");
+                let mut conn = client.get_connection().expect("failed to connect");
 
-                redis::cmd("flushall").execute(&conn);
+                redis::cmd("flushall").execute(&mut conn);
 
                 Self(conn)
             }
 
-            pub fn zadd<T: redis::ToRedisArgs + Display>(&self, user_id: T, score: T, tag: T) {
+            pub fn zadd<T: redis::ToRedisArgs + Display>(&mut self, user_id: T, score: T, tag: T) {
                 let key = format!("user_tags_{}", user_id);
                 redis::cmd("zadd")
                     .arg(key)
                     .arg(score)
                     .arg(tag)
-                    .execute(&self.0);
+                    .execute(self.conn());
             }
 
-            pub fn conn(&self) -> &redis::Connection {
-                &self.0
+            pub fn conn(&mut self) -> &mut redis::Connection {
+                &mut self.0
             }
         }
 
         impl Drop for Session {
             fn drop(&mut self) {
-                redis::cmd("flushall").execute(&self.0);
+                redis::cmd("flushall").execute(&mut self.0);
             }
         }
     }
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn sorted_tags_if_data_exist() {
-        let session = test_redis::Session::new();
+        let mut session = test_redis::Session::new();
 
         redis::cmd("zadd")
             .arg("user_tags_1")
@@ -153,7 +153,7 @@ mod tests {
     #[should_panic = "Redis(Redis(WRONGTYPE: Operation against a key holding the wrong kind of value))"]
     #[test]
     fn get_ordered_tags_with_redis_error() {
-        let session = test_redis::Session::new();
+        let mut session = test_redis::Session::new();
 
         redis::cmd("set")
             .arg("user_tags_1")
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn decrement_tags_happy_path() {
-        let session = test_redis::Session::new();
+        let mut session = test_redis::Session::new();
         let user_id = "1";
 
         session.zadd(user_id, "5", "xxx");
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn decrement_tags_and_delete_zeros_happy_path() {
-        let session = test_redis::Session::new();
+        let mut session = test_redis::Session::new();
         let user_id = "1";
 
         // prepare sort order for tags:

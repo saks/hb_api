@@ -1,6 +1,6 @@
 language: rust
 dist: xenial
-rust: nightly-2019-06-18
+rust: nightly-2019-08-01
 
 cache:
   cargo: true

@@ -10,7 +10,7 @@ fn setup() -> redis::Connection {
 
 #[test]
 fn get_text_value() {
-    let conn = setup();
+    let mut conn = setup();
     let expected_value = "ZZZ!!!";
     let _: () = conn
         .set("foo", expected_value)

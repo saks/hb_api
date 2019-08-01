@@ -34,8 +34,8 @@ impl Cmd {
         Cmd { inner }
     }
 
-    pub fn inner(&self) -> &redis::Cmd {
-        &self.inner
+    pub fn inner(&self) -> redis::Cmd {
+        self.inner.clone()
     }
 
     pub fn send<T: redis::FromRedisValue>(
