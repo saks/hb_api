@@ -7,7 +7,9 @@ import type { Attrs } from '../types/Budget'
 
 export default class Budgets extends Component<{| list: Array<Attrs> |}> {
     get budgets() {
-        return this.props.list.map(attrs => <Budget attrs={attrs} key={attrs.name} />)
+        const list = this.props.list.map(attrs => <Budget attrs={attrs} key={attrs.name} />)
+
+        return <div id="budget-cards">{list}</div>
     }
 
     render() {
@@ -16,7 +18,7 @@ export default class Budgets extends Component<{| list: Array<Attrs> |}> {
                 <div className="row justify-content-center">
                     <h2>Budgets</h2>
                 </div>
-                <div id="budget-cards">{this.budgets}</div>
+                {this.budgets}
             </div>
         )
     }

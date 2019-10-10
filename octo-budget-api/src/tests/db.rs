@@ -31,7 +31,10 @@ macro_rules! get_db_message_result {
 
 pub fn connection_without_transaction() -> PgConnection {
     let database_url = crate::config::DATABASE_URL.to_string();
-    PgConnection::establish(&database_url).unwrap()
+    PgConnection::establish(&database_url).expect(&format!(
+        "Failed to establish connection to URL: `{}'",
+        database_url
+    ))
 }
 
 // use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};

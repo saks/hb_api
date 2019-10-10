@@ -1,5 +1,3 @@
-#![feature(async_await)]
-
 // use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 // use futures03::compat::Future01CompatExt as _;
 
