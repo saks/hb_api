@@ -6,15 +6,15 @@ version = "0.1.0"
 
 [dependencies]
 actix = "*"
-actix-web = { version = "1.0", default_features = false }
-actix-service = "0.4"
-actix-http = "0.2"
-actix-files = "0.1"
+actix-web = { version = "2.0", default_features = false }
+# actix-service = "*"
+# actix-http = "*"
+# actix-files = "*"
 dotenv = "0.13"
 env_logger = "0.6"
 failure = "0.1"
-futures = { package = "futures", version = "0.1" }
-futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
+# futures = { package = "futures", version = "0.1" }
+# futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 lazy_static = "1.1"
 serde = { version = "1", features = ["derive"] }
 url = "1"

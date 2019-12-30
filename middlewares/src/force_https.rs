@@ -1,5 +1,7 @@
+use std::task::{Context, Poll};
+
 use actix_service::{Service, Transform};
-use futures::future::{ok, Either, FutureResult};
+use futures::future::{ok, Either, Ready};
 
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{header, uri::PathAndQuery, Uri};
@@ -27,7 +29,7 @@ where
     type Error = S::Error;
     type InitError = ();
     type Transform = ForceSslService<S>;
-    type Future = FutureResult<Self::Transform, Self::InitError>;
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
         ok(ForceSslService {
@@ -84,10 +86,10 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse;
     type Error = S::Error;
-    type Future = Either<S::Future, FutureResult<Self::Response, Self::Error>>;
+    type Future = Either<S::Future, Ready<Result<Self::Response, Self::Error>>>;
 
-    fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        self.service.poll_ready()
+    fn poll_ready(&mut self, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(cx)
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
@@ -100,9 +102,9 @@ where
                 Err(_) => HttpResponse::InternalServerError().finish().into_body(),
             };
 
-            Either::B(ok(req.into_response(resp)))
+            Either::Right(ok(req.into_response(resp)))
         } else {
-            Either::A(self.service.call(req))
+            Either::Left(self.service.call(req))
         }
     }
 }
@@ -113,29 +115,31 @@ mod tests {
     use actix_web::test::{call_service, init_service, TestRequest};
     use actix_web::{web, App, HttpResponse};
 
-    #[test]
-    fn test_wrap() {
+    #[actix_rt::test]
+    async fn test_wrap() {
         let mut app = init_service(
             App::new()
                 .wrap(ForceHttps::new(false))
                 .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
-        );
+        )
+        .await;
 
         let req = TestRequest::with_uri("/v1/something/").to_request();
-        let res = call_service(&mut app, req);
+        let res = call_service(&mut app, req).await;
         assert!(res.status().is_success());
     }
 
-    #[test]
-    fn test_redirect_http_request() {
+    #[actix_rt::test]
+    async fn test_redirect_http_request() {
         let mut app = init_service(
             App::new()
                 .wrap(ForceHttps::new(true))
                 .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
-        );
+        )
+        .await;
 
         let req = TestRequest::with_uri("/v1/something/?a=1&a=2b=[]#/foo").to_request();
-        let res = call_service(&mut app, req);
+        let res = call_service(&mut app, req).await;
 
         assert_eq!(301, res.status());
 

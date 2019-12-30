@@ -5,7 +5,8 @@ authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix-web = "1.0"
-actix-service = "0.4"
-futures = "0.1"
+actix-web = "2.0"
+actix-service = "*"
+actix-rt = "1.0"
+futures = "*"
 log = "0.4"
