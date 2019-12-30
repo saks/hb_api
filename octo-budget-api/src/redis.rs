@@ -1,5 +1,5 @@
 use actix_web::web::Data;
-use octo_redis::{Addr, RedisActor};
+// use octo_redis::{Addr, RedisActor};
 
 use crate::config;
 

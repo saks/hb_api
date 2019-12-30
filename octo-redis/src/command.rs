@@ -1,5 +1,7 @@
 use actix::prelude::*;
 use futures03::compat::Future01CompatExt as _;
+// use futures03::compat::Future03CompatExt;
+use log::{error, info};
 use redis::Value;
 
 use super::{Error, RedisActor};
@@ -68,17 +70,59 @@ impl Message for CmdMessage {
 impl Handler<CmdMessage> for RedisActor {
     type Result = ResponseFuture<Value, redis::RedisError>;
 
-    fn handle(&mut self, cmd: CmdMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, cmd: CmdMessage, ctx: &mut Self::Context) -> Self::Result {
         match self.conn() {
             Some(conn) => {
                 // println!("executing command");
 
                 let conn = (**conn).clone();
-                let fut = cmd.0.query_async::<_, Value>(conn).map(|(_conn, res)| res);
+                let fut = cmd.0.query_async::<_, Value>(conn);
 
-                Box::new(fut)
+                let fut = async {
+                    let x = Box::new(fut).compat().await;
+
+                    match x {
+                        _ => Ok(Value::Nil),
+                    }
+                };
+                //     .map(|(_conn, res)| {
+                //         //
+                //         info!("got response from redis");
+                //
+                //         res
+                //     })
+                //     .map_err(|err| {
+                //         error!("ERR FROM REDIS");
+                //         // ctx.stop();
+                //         // self.handle(RestartMsg, ctx);
+                //         err
+                //     });
+                //
+                // let res = async {
+                //     let x = Box::new(fut).compat().await;
+                //     redis::Value::Nil;
+                // };
+                // // Box::new(fut)
+                let res = futures03::compat::Compat::new(fut);
+                Box::new(res)
             }
             None => panic!("No redis connection in RedisActor!"),
         }
+    }
+}
+
+struct RestartMsg;
+
+impl Message for RestartMsg {
+    type Result = Result<(), redis::RedisError>;
+}
+
+impl Handler<RestartMsg> for RedisActor {
+    type Result = ResponseFuture<(), redis::RedisError>;
+
+    fn handle(&mut self, cmd: RestartMsg, ctx: &mut Self::Context) -> Self::Result {
+        ctx.stop();
+
+        Box::new(futures::future::ok(()))
     }
 }

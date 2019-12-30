@@ -20,7 +20,6 @@ serde = { version = "1", features = ["derive"] }
 url = "1"
 log = "0.4"
 r2d2 = "*"
-octo-redis = { path = "../octo-redis" }
 models = { path = "../models" }
 
 [dependencies.bigdecimal]

@@ -31,9 +31,8 @@ impl Serialize for ValidationError {
 
 #[derive(Debug, Fail)]
 pub enum Error {
-    #[fail(display = "Cannot read sorted tags from redis {}", _0)]
-    Redis(octo_redis::Error),
-
+    // #[fail(display = "Cannot read sorted tags from redis {}", _0)]
+    // Redis(octo_redis::Error),
     #[fail(display = "Cannot find user by id: `{}'", _0)]
     UserNotFound(UserId),
 
@@ -59,11 +58,11 @@ pub enum Error {
     Connection2(#[cause] diesel::r2d2::Error),
 }
 
-impl From<octo_redis::Error> for Error {
-    fn from(error: octo_redis::Error) -> Self {
-        Error::Redis(error)
-    }
-}
+// impl From<octo_redis::Error> for Error {
+//     fn from(error: octo_redis::Error) -> Self {
+//         Error::Redis(error)
+//     }
+// }
 
 impl From<failure::Error> for Error {
     fn from(error: failure::Error) -> Self {
