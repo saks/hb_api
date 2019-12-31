@@ -7,12 +7,14 @@ version = "0.1.0"
 [dependencies]
 actix = "*"
 actix-web = { version = "2.0", default_features = false }
+actix-rt = "1.0"
 # actix-service = "*"
 # actix-http = "*"
-# actix-files = "*"
+actix-files = "*"
 dotenv = "0.13"
 env_logger = "0.6"
 failure = "0.1"
+futures = "*"
 # futures = { package = "futures", version = "0.1" }
 # futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
 lazy_static = "1.1"
@@ -23,7 +25,7 @@ r2d2 = "*"
 models = { path = "../models" }
 
 [dependencies.bigdecimal]
-version = "0.0.14" # must match version of diesel dependency
+version = "0.1.0" # must match version of diesel dependency
 features = ["serde"]
 
 [dependencies.chrono]

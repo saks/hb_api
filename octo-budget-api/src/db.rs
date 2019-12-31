@@ -11,6 +11,7 @@ pub mod pagination;
 
 pub type Postgres = Addr<DbExecutor>;
 pub type Pg = web::Data<Postgres>;
+pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
 pub fn start() -> Postgres {
     use crate::config::DATABASE_URL;

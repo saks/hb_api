@@ -1,19 +1,19 @@
-use actix_web::{web::Json, Error, HttpResponse, Result};
-use futures::Future;
-use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
+use actix_web::{
+    web::{block, Data, Json},
+    HttpResponse, Result,
+};
 
 use self::utils::generate_token;
 use super::forms::auth::Form;
-use crate::db::{messages::FindUserByName, Pg};
+use crate::db::{messages::FindUserByName, PgPool};
 
 mod response_data;
 mod utils;
 
-async fn create(form: Json<Form>, db: Pg) -> Result<HttpResponse> {
+async fn create(form: Json<Form>, pool: Data<PgPool>) -> Result<HttpResponse> {
     let data = form.into_inner().validate()?;
-    let user = Box::new(db.send(FindUserByName(data.username)))
-        .compat()
-        .await??;
+    let username = data.username.to_owned();
+    let user = block(move || FindUserByName::new(username).query(&pool)).await?;
 
     Form::validate_password(&user, &data.password)?;
 
@@ -26,21 +26,13 @@ pub mod service {
 
     pub struct Service;
 
-    fn __create(form: Json<Form>, db: Pg) -> impl Future<Item = HttpResponse, Error = Error> {
-        create(form, db).boxed().compat()
-    }
-
     impl HttpServiceFactory for Service {
         fn register(self, config: &mut actix_web::dev::AppService) {
             use actix_web::{guard::Post, Resource};
 
-            HttpServiceFactory::register(
-                Resource::new("/create/").guard(Post()).to_async(__create),
-                config,
-            )
+            HttpServiceFactory::register(Resource::new("/create/").guard(Post()).to(create), config)
         }
     }
-
 }
 
 #[cfg(test)]

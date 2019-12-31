@@ -43,7 +43,7 @@ impl std::fmt::Display for ValidationErrors {
 }
 
 impl ResponseError for ValidationErrors {
-    fn render_response(&self) -> HttpResponse {
+    fn error_response(&self) -> HttpResponse {
         let status_code = if self.non_field_errors.is_empty() {
             StatusCode::BAD_REQUEST
         } else {
