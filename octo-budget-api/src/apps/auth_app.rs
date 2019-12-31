@@ -1,21 +1,20 @@
 use actix_web::{
-    web::{block, Data, Json},
+    web::{self, block, Json},
     HttpResponse, Result,
 };
 
 use self::utils::generate_token;
-use super::forms::auth::Form;
+use super::forms::auth::{self, Form};
 use crate::db::{messages::FindUserByName, PgPool};
 
 mod response_data;
 mod utils;
 
-async fn create(form: Json<Form>, pool: Data<PgPool>) -> Result<HttpResponse> {
-    let data = form.into_inner().validate()?;
-    let username = data.username.to_owned();
+async fn create(form: Json<Form>, pool: web::Data<PgPool>) -> Result<HttpResponse> {
+    let auth::Data { username, password } = form.into_inner().validate()?;
     let user = block(move || FindUserByName::new(username).query(&pool)).await?;
 
-    Form::validate_password(&user, &data.password)?;
+    Form::validate_password(&user, &password)?;
 
     Ok(HttpResponse::Ok().json(generate_token(&user)))
 }

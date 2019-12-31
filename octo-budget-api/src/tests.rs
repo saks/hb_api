@@ -21,6 +21,22 @@ impl RequestJwtAuthExt for ClientRequest {
 }
 
 #[macro_export]
+macro_rules! test_server2 {
+    ($service:ident) => {{
+        actix_web::test::init_service(
+            actix_web::App::new()
+                .data(crate::db::start())
+                .data(crate::redis::start())
+                .data(octo_budget_lib::auth_token::ApiJwtTokenAuthConfig::new(
+                    crate::config::AUTH_TOKEN_SECRET.as_bytes(),
+                ))
+                .service($service),
+        )
+        .await
+    }};
+}
+
+#[macro_export]
 macro_rules! test_server {
     ($service:ident) => {{
         actix_http_test::TestServer::new(|| {
