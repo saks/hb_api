@@ -137,7 +137,7 @@ async fn when_ok_auth_response_body_correct() {
 
     let mut service = await_test_server!(Service);
     let request = login_request(json!({"username": user.username, "password": "dummy password"}));
-    let _data: ResponseData = read_response_json(&mut service, request).await;
+    let data: ResponseData = read_response_json(&mut service, request).await;
 
-    // TODO: check data content
+    assert_eq!(123, data.token().len());
 }

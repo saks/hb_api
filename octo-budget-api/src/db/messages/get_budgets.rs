@@ -55,11 +55,11 @@ fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Erro
     let query_result = match budget.tags_type.as_str() {
         "INCL" => query
             .filter(records_record::tags.overlaps_with(&budget.tags))
-            .first::<(Option<BigDecimal>)>(conn)?,
+            .first::<Option<BigDecimal>>(conn)?,
         "EXCL" => query
             .filter(not(records_record::tags.overlaps_with(&budget.tags)))
-            .first::<(Option<BigDecimal>)>(conn)?,
-        _ => query.first::<(Option<BigDecimal>)>(conn)?,
+            .first::<Option<BigDecimal>>(conn)?,
+        _ => query.first::<Option<BigDecimal>>(conn)?,
     };
 
     Ok(query_result.unwrap_or_else(BigDecimal::zero).with_scale(2))
