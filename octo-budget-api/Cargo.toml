@@ -50,4 +50,4 @@ version = "1.0"
 [dev-dependencies]
 actix-http-test = "0.2"
 redis = "*"
-bytes = "0.4"
+bytes = "0.5"

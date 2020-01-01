@@ -11,7 +11,9 @@ mod response_data;
 mod utils;
 
 async fn create(form: Json<Form>, pool: web::Data<PgPool>) -> Result<HttpResponse> {
+    dbg!(1);
     let auth::Data { username, password } = form.into_inner().validate()?;
+    dbg!(2);
     let user = block(move || FindUserByName::new(username).query(&pool)).await?;
 
     Form::validate_password(&user, &password)?;

@@ -66,90 +66,90 @@ impl Handler<Message> for DbExecutor {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::db::builders::UserBuilder;
-    use crate::{get_db_message_result, tests::DbSession};
-    use actix::{Arbiter, System};
-    use futures::{future, Future};
-
-    #[test]
-    fn no_record_updated() {
-        let message = Message {
-            amount: BigDecimal::from(10.0),
-            amount_currency: "CAD".into(),
-            tags: vec![],
-            transaction_type: "INC".into(),
-            user_id: 1.into(),
-            id: 1,
-        };
-
-        get_db_message_result!(message, |res: <Message as ActixMessage>::Result| {
-            let err: failure::Error = res.err().unwrap().into();
-            assert_eq!(
-                "Cannot update records_record with id: `1'",
-                format!("{}", err)
-            );
-        });
-    }
-
-    #[test]
-    fn happy_path() {
-        let session = DbSession::new();
-        let user = session.create_user(UserBuilder::default().password("dummy password"));
-        let records = session.create_records2(user.id, 1);
-
-        let message = Message {
-            amount: BigDecimal::from(10.0),
-            amount_currency: "CAD".into(),
-            tags: vec![],
-            transaction_type: "INC".into(),
-            user_id: user.id.into(),
-            id: records[0].id,
-        };
-
-        get_db_message_result!(message, |res: <Message as ActixMessage>::Result| {
-            assert_eq!((), res.unwrap());
-        });
-    }
-
-    #[test]
-    fn check_update_result() {
-        let mut session = DbSession::new();
-        let user = session.create_user(UserBuilder::default().password("dummy password"));
-        let record = session.create_record2(user.id);
-
-        let message = Message {
-            amount: BigDecimal::from(10.0),
-            amount_currency: "USD".into(),
-            tags: vec!["foo".to_string()],
-            transaction_type: "INC".into(),
-            user_id: user.id.into(),
-            id: record.id,
-        };
-
-        get_db_message_result!(message, |res: <Message as ActixMessage>::Result| {
-            assert_eq!((), res.unwrap());
-        });
-
-        use crate::db::messages::GetRecords;
-        let get_records = GetRecords {
-            user_id: user.id,
-            page: 1,
-            per_page: 1,
-        };
-        get_db_message_result!(
-            get_records,
-            move |res: <GetRecords as ActixMessage>::Result| {
-                let data = res.unwrap();
-                let updated_record = data.results.get(0).unwrap();
-
-                assert_ne!(record.amount, updated_record.amount);
-                assert_ne!(record.amount_currency, updated_record.amount_currency);
-                assert_ne!(record.tags, updated_record.tags);
-                assert_ne!(record.transaction_type, updated_record.transaction_type);
-            }
-        );
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::db::builders::UserBuilder;
+//     use crate::{get_db_message_result, tests::DbSession};
+//     use actix::{Arbiter, System};
+//     use futures::{future, Future};
+//
+//     #[test]
+//     fn no_record_updated() {
+//         let message = Message {
+//             amount: BigDecimal::from(10.0),
+//             amount_currency: "CAD".into(),
+//             tags: vec![],
+//             transaction_type: "INC".into(),
+//             user_id: 1.into(),
+//             id: 1,
+//         };
+//
+//         get_db_message_result!(message, |res: <Message as ActixMessage>::Result| {
+//             let err: failure::Error = res.err().unwrap().into();
+//             assert_eq!(
+//                 "Cannot update records_record with id: `1'",
+//                 format!("{}", err)
+//             );
+//         });
+//     }
+//
+//     #[test]
+//     fn happy_path() {
+//         let session = DbSession::new();
+//         let user = session.create_user(UserBuilder::default().password("dummy password"));
+//         let records = session.create_records2(user.id, 1);
+//
+//         let message = Message {
+//             amount: BigDecimal::from(10.0),
+//             amount_currency: "CAD".into(),
+//             tags: vec![],
+//             transaction_type: "INC".into(),
+//             user_id: user.id.into(),
+//             id: records[0].id,
+//         };
+//
+//         get_db_message_result!(message, |res: <Message as ActixMessage>::Result| {
+//             assert_eq!((), res.unwrap());
+//         });
+//     }
+//
+//     #[test]
+//     fn check_update_result() {
+//         let mut session = DbSession::new();
+//         let user = session.create_user(UserBuilder::default().password("dummy password"));
+//         let record = session.create_record2(user.id);
+//
+//         let message = Message {
+//             amount: BigDecimal::from(10.0),
+//             amount_currency: "USD".into(),
+//             tags: vec!["foo".to_string()],
+//             transaction_type: "INC".into(),
+//             user_id: user.id.into(),
+//             id: record.id,
+//         };
+//
+//         get_db_message_result!(message, |res: <Message as ActixMessage>::Result| {
+//             assert_eq!((), res.unwrap());
+//         });
+//
+//         use crate::db::messages::GetRecords;
+//         let get_records = GetRecords {
+//             user_id: user.id,
+//             page: 1,
+//             per_page: 1,
+//         };
+//         get_db_message_result!(
+//             get_records,
+//             move |res: <GetRecords as ActixMessage>::Result| {
+//                 let data = res.unwrap();
+//                 let updated_record = data.results.get(0).unwrap();
+//
+//                 assert_ne!(record.amount, updated_record.amount);
+//                 assert_ne!(record.amount_currency, updated_record.amount_currency);
+//                 assert_ne!(record.tags, updated_record.tags);
+//                 assert_ne!(record.transaction_type, updated_record.transaction_type);
+//             }
+//         );
+//     }
+// }

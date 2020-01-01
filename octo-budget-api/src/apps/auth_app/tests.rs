@@ -1,127 +1,143 @@
 use super::response_data::Data as ResponseData;
 use super::*;
 use crate::{
+    await_test_server,
     db::builders::UserBuilder,
-    test_server2,
     tests::{setup_env, DbSession},
 };
-use actix_http_test::TestServerRuntime;
 use actix_web::http::{header, Method, StatusCode};
-use actix_web::test::{call_service, read_body, TestRequest};
+use actix_web::test::{call_service, read_response, read_response_json, TestRequest};
+use bytes::Bytes;
 use serde_json::{json, Value};
 use service::Service;
 
-// fn setup() -> TestServerRuntime {
-//     setup_env();
-//     // test_server2!(Service)
-// }
-
-#[actix_rt::test]
-async fn empty_params_sent() {
-    setup_env();
-    let srv = actix_web::test::init_service(
-        actix_web::App::new()
-            .data(crate::db::start())
-            .data(octo_budget_lib::auth_token::ApiJwtTokenAuthConfig::new(
-                crate::config::AUTH_TOKEN_SECRET.as_bytes(),
-            ))
-            .service(Service),
-    )
-    .await;
-
-    let req = TestRequest::with_uri("/create/")
+fn login_request(body: Value) -> actix_http::Request {
+    TestRequest::with_uri("/create/")
         .method(Method::POST)
         .header(header::CONTENT_TYPE, "application/json")
-        .set_json(&json!({"username": "", "password": ""}))
-        .to_request();
+        .set_json(&body)
+        .to_request()
+}
 
-    let response = call_service(&mut srv, req).await;
+#[actix_rt::test]
+async fn bad_request_returned_when_empty_params_sent() {
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!({"username": "", "password": "" }));
+    let response = call_service(&mut service, request).await;
+
     assert_eq!(
         StatusCode::BAD_REQUEST,
         response.status(),
         "unexpected response code"
     );
+}
 
-    let response_body = serde_json::from_slice::<Value>(read_body(response).await.as_ref())
-        .expect("failed to parse response");
+#[actix_rt::test]
+async fn errors_returned_when_empty_params_sent() {
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!({"username": "", "password": "" }));
+    let body: Value = read_response_json(&mut service, request).await;
+
     assert_eq!(
         json!({
             "password":["This field may not be blank."],
             "username":["This field may not be blank."],
         }),
-        response_body
+        body
     );
 }
 
-// #[test]
-// fn test_not_json_body() {
-//     let mut srv = setup();
-//
-//     let request = srv
-//         .post("/create/")
-//         .header(header::CONTENT_TYPE, "application/json")
-//         .send_json(&json!(""));
-//
-//     let mut response = srv.block_on(request).expect("failed to send request");
-//     assert_eq!(
-//         StatusCode::BAD_REQUEST,
-//         response.status(),
-//         "unexpected response code"
-//     );
-//
-//     let response_body = srv
-//         .block_on(response.body())
-//         .expect("failed to parse response");
-//
-//     let expected_body = bytes::Bytes::from_static(b"Json deserialize error: invalid type: string \"\", expected struct Form at line 1 column 2");
-//     assert_eq!(expected_body, response_body);
-// }
-//
-// #[test]
-// fn test_ok_auth_response() {
-//     let session = DbSession::new();
-//     let user = session.create_user(
-//         UserBuilder::default()
-//             .username("ok auth user")
-//             .password("dummy password"),
-//     );
-//
-//     let mut srv = setup();
-//
-//     let request = srv
-//         .post("/create/")
-//         .header(header::CONTENT_TYPE, "application/json")
-//         .send_json(&json!({"username": user.username, "password": "dummy password"}));
-//
-//     let mut response = srv.block_on(request).expect("failed to send request");
-//     assert!(response.status().is_success(), "response is not success");
-//
-//     srv.block_on(response.json::<ResponseData>())
-//         .expect("failed to parse response");
-// }
-//
-// #[test]
-// fn no_params_sent() {
-//     let mut srv = setup();
-//
-//     let request = srv
-//         .post("/create/")
-//         .header(header::CONTENT_TYPE, "application/json")
-//         .send_json(&json!({}));
-//
-//     let mut response = srv.block_on(request).expect("failed to send request");
-//     assert_eq!(
-//         StatusCode::BAD_REQUEST,
-//         response.status(),
-//         "unexpected response code"
-//     );
-//
-//     let response_body = srv
-//         .block_on(response.json::<Value>())
-//         .expect("failed to parse response");
-//
-//     assert_eq!(
-//         json!({"password": ["This field is required."], "username": ["This field is required."]}),
-//         response_body
-//     );
-// }
+#[actix_rt::test]
+async fn response_code_when_not_json_body() {
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!(""));
+    let response = call_service(&mut service, request).await;
+
+    assert_eq!(
+        StatusCode::BAD_REQUEST,
+        response.status(),
+        "unexpected response code"
+    );
+}
+
+#[actix_rt::test]
+async fn response_body_when_not_json_body() {
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!(""));
+    let body = read_response(&mut service, request).await;
+
+    assert_eq!(Bytes::from_static(b""), body);
+}
+
+#[actix_rt::test]
+async fn responds_400_when_no_params_sent() {
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!({}));
+    let response = call_service(&mut service, request).await;
+
+    assert_eq!(
+        StatusCode::BAD_REQUEST,
+        response.status(),
+        "unexpected response code"
+    );
+}
+
+#[actix_rt::test]
+async fn responds_with_errors_when_no_params_sent() {
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!({}));
+    let body: Value = read_response_json(&mut service, request).await;
+
+    assert_eq!(
+        json!({"password": ["This field is required."], "username": ["This field is required."]}),
+        body
+    );
+}
+
+#[actix_rt::test]
+async fn when_ok_auth_response_code_success() {
+    let session = DbSession::new();
+    let user = session.create_user(
+        UserBuilder::default()
+            .username("ok auth user")
+            .password("dummy password"),
+    );
+
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!({"username": user.username, "password": "dummy password"}));
+    let response = call_service(&mut service, request).await;
+
+    assert!(response.status().is_success(), "response is not success");
+}
+
+#[actix_rt::test]
+async fn when_ok_auth_response_body_correct() {
+    let session = DbSession::new();
+    let user = session.create_user(
+        UserBuilder::default()
+            .username("ok auth user")
+            .password("dummy password"),
+    );
+
+    setup_env();
+
+    let mut service = await_test_server!(Service);
+    let request = login_request(json!({"username": user.username, "password": "dummy password"}));
+    let _data: ResponseData = read_response_json(&mut service, request).await;
+
+    // TODO: check data content
+}

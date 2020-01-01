@@ -29,6 +29,18 @@ pub fn start() -> Postgres {
     })
 }
 
+pub fn create_pool() -> PgPool {
+    use crate::config::DATABASE_URL;
+
+    let manager = ConnectionManager::<PgConnection>::new(DATABASE_URL.as_str());
+
+    Pool::builder()
+        .min_idle(Some(1))
+        .max_size(1) // max pool size
+        .build(manager)
+        .expect("Failed to create database connection pool.")
+}
+
 pub struct DbExecutor {
     pub pool: Pool<ConnectionManager<PgConnection>>,
 }

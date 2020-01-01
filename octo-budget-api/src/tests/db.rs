@@ -8,19 +8,19 @@ use crate::db::{
     models::{AuthUser, Budget, Record},
 };
 
-#[macro_export]
-macro_rules! get_db_message_result {
-    ( $message:ident, $closure:expr ) => {{
-        System::run(|| {
-            Arbiter::spawn(crate::db::start().send($message).then(|res| {
-                $closure(res.unwrap());
-                System::current().stop();
-                future::result(Ok(()))
-            }));
-        })
-        .expect("failed to start system");
-    }};
-}
+// #[macro_export]
+// macro_rules! get_db_message_result {
+//     ( $message:ident, $closure:expr ) => {{
+//         System::run(|| {
+//             Arbiter::spawn(crate::db::start().send($message).then(|res| {
+//                 $closure(res.unwrap());
+//                 System::current().stop();
+//                 future::result(Ok(()))
+//             }));
+//         })
+//         .expect("failed to start system");
+//     }};
+// }
 
 // pub fn connection() -> PgConnection {
 //     let connection = connection_without_transaction();
