@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .data(db::start())
+            .data(db::ConnectionPool::new())
             // .data(redis::start())
             .data(ApiJwtTokenAuthConfig::new(
                 config::AUTH_TOKEN_SECRET.as_bytes(),
