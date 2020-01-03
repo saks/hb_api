@@ -1,5 +1,4 @@
 use crate::config;
-use actix_web::web::block;
 
 pub type RedisConnection = redis::aio::MultiplexedConnection;
 
@@ -26,9 +25,13 @@ impl Redis {
     }
 
     pub async fn execute(&self, pipeline: redis::Pipeline) -> Result<(), crate::errors::Error> {
-        let res = pipeline.query_async(&mut self.connection.clone()).await?;
+        let res = pipeline.query_async(&mut self.connection()).await?;
 
         Ok(res)
+    }
+
+    pub fn connection(&self) -> RedisConnection {
+        self.connection.clone()
     }
 }
 
