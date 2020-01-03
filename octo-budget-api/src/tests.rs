@@ -2,7 +2,7 @@ mod db;
 pub mod redis;
 
 pub use self::db::DbSession;
-use actix_web::client::ClientRequest;
+use actix_web::test::TestRequest;
 use octo_budget_lib::auth_token::AuthToken;
 
 // ClientRequestExt
@@ -10,13 +10,16 @@ pub trait RequestJwtAuthExt {
     fn jwt_auth(self, user_id: i32) -> Self;
 }
 
-impl RequestJwtAuthExt for ClientRequest {
+impl RequestJwtAuthExt for TestRequest {
     fn jwt_auth(self, user_id: i32) -> Self {
         let token = AuthToken::new(user_id)
             .expire_in_hours(10)
             .encrypt(crate::config::AUTH_TOKEN_SECRET.as_bytes());
 
-        self.header("Authorization", format!("JWT {}", token))
+        self.header(
+            actix_web::http::header::AUTHORIZATION,
+            format!("JWT {}", token),
+        )
     }
 }
 
@@ -28,7 +31,8 @@ macro_rules! await_test_server {
         actix_web::test::init_service(
             actix_web::App::new()
                 .data(crate::db::ConnectionPool::new())
-                .data(octo_budget_lib::auth_token::ApiJwtTokenAuthConfig::new(
+                .data(crate::redis::Redis::new().await)
+                .app_data(octo_budget_lib::auth_token::ApiJwtTokenAuthConfig::new(
                     crate::config::AUTH_TOKEN_SECRET.as_bytes(),
                 ))
                 .service($service),

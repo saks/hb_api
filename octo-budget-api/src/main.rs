@@ -5,7 +5,7 @@ mod apps;
 mod config;
 mod db;
 mod errors;
-// mod redis;
+mod redis;
 
 #[cfg(test)]
 mod tests;
@@ -19,10 +19,12 @@ async fn main() -> std::io::Result<()> {
     dotenv().expect("Failed to parse .env file");
     env_logger::init();
 
+    let redis = redis::Redis::new().await;
+
     HttpServer::new(move || {
         App::new()
             .data(db::ConnectionPool::new())
-            // .data(redis::start())
+            .data(redis.clone())
             .data(ApiJwtTokenAuthConfig::new(
                 config::AUTH_TOKEN_SECRET.as_bytes(),
             ))
@@ -37,9 +39,9 @@ async fn main() -> std::io::Result<()> {
                     .service(actix_files::Files::new("/", "./reactapp/build")),
             )
             .service(web::scope("/auth/jwt").service(apps::AuthService))
-        // .service(web::scope("/api/tags").service(apps::TagsService))
-        // .service(web::scope("/api/user").service(apps::users_app::show))
-        // .service(web::scope("/api/records").service(apps::RecordsService))
+            // .service(web::scope("/api/tags").service(apps::TagsService))
+            .service(web::scope("/api/user").service(apps::users_app::show))
+            .service(web::scope("/api/records").service(apps::RecordsService))
         // .service(web::scope("/api/budgets").service(apps::BudgetsService))
     })
     .bind(format!(

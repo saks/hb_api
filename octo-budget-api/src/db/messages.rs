@@ -9,11 +9,11 @@ mod set_user_tags;
 mod update_record;
 
 pub use create_record::CreateRecord;
-pub use find_record::Message as FindRecord;
+pub use find_record::FindRecord;
 // pub use find_user_by_id::FindUserById;
 pub use find_user_by_name::FindUserByName;
 pub use get_budgets::GetBudgets;
 pub use get_records::GetRecords;
 pub use get_user_tags::GetUserTags;
 pub use set_user_tags::SetUserTags;
-pub use update_record::Message as UpdateRecord;
+pub use update_record::UpdateRecord;

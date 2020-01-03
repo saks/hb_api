@@ -1,40 +1,39 @@
+use crate::db::{models::Record, DatabaseQuery, PooledConnection};
 use crate::errors::Error;
-use actix::{Handler, Message as ActixMessage};
-
-use crate::db::{models::Record, DbExecutor};
 use octo_budget_lib::auth_token::UserId;
 
-pub struct Message {
+pub struct FindRecord {
     user_id: UserId,
     id: i32,
 }
 
-impl Message {
+impl FindRecord {
     pub fn new(id: i32, user_id: UserId) -> Self {
-        Message { id, user_id }
+        Self { id, user_id }
     }
 }
 
-impl ActixMessage for Message {
-    type Result = Result<Record, Error>;
-}
+impl DatabaseQuery for FindRecord {
+    type Data = Record;
 
-impl Handler<Message> for DbExecutor {
-    type Result = <Message as ActixMessage>::Result;
-
-    fn handle(&mut self, msg: Message, _: &mut Self::Context) -> Self::Result {
+    fn execute(&self, connection: PooledConnection) -> Result<Record, failure::Error> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::prelude::*;
 
-        let connection = &self.pool.get()?;
+        let owner_user_id: i32 = self.user_id.into();
 
-        records_record
-            .filter(user_id.eq(user_id))
-            .filter(id.eq(msg.id))
-            .first(connection)
+        let record = records_record
+            .filter(user_id.eq(owner_user_id))
+            .filter(id.eq(self.id))
+            .first(&connection)
             .map_err(|e| match e {
-                diesel::result::Error::NotFound => Error::UserNotFound(msg.user_id),
+                diesel::result::Error::NotFound => Error::UserNotFound(self.user_id),
                 err => Error::UnknownDb(err),
-            })
+            })?;
+
+        Ok(record)
     }
 }
+
+// TODO: add tests
+// 1. test that it filters records by owner id

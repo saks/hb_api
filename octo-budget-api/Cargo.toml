@@ -21,6 +21,7 @@ url = "1"
 log = "0.4"
 r2d2 = "*"
 models = { path = "../models" }
+redis = { git = "https://github.com/mitsuhiko/redis-rs" }
 
 [dependencies.bigdecimal]
 version = "0.1.0" # must match version of diesel dependency
@@ -49,5 +50,4 @@ version = "1.0"
 
 [dev-dependencies]
 actix-http-test = "0.2"
-redis = "*"
 bytes = "0.5"

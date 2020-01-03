@@ -1,12 +1,12 @@
-use crate::db::{models::Record as RecordModel, pagination::*, schema::records_record, DbExecutor};
-use actix::{Handler, Message};
+use crate::db::{
+    models::Record as RecordModel, pagination::*, schema::records_record, DatabaseQuery,
+    PooledConnection,
+};
 use failure::Error;
-use std::result;
 
 use crate::apps::index_response::Data;
 
 pub type ResponseData = Data<RecordModel>;
-pub type GetRecordsResult = result::Result<ResponseData, Error>;
 
 #[derive(Clone)]
 pub struct GetRecords {
@@ -15,34 +15,28 @@ pub struct GetRecords {
     pub per_page: i64,
 }
 
-impl Message for GetRecords {
-    type Result = GetRecordsResult;
-}
+impl DatabaseQuery for GetRecords {
+    type Data = ResponseData;
 
-impl Handler<GetRecords> for DbExecutor {
-    type Result = GetRecordsResult;
-
-    fn handle(&mut self, msg: GetRecords, _: &mut Self::Context) -> Self::Result {
+    fn execute(&self, connection: PooledConnection) -> Result<Self::Data, Error> {
         use diesel::prelude::*;
-
-        let connection = &self.pool.get()?;
 
         let query = records_record::table
             .select(records_record::all_columns)
-            .filter(records_record::user_id.eq(msg.user_id))
+            .filter(records_record::user_id.eq(self.user_id))
             .order(records_record::created_at.desc())
-            .paginate(msg.page)
-            .per_page(msg.per_page);
+            .paginate(self.page)
+            .per_page(self.per_page);
 
         let query_results = query.load::<(RecordModel, i64)>(&*connection)?;
 
         let total = query_results.get(0).map(|x| x.1).unwrap_or(0);
-        let total_pages = (total as f64 / msg.per_page as f64).ceil() as i64;
+        let total_pages = (total as f64 / self.per_page as f64).ceil() as i64;
 
         let results = query_results.into_iter().map(|x| x.0).collect();
 
-        let previous = msg.page > 1;
-        let next = msg.page < total_pages;
+        let previous = self.page > 1;
+        let next = self.page < total_pages;
 
         Ok(Data {
             total,
@@ -53,136 +47,113 @@ impl Handler<GetRecords> for DbExecutor {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::{db::builders::UserBuilder, tests::DbSession};
-//     use actix::System;
-//     use futures::{future, Future};
-//
-//     #[test]
-//     fn test_empty_result() {
-//         System::run(move || {
-//             let message = GetRecords {
-//                 page: 1,
-//                 per_page: 10,
-//                 user_id: 123,
-//             };
-//             let fut = crate::db::start().send(message);
-//
-//             actix::spawn(fut.then(|res| {
-//                 let data: ResponseData = res.unwrap().unwrap();
-//
-//                 assert_eq!(0, data.total);
-//                 assert_eq!(false, data.next);
-//                 assert_eq!(false, data.previous);
-//                 assert!(data.results.is_empty());
-//
-//                 System::current().stop();
-//                 future::result(Ok(()))
-//             }));
-//         })
-//         .expect("failed to start system");
-//     }
-//
-//     #[test]
-//     fn test_first_page_result() {
-//         let mut session = DbSession::new();
-//         let user = session.create_user(UserBuilder::default().password("dummy password"));
-//         session.create_records(user.id, 12);
-//
-//         let message = GetRecords {
-//             page: 1,
-//             per_page: 10,
-//             user_id: user.id,
-//         };
-//
-//         System::run(move || {
-//             let fut = crate::db::start().send(message);
-//
-//             actix::spawn(fut.then(|res| {
-//                 let data: ResponseData = res.unwrap().unwrap();
-//
-//                 assert_eq!(12, data.total);
-//                 assert_eq!(false, data.previous);
-//                 assert_eq!(true, data.next);
-//                 assert_eq!(10, data.results.len());
-//
-//                 System::current().stop();
-//                 future::result(Ok(()))
-//             }));
-//         })
-//         .expect("failed to start system");
-//     }
-//
-//     #[test]
-//     fn test_second_page_result() {
-//         let mut session = DbSession::new();
-//         let user = session.create_user(UserBuilder::default().password("dummy password"));
-//         session.create_records(user.id, 12);
-//
-//         let message = GetRecords {
-//             page: 2,
-//             per_page: 10,
-//             user_id: user.id,
-//         };
-//
-//         System::run(move || {
-//             let fut = crate::db::start().send(message);
-//
-//             actix::spawn(fut.then(|res| {
-//                 let data: ResponseData = res.unwrap().unwrap();
-//
-//                 assert_eq!(12, data.total);
-//                 assert_eq!(true, data.previous);
-//                 assert_eq!(false, data.next);
-//                 assert_eq!(2, data.results.len());
-//
-//                 System::current().stop();
-//                 future::result(Ok(()))
-//             }));
-//         })
-//         .expect("failed to start system");
-//     }
-//
-//     #[test]
-//     fn test_records_for_correct_user() {
-//         let mut session = DbSession::new();
-//         let user1 = session.create_user(
-//             UserBuilder::default()
-//                 .username("user1")
-//                 .password("dummy password"),
-//         );
-//         session.create_records(user1.id, 2);
-//
-//         let user2 = session.create_user(
-//             UserBuilder::default()
-//                 .username("user2")
-//                 .password("dummy password"),
-//         );
-//         session.create_records(user2.id, 2);
-//
-//         let message = GetRecords {
-//             page: 1,
-//             per_page: 10,
-//             user_id: user1.id,
-//         };
-//
-//         System::run(move || {
-//             let fut = crate::db::start().send(message);
-//
-//             actix::spawn(fut.then(|res| {
-//                 let data: ResponseData = res.unwrap().unwrap();
-//
-//                 assert_eq!(2, data.total);
-//                 assert_eq!(false, data.previous);
-//                 assert_eq!(false, data.next);
-//                 assert_eq!(2, data.results.len());
-//
-//                 System::current().stop();
-//                 future::result(Ok(()))
-//             }));
-//         })
-//         .expect("failed to start system");
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        db::{builders::UserBuilder, ConnectionPool},
+        tests::DbSession,
+    };
+
+    #[actix_rt::test]
+    async fn test_empty_result() {
+        let conn_pool = ConnectionPool::new();
+        let query = GetRecords {
+            page: 1,
+            per_page: 10,
+            user_id: 123,
+        };
+
+        let data = conn_pool
+            .execute(query)
+            .await
+            .expect("failed to get records");
+        assert_eq!(0, data.total);
+        assert_eq!(false, data.next);
+        assert_eq!(false, data.previous);
+        assert!(data.results.is_empty());
+    }
+
+    #[actix_rt::test]
+    async fn test_first_page_result() {
+        let mut session = DbSession::new();
+        let user = session.create_user(UserBuilder::default().password("dummy password"));
+        session.create_records(user.id, 12);
+
+        let query = GetRecords {
+            page: 1,
+            per_page: 10,
+            user_id: user.id,
+        };
+        let conn_pool = ConnectionPool::new();
+
+        let data = conn_pool
+            .execute(query)
+            .await
+            .expect("failed to get records");
+
+        assert_eq!(12, data.total);
+        assert_eq!(false, data.previous);
+        assert_eq!(true, data.next);
+        assert_eq!(10, data.results.len());
+    }
+
+    #[actix_rt::test]
+    async fn test_second_page_result() {
+        let mut session = DbSession::new();
+        let user = session.create_user(UserBuilder::default().password("dummy password"));
+        session.create_records(user.id, 12);
+
+        let query = GetRecords {
+            page: 2,
+            per_page: 10,
+            user_id: user.id,
+        };
+        let conn_pool = ConnectionPool::new();
+
+        let data = conn_pool
+            .execute(query)
+            .await
+            .expect("failed to get records");
+
+        assert_eq!(12, data.total);
+        assert_eq!(true, data.previous);
+        assert_eq!(false, data.next);
+        assert_eq!(2, data.results.len());
+    }
+
+    #[actix_rt::test]
+    async fn test_records_for_correct_user() {
+        let mut session = DbSession::new();
+        let user1 = session.create_user(
+            UserBuilder::default()
+                .username("user1")
+                .password("dummy password"),
+        );
+        session.create_records(user1.id, 2);
+
+        let user2 = session.create_user(
+            UserBuilder::default()
+                .username("user2")
+                .password("dummy password"),
+        );
+        session.create_records(user2.id, 2);
+
+        let conn_pool = ConnectionPool::new();
+        let query = GetRecords {
+            page: 1,
+            per_page: 10,
+            user_id: user1.id,
+        };
+
+        let data = conn_pool
+            .execute(query)
+            .await
+            .expect("failed to get records");
+
+        assert_eq!(2, data.total);
+        assert_eq!(false, data.previous);
+        assert_eq!(false, data.next);
+        assert_eq!(2, data.results.len());
+    }
+}
