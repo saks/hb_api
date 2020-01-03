@@ -37,18 +37,18 @@ pub async fn decrement_tags(
     redis.execute(pipeline).await
 }
 
-// pub async fn read_redis_tags(user_id: UserId, redis: Redis) -> Result<Vec<String>, Error> {
-//     let redis_key = user_tags_redis_key(user_id);
-//
-//     cmd("zrevrange")
-//         .arg(redis_key)
-//         .arg("0")
-//         .arg("-1")
-//         .send::<Vec<String>>(redis.get_ref().to_owned())
-//         .await
-//         .map_err(Into::into)
-// }
-//
+pub async fn read_redis_tags(user_id: UserId, redis: &Redis) -> Result<Vec<String>, Error> {
+    let redis_key = user_tags_redis_key(user_id);
+
+    redis::cmd("zrevrange")
+        .arg(redis_key)
+        .arg("0")
+        .arg("-1")
+        .query_async(&mut redis.connection())
+        .await
+        .map_err(Into::into)
+}
+
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
