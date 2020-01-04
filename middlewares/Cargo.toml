@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 actix-web = "2.0"
-actix-service = "*"
+actix-service = "1"
 actix-rt = "1.0"
-futures = "*"
+futures = "0.3"
 log = "0.4"
