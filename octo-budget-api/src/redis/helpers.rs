@@ -104,9 +104,9 @@ mod tests {
     async fn sorted_tags_if_no_data_stored() {
         let session = test_redis::Session::new().await;
 
-        let res = read_redis_tags(1.into(), session.redis()).await;
+        let result = read_redis_tags(user_id_1(), session.redis()).await;
 
-        assert_eq!(Vec::<String>::new(), res.unwrap());
+        assert_eq!(tags_vec!(), result.unwrap());
     }
 
     #[actix_rt::test]
@@ -117,7 +117,7 @@ mod tests {
         session.zadd(user_id, "2", "xxx").await;
         session.zadd(user_id, "3", "zzz").await;
 
-        let tags = read_redis_tags(1.into(), session.redis())
+        let tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
 
@@ -136,7 +136,7 @@ mod tests {
             .await
             .unwrap();
 
-        let result = read_redis_tags(1.into(), session.redis()).await;
+        let result = read_redis_tags(user_id_1(), session.redis()).await;
         let error = result.unwrap_err().to_string();
 
         assert!(
@@ -155,13 +155,13 @@ mod tests {
         session.zadd(user_id, "1", "foo").await;
         session.zadd(user_id, "3", "zzz").await;
 
-        let redis_tags = read_redis_tags(1.into(), session.redis())
+        let redis_tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         let user_tags = tags_vec!["foo", "xxx", "zzz"];
         let sorted = sort_tags(redis_tags, user_tags);
 
-        assert_eq!(tags_vec!["zzz", "xxx", "foo"], sorted);
+        assert_eq!(vec!["zzz", "xxx", "foo"], sorted);
     }
 
     #[actix_rt::test]
@@ -175,19 +175,19 @@ mod tests {
         session.zadd(user_id, "3", "zzz").await;
 
         // check result BEFORE incrementing
-        let redis_tags = read_redis_tags(1.into(), session.redis())
+        let redis_tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         assert_eq!(vec!["zzz", "xxx", "foo"], redis_tags);
 
         for _ in 0..3 {
-            increment_tags(1.into(), tags_vec!["foo"], session.redis())
+            increment_tags(user_id_1(), tags_vec!["foo"], session.redis())
                 .await
                 .expect("failed to increment");
         }
 
         // check result AFTER incrementing
-        let redis_tags = read_redis_tags(1.into(), session.redis())
+        let redis_tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         assert_eq!(vec!["foo", "zzz", "xxx"], redis_tags);
@@ -203,21 +203,21 @@ mod tests {
         session.zadd(user_id, "6", "zzz").await;
 
         // first, let's check initial state
-        let tags = read_redis_tags(1.into(), session.redis())
+        let tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         assert_eq!(vec!["zzz", "xxx", "foo"], tags);
 
         // now let's decrement zzz
-        decrement_tags(1.into(), tags_vec!["zzz"], session.redis())
+        decrement_tags(user_id_1(), tags_vec!["zzz"], session.redis())
             .await
             .expect("failed to decrement");
         // and decrement zzz again
-        decrement_tags(1.into(), tags_vec!["zzz"], session.redis())
+        decrement_tags(user_id_1(), tags_vec!["zzz"], session.redis())
             .await
             .expect("failed to decrement");
         // let's check tags order again
-        let tags = read_redis_tags(1.into(), session.redis())
+        let tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         // zzz is no longer the first one
@@ -234,19 +234,23 @@ mod tests {
         session.zadd(user_id, "1", "foo").await;
 
         // first, let's check initial state
-        let tags = read_redis_tags(1.into(), session.redis())
+        let tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         assert_eq!(vec!["xxx", "foo"], tags);
 
-        decrement_tags(1.into(), tags_vec!["xxx", "foo"], session.redis())
+        decrement_tags(user_id_1(), tags_vec!["xxx", "foo"], session.redis())
             .await
             .expect("failed to decrement");
 
         // let's check tags order again
-        let tags = read_redis_tags(1.into(), session.redis())
+        let tags = read_redis_tags(user_id_1(), session.redis())
             .await
             .expect("failed to get tags");
         assert_eq!(vec!["xxx"], tags);
+    }
+
+    fn user_id_1() -> UserId {
+        1.into()
     }
 }

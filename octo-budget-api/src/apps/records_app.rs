@@ -1,4 +1,3 @@
-use actix_http::Error;
 use actix_web::{
     web::{self, Json, Path, Query},
     HttpResponse, Result,

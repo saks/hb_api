@@ -1,16 +1,11 @@
-use crate::db::{schema::auth_user, DbExecutor};
+use crate::db::{schema::auth_user, DatabaseQuery, PooledConnection};
 use crate::errors::Error;
-use actix::{Handler, Message};
 use octo_budget_lib::auth_token::UserId;
 
-pub type TagsResult = Result<Vec<String>, Error>;
+pub type TagsResult = Result<Vec<String>, failure::Error>;
 
 pub struct GetUserTags {
     user_id: UserId,
-}
-
-impl Message for GetUserTags {
-    type Result = TagsResult;
 }
 
 impl GetUserTags {
@@ -19,22 +14,23 @@ impl GetUserTags {
     }
 }
 
-impl Handler<GetUserTags> for DbExecutor {
-    type Result = TagsResult;
+impl DatabaseQuery for GetUserTags {
+    type Data = Vec<String>;
 
-    fn handle(&mut self, msg: GetUserTags, _: &mut Self::Context) -> Self::Result {
+    fn execute(&self, connection: PooledConnection) -> TagsResult {
         use diesel::prelude::*;
 
-        let connection = &self.pool.get()?;
-        let user_id: i32 = msg.user_id.into();
+        let owner_user_id: i32 = self.user_id.into();
 
-        auth_user::table
+        let tags = auth_user::table
             .select(auth_user::tags)
-            .filter(auth_user::id.eq(user_id))
-            .first(connection)
+            .filter(auth_user::id.eq(owner_user_id))
+            .first(&connection)
             .map_err(|e| match e {
-                diesel::result::Error::NotFound => Error::UserNotFound(msg.user_id),
+                diesel::result::Error::NotFound => Error::UserNotFound(self.user_id),
                 err => Error::UnknownDb(err),
-            })
+            })?;
+
+        Ok(tags)
     }
 }

@@ -1,11 +1,9 @@
-use std::result;
-
-use crate::errors::Error;
 use bigdecimal::BigDecimal;
 use octo_budget_lib::auth_token::UserId;
 
 use crate::apps::forms::record::FormData;
 use crate::db::{DatabaseQuery, PooledConnection};
+use crate::errors::Error;
 
 pub struct UpdateRecord {
     amount: BigDecimal,
@@ -51,14 +49,13 @@ impl DatabaseQuery for UpdateRecord {
             ))
             .execute(&connection);
 
-        let res = match result {
+        match result {
             Ok(1) => Ok(()),
             Ok(0) => Err(Error::RecordNotUpdated("records_record", self.id)),
             Ok(_) => Err(Error::UnknownMsg("More than one record updated")),
             Err(err) => Err(Error::UnknownDb(err)),
-        }?;
-
-        Ok(res)
+        }
+        .map_err(Into::into)
     }
 }
 

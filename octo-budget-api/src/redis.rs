@@ -25,9 +25,9 @@ impl Redis {
     }
 
     pub async fn execute(&self, pipeline: redis::Pipeline) -> Result<(), crate::errors::Error> {
-        let res = pipeline.query_async(&mut self.connection()).await?;
+        pipeline.query_async(&mut self.connection()).await?;
 
-        Ok(res)
+        Ok(())
     }
 
     pub fn connection(&self) -> RedisConnection {

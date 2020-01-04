@@ -39,10 +39,10 @@ async fn main() -> std::io::Result<()> {
                     .service(actix_files::Files::new("/", "./reactapp/build")),
             )
             .service(web::scope("/auth/jwt").service(apps::AuthService))
-            // .service(web::scope("/api/tags").service(apps::TagsService))
+            .service(web::scope("/api/tags").service(apps::TagsService))
             .service(web::scope("/api/user").service(apps::users_app::show))
             .service(web::scope("/api/records").service(apps::RecordsService))
-        // .service(web::scope("/api/budgets").service(apps::BudgetsService))
+            .service(web::scope("/api/budgets").service(apps::BudgetsService))
     })
     .bind(format!(
         "{}:{}",

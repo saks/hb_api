@@ -58,11 +58,11 @@ impl Params {
         let Self { page, per_page } = self;
         let mut errors = ValidationErrors::default();
 
-        if page < &0 {
+        if page.is_negative() {
             errors.page.push("Must be a positive number".to_string());
         }
 
-        if per_page < &0 {
+        if per_page.is_negative() {
             errors
                 .per_page
                 .push("Must be a positive number".to_string());

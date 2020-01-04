@@ -1,13 +1,11 @@
-use actix::{Actor, Addr, SyncArbiter, SyncContext};
-use actix_web::web;
 use diesel::{
     pg::PgConnection,
     r2d2::{ConnectionManager, Pool},
 };
 
 pub mod messages;
-pub use models::{self, schema};
 pub mod pagination;
+pub use models::{self, schema};
 
 pub type PooledConnection =
     r2d2::PooledConnection<diesel::r2d2::ConnectionManager<diesel::PgConnection>>;
@@ -39,6 +37,13 @@ impl ConnectionPool {
                 BlockingError::Canceled => failure::format_err!("Thread pool is gone"),
             })
     }
+
+    #[cfg(test)]
+    pub fn conn(&self) -> PooledConnection {
+        self.0
+            .get()
+            .expect("failed to get connection from the pool")
+    }
 }
 
 fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
@@ -51,14 +56,6 @@ fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
         .max_size(1) // max pool size
         .build(manager)
         .expect("Failed to create database connection pool.")
-}
-
-pub struct DbExecutor {
-    pub pool: Pool<ConnectionManager<PgConnection>>,
-}
-
-impl Actor for DbExecutor {
-    type Context = SyncContext<Self>;
 }
 
 #[cfg(test)]

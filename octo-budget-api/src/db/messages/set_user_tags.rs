@@ -1,9 +1,7 @@
-use crate::db::{schema::auth_user, DbExecutor};
-use crate::errors::Error;
-use actix::{Handler, Message};
+use crate::db::{schema::auth_user, DatabaseQuery, PooledConnection};
 use octo_budget_lib::auth_token::UserId;
 
-pub type TagsResult = Result<Vec<String>, Error>;
+pub type TagsResult = Result<Vec<String>, failure::Error>;
 
 pub struct SetUserTags {
     tags: Vec<String>,
@@ -16,27 +14,20 @@ impl SetUserTags {
     }
 }
 
-impl Message for SetUserTags {
-    type Result = TagsResult;
-}
+impl DatabaseQuery for SetUserTags {
+    type Data = Vec<String>;
 
-impl Handler<SetUserTags> for DbExecutor {
-    type Result = TagsResult;
-
-    fn handle(&mut self, msg: SetUserTags, _: &mut Self::Context) -> Self::Result {
+    fn execute(&self, connection: PooledConnection) -> TagsResult {
         use diesel::prelude::*;
 
-        let connection = &self.pool.get()?;
+        let owner_user_id: i32 = self.user_id.into();
+        let target = auth_user::table.filter(auth_user::id.eq(owner_user_id));
 
-        let SetUserTags { user_id, tags } = msg;
-        let user_id: i32 = user_id.into();
-
-        let target = auth_user::table.filter(auth_user::id.eq(user_id));
         diesel::update(target)
-            .set(auth_user::tags.eq(&tags))
-            .execute(connection)
-            .map_err(Error::UnknownDb)?;
+            .set(auth_user::tags.eq(&self.tags))
+            .execute(&connection)
+            .map_err(crate::errors::Error::UnknownDb)?;
 
-        Ok(tags)
+        Ok(self.tags.clone()) // TODO: get rid of clone
     }
 }

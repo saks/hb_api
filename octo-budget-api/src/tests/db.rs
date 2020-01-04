@@ -1,82 +1,37 @@
 use bigdecimal::BigDecimal;
 use chrono::naive::NaiveDateTime;
 use diesel::*;
-use diesel::{Connection, PgConnection};
 
 use crate::db::{
     builders::UserBuilder,
     models::{AuthUser, Budget, Record},
+    ConnectionPool, PooledConnection,
 };
 
-// #[macro_export]
-// macro_rules! get_db_message_result {
-//     ( $message:ident, $closure:expr ) => {{
-//         System::run(|| {
-//             Arbiter::spawn(crate::db::start().send($message).then(|res| {
-//                 $closure(res.unwrap());
-//                 System::current().stop();
-//                 future::result(Ok(()))
-//             }));
-//         })
-//         .expect("failed to start system");
-//     }};
-// }
-
-// pub fn connection() -> PgConnection {
-//     let connection = connection_without_transaction();
-//
-//     connection.begin_test_transaction().unwrap();
-//     connection
-// }
-
-pub fn connection_without_transaction() -> PgConnection {
-    let database_url = crate::config::DATABASE_URL.to_string();
-    PgConnection::establish(&database_url).expect(&format!(
-        "Failed to establish connection to URL: `{}'",
-        database_url
-    ))
-}
-
-// use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-
 pub struct DbSession {
-    conn: PgConnection,
     with_transaction: bool,
-    // pool: Pool<ConnectionManager<PgConnection>>,
+    pooled_conn: PooledConnection,
 }
 
 impl DbSession {
     pub fn new() -> Self {
-        // let database_url = database_url_from_env("DATABASE_URL");
-        // let manager = ConnectionManager::<PgConnection>::new(database_url.as_str());
-        //
-        // let pool = Pool::builder()
-        //     .max_size(1) // max pool size
-        //     .build(manager)
-        //     .expect("Failed to create database connection pool.");
+        let pool = ConnectionPool::new();
+        let pooled_conn = pool.conn();
 
         DbSession {
-            conn: connection_without_transaction(),
             with_transaction: false,
-            // pool,
+            pooled_conn,
         }
     }
 
-    // pub fn with_transaction() -> Self {
-    //     Self {
-    //         conn: connection(),
-    //         with_transaction: true,
-    //     }
-    // }
-
-    pub fn conn(&self) -> &PgConnection {
-        &self.conn
+    pub fn conn(&self) -> &PooledConnection {
+        &self.pooled_conn
     }
 
     pub fn count_records(&self) -> i64 {
         use crate::db::schema::records_record::table as records;
 
-        records.count().first(&self.conn).unwrap()
+        records.count().first(&self.pooled_conn).unwrap()
     }
 
     pub fn create_budget(&mut self, budget: Budget) {
@@ -92,7 +47,7 @@ impl DbSession {
                 tags_type.eq(budget.tags_type),
                 user_id.eq(budget.user_id),
             ))
-            .get_result::<Budget>(&self.conn)
+            .get_result::<Budget>(&self.pooled_conn)
             .unwrap();
     }
 
@@ -110,7 +65,7 @@ impl DbSession {
                 transaction_type.eq("EXP"),
                 user_id.eq(id_of_the_user),
             ))
-            .get_result::<Record>(&self.conn)
+            .get_result::<Record>(&self.pooled_conn)
             .unwrap()
     }
 
@@ -127,7 +82,7 @@ impl DbSession {
                 transaction_type.eq(record.transaction_type),
                 user_id.eq(record.user_id),
             ))
-            .get_result::<Record>(&self.conn)
+            .get_result::<Record>(&self.pooled_conn)
             .unwrap();
     }
 
@@ -148,7 +103,7 @@ impl DbSession {
                     transaction_type.eq("EXP"),
                     user_id.eq(id_of_the_user),
                 ))
-                .get_result::<Record>(&self.conn)
+                .get_result::<Record>(&self.pooled_conn)
                 .unwrap();
 
             result.push(record);
@@ -163,7 +118,7 @@ impl DbSession {
 
         records
             .find(record_id)
-            .first(&self.conn)
+            .first(&self.pooled_conn)
             .expect("failed to find record")
     }
 
@@ -182,7 +137,7 @@ impl DbSession {
                     transaction_type.eq("EXP"),
                     user_id.eq(id_of_the_user),
                 ))
-                .get_result::<Record>(&self.conn)
+                .get_result::<Record>(&self.pooled_conn)
                 .unwrap();
         }
     }
@@ -207,7 +162,7 @@ impl DbSession {
                 date_joined.eq(user.date_joined),
                 tags.eq(user.tags),
             ))
-            .get_result(&self.conn)
+            .get_result(&self.pooled_conn)
             .unwrap()
     }
 }
@@ -219,7 +174,7 @@ impl Drop for DbSession {
         }
 
         for table_name in ["auth_user", "records_record", "budgets_budget"].iter() {
-            self.conn
+            self.pooled_conn
                 .execute(&format!("TRUNCATE TABLE {} CASCADE", table_name))
                 .expect("Error executing TRUNCATE");
         }
