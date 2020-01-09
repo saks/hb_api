@@ -20,7 +20,7 @@ url = "1"
 log = "0.4"
 r2d2 = "*"
 models = { path = "../models" }
-redis = { git = "https://github.com/mitsuhiko/redis-rs" }
+redis = "0.14"
 
 [dependencies.bigdecimal]
 version = "0.1.0" # must match version of diesel dependency
