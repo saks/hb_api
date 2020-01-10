@@ -77,7 +77,7 @@ impl UserId {
     }
 }
 
-#[derive(Default, Debug)] // TODO: do I need Default
+#[derive(Default, Debug)]
 pub struct ApiJwtTokenAuthConfig {
     secret: &'static [u8],
 }

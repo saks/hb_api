@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(db::ConnectionPool::new())
             .data(redis.clone())
-            .data(ApiJwtTokenAuthConfig::new(
+            .app_data(ApiJwtTokenAuthConfig::new(
                 config::AUTH_TOKEN_SECRET.as_bytes(),
             ))
             .wrap(middlewares::force_https::ForceHttps::new(
