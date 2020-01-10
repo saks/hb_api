@@ -1,5 +1,5 @@
+use crate::errors::DbResult;
 use diesel::prelude::*;
-use failure::Error;
 use std::convert::Into;
 
 use crate::db::{models::AuthUser, schema::auth_user, DatabaseQuery, PooledConnection};
@@ -15,7 +15,7 @@ impl FindUserByName {
 impl DatabaseQuery for FindUserByName {
     type Data = AuthUser;
 
-    fn execute(&self, connection: PooledConnection) -> Result<Self::Data, Error> {
+    fn execute(&self, connection: PooledConnection) -> DbResult<Self::Data> {
         let user = auth_user::table
             .filter(auth_user::username.eq(&self.0))
             .first(&connection)?;
@@ -33,7 +33,7 @@ mod tests {
     async fn not_found_err() {
         let result = find_by_name("foo".to_string()).await;
 
-        assert_eq!("Err(NotFound)", format!("{:?}", result));
+        assert_eq!("Err(RecordNotFound)", format!("{:?}", result));
     }
 
     #[actix_rt::test]
@@ -47,7 +47,7 @@ mod tests {
         assert_eq!(user, result.unwrap());
     }
 
-    async fn find_by_name(username: String) -> Result<AuthUser, Error> {
+    async fn find_by_name(username: String) -> DbResult<AuthUser> {
         let conn_pool = crate::db::ConnectionPool::new();
         let query = FindUserByName::new(username);
 

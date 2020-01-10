@@ -7,7 +7,7 @@ use octo_budget_lib::auth_token::UserId;
 use super::forms::record::Form;
 use super::index_params::Params;
 use crate::db::{
-    messages::{CreateRecord, FindRecord, GetRecords, UpdateRecord},
+    queries::{CreateRecord, FindRecord, GetRecords, UpdateRecord},
     ConnectionPool,
 };
 use crate::redis::{

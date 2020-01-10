@@ -1,10 +1,11 @@
+use crate::errors::{DbError, DbResult};
 use diesel::{
     pg::PgConnection,
     r2d2::{ConnectionManager, Pool},
 };
 
-pub mod messages;
 pub mod pagination;
+pub mod queries;
 pub use models::{self, schema};
 
 pub type PooledConnection =
@@ -12,7 +13,7 @@ pub type PooledConnection =
 
 pub trait DatabaseQuery {
     type Data: Send;
-    fn execute(&self, pool: PooledConnection) -> Result<Self::Data, failure::Error>;
+    fn execute(&self, pool: PooledConnection) -> DbResult<Self::Data>;
 }
 
 pub struct ConnectionPool(Pool<ConnectionManager<PgConnection>>);
@@ -23,10 +24,7 @@ impl ConnectionPool {
         Self(create_pool())
     }
 
-    pub async fn execute<T: DatabaseQuery + Send + 'static>(
-        &self,
-        query: T,
-    ) -> Result<T::Data, failure::Error> {
+    pub async fn execute<T: DatabaseQuery + Send + 'static>(&self, query: T) -> DbResult<T::Data> {
         use actix_http::error::BlockingError;
         let connection = self.0.get()?;
 
@@ -34,7 +32,7 @@ impl ConnectionPool {
             .await
             .map_err(|e| match e {
                 BlockingError::Error(err) => err,
-                BlockingError::Canceled => failure::format_err!("Thread pool is gone"),
+                BlockingError::Canceled => DbError::ThreadPoolIsGone,
             })
     }
 

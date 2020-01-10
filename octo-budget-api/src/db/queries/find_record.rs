@@ -1,5 +1,5 @@
 use crate::db::{models::Record, DatabaseQuery, PooledConnection};
-use crate::errors::Error;
+use crate::errors::DbResult;
 use octo_budget_lib::auth_token::UserId;
 
 pub struct FindRecord {
@@ -16,7 +16,7 @@ impl FindRecord {
 impl DatabaseQuery for FindRecord {
     type Data = Record;
 
-    fn execute(&self, connection: PooledConnection) -> Result<Record, failure::Error> {
+    fn execute(&self, connection: PooledConnection) -> DbResult<Record> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::prelude::*;
 
@@ -25,11 +25,7 @@ impl DatabaseQuery for FindRecord {
         let record = records_record
             .filter(user_id.eq(owner_user_id))
             .filter(id.eq(self.id))
-            .first(&connection)
-            .map_err(|e| match e {
-                diesel::result::Error::NotFound => Error::UserNotFound(self.user_id),
-                err => Error::UnknownDb(err),
-            })?;
+            .first(&connection)?;
 
         Ok(record)
     }

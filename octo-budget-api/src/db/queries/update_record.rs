@@ -3,7 +3,7 @@ use octo_budget_lib::auth_token::UserId;
 
 use crate::apps::forms::record::FormData;
 use crate::db::{DatabaseQuery, PooledConnection};
-use crate::errors::Error;
+use crate::errors::{DbError, DbResult};
 
 pub struct UpdateRecord {
     amount: BigDecimal,
@@ -30,7 +30,7 @@ impl UpdateRecord {
 impl DatabaseQuery for UpdateRecord {
     type Data = ();
 
-    fn execute(&self, connection: PooledConnection) -> Result<(), failure::Error> {
+    fn execute(&self, connection: PooledConnection) -> DbResult<()> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::prelude::*;
 
@@ -51,9 +51,9 @@ impl DatabaseQuery for UpdateRecord {
 
         match result {
             Ok(1) => Ok(()),
-            Ok(0) => Err(Error::RecordNotUpdated("records_record", self.id)),
-            Ok(_) => Err(Error::UnknownMsg("More than one record updated")),
-            Err(err) => Err(Error::UnknownDb(err)),
+            Ok(0) => Err(DbError::RecordNotUpdated("records_record", self.id)),
+            Ok(_) => Err(DbError::UnexpectedResult("More than one record updated")),
+            Err(err) => Err(DbError::Unknown(err)),
         }
         .map_err(Into::into)
     }
@@ -110,7 +110,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn check_update_result() {
-        use crate::db::messages::GetRecords;
+        use crate::db::queries::GetRecords;
 
         let conn_pool = crate::db::ConnectionPool::new();
         let mut session = DbSession::new();

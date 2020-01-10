@@ -1,9 +1,6 @@
-use std::result;
-
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{Datelike, Local, NaiveDate};
 use diesel::prelude::*;
-use failure::Error;
 
 use crate::apps::index_response::Data;
 use crate::db::{
@@ -12,8 +9,9 @@ use crate::db::{
     schema::budgets_budget,
     DatabaseQuery, PooledConnection,
 };
+use crate::errors::DbResult;
 
-pub type GetBudgetsResult = result::Result<Data<SerializedBudget>, Error>;
+pub type GetBudgetsResult = DbResult<Data<SerializedBudget>>;
 
 #[derive(Clone)]
 pub struct GetBudgets {
@@ -30,7 +28,7 @@ impl DatabaseQuery for GetBudgets {
     }
 }
 
-fn budget_spent(budget: &Budget, conn: &PooledConnection) -> Result<BigDecimal, Error> {
+fn budget_spent(budget: &Budget, connection: &PooledConnection) -> DbResult<BigDecimal> {
     use crate::db::schema::records_record;
     use diesel::dsl::{not, sum};
 
@@ -49,11 +47,11 @@ fn budget_spent(budget: &Budget, conn: &PooledConnection) -> Result<BigDecimal, 
     let query_result = match budget.tags_type.as_str() {
         "INCL" => query
             .filter(records_record::tags.overlaps_with(&budget.tags))
-            .first::<Option<BigDecimal>>(conn)?,
+            .first::<Option<BigDecimal>>(connection)?,
         "EXCL" => query
             .filter(not(records_record::tags.overlaps_with(&budget.tags)))
-            .first::<Option<BigDecimal>>(conn)?,
-        _ => query.first::<Option<BigDecimal>>(conn)?,
+            .first::<Option<BigDecimal>>(connection)?,
+        _ => query.first::<Option<BigDecimal>>(connection)?,
     };
 
     Ok(query_result.unwrap_or_else(BigDecimal::zero).with_scale(2))
@@ -76,7 +74,7 @@ fn ndays_in_the_current_month(today: NaiveDate) -> u32 {
 }
 
 // TODO: add tests
-fn serialize_budget(budget: Budget, conn: &PooledConnection) -> Result<SerializedBudget, Error> {
+fn serialize_budget(budget: Budget, conn: &PooledConnection) -> DbResult<SerializedBudget> {
     use bigdecimal::ToPrimitive;
 
     let mut res = SerializedBudget::default();
@@ -104,10 +102,7 @@ fn serialize_budget(budget: Budget, conn: &PooledConnection) -> Result<Serialize
     Ok(res)
 }
 
-fn get_page_of_budgets(
-    msg: &GetBudgets,
-    conn: &PooledConnection,
-) -> Result<(Vec<Budget>, i64), Error> {
+fn get_page_of_budgets(msg: &GetBudgets, conn: &PooledConnection) -> DbResult<(Vec<Budget>, i64)> {
     let query = budgets_budget::table
         .select(budgets_budget::all_columns)
         .filter(budgets_budget::user_id.eq(msg.user_id))
@@ -131,7 +126,7 @@ fn handle(msg: &GetBudgets, conn: &PooledConnection) -> GetBudgetsResult {
     let results = results
         .into_iter()
         .map(|budget| serialize_budget(budget, conn))
-        .collect::<Result<Vec<SerializedBudget>, Error>>()?;
+        .collect::<DbResult<Vec<SerializedBudget>>>()?;
 
     let previous = msg.page > 1;
     let next = msg.page < total_pages;

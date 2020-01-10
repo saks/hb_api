@@ -5,7 +5,7 @@ use actix_web::{
 
 use self::utils::generate_token;
 use super::forms::auth::{self, Form};
-use crate::db::{messages::FindUserByName, ConnectionPool};
+use crate::db::{queries::FindUserByName, ConnectionPool};
 
 mod response_data;
 mod utils;

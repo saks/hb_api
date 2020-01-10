@@ -2,7 +2,7 @@ use actix_web::{web, web::Query, HttpResponse, Result};
 use octo_budget_lib::auth_token::UserId;
 
 use super::index_params::Params;
-use crate::db::{messages::GetBudgets, ConnectionPool};
+use crate::db::{queries::GetBudgets, ConnectionPool};
 
 async fn index(
     user_id: UserId,

@@ -4,6 +4,7 @@ use octo_budget_lib::auth_token::UserId;
 
 use crate::apps::forms::record::FormData;
 use crate::db::{models::Record, DatabaseQuery, PooledConnection};
+use crate::errors::DbResult;
 
 pub struct CreateRecord {
     amount: BigDecimal,
@@ -33,7 +34,7 @@ impl CreateRecord {
 impl DatabaseQuery for CreateRecord {
     type Data = i32;
 
-    fn execute(&self, connection: PooledConnection) -> Result<i32, failure::Error> {
+    fn execute(&self, connection: PooledConnection) -> DbResult<i32> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::prelude::*;
         use diesel::*;

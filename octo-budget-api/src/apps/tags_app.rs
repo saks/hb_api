@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::helpers::sort_tags;
 use crate::db::{
-    messages::{GetUserTags, SetUserTags},
+    queries::{GetUserTags, SetUserTags},
     ConnectionPool,
 };
 use crate::redis::{helpers::read_redis_tags, Redis};

@@ -1,8 +1,8 @@
 use crate::db::{schema::auth_user, DatabaseQuery, PooledConnection};
-use crate::errors::Error;
+use crate::errors::DbResult;
 use octo_budget_lib::auth_token::UserId;
 
-pub type TagsResult = Result<Vec<String>, failure::Error>;
+pub type TagsResult = DbResult<Vec<String>>;
 
 pub struct GetUserTags {
     user_id: UserId,
@@ -25,11 +25,7 @@ impl DatabaseQuery for GetUserTags {
         let tags = auth_user::table
             .select(auth_user::tags)
             .filter(auth_user::id.eq(owner_user_id))
-            .first(&connection)
-            .map_err(|e| match e {
-                diesel::result::Error::NotFound => Error::UserNotFound(self.user_id),
-                err => Error::UnknownDb(err),
-            })?;
+            .first(&connection)?;
 
         Ok(tags)
     }

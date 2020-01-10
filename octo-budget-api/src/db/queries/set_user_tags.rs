@@ -1,7 +1,8 @@
 use crate::db::{schema::auth_user, DatabaseQuery, PooledConnection};
+use crate::errors::{DbError, DbResult};
 use octo_budget_lib::auth_token::UserId;
 
-pub type TagsResult = Result<Vec<String>, failure::Error>;
+pub type TagsResult = DbResult<Vec<String>>;
 
 pub struct SetUserTags {
     tags: Vec<String>,
@@ -26,7 +27,7 @@ impl DatabaseQuery for SetUserTags {
         diesel::update(target)
             .set(auth_user::tags.eq(&self.tags))
             .execute(&connection)
-            .map_err(crate::errors::Error::UnknownDb)?;
+            .map_err(DbError::Unknown)?;
 
         Ok(self.tags.clone()) // TODO: get rid of clone
     }
