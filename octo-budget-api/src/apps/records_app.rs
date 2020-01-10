@@ -1,24 +1,25 @@
-use actix_http::Error;
 use actix_web::{
-    web::{Json, Path, Query},
+    web::{self, Json, Path, Query},
     HttpResponse, Result,
 };
-use futures::Future;
-use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
 use octo_budget_lib::auth_token::UserId;
 
 use super::forms::record::Form;
 use super::index_params::Params;
 use crate::db::{
-    messages::{CreateRecord, FindRecord, GetRecords, UpdateRecord},
-    Pg,
+    queries::{CreateRecord, FindRecord, GetRecords, UpdateRecord},
+    ConnectionPool,
 };
 use crate::redis::{
     helpers::{decrement_tags, increment_tags},
     Redis,
 };
 
-async fn index(params: Query<Params>, pg: Pg, user_id: UserId) -> Result<HttpResponse> {
+async fn index(
+    user_id: UserId,
+    params: Query<Params>,
+    pool: web::Data<ConnectionPool>,
+) -> Result<HttpResponse> {
     let params = params.into_inner().validate()?;
 
     let message = GetRecords {
@@ -27,43 +28,43 @@ async fn index(params: Query<Params>, pg: Pg, user_id: UserId) -> Result<HttpRes
         user_id: user_id.into(),
     };
 
-    let records = Box::new(pg.send(message)).compat().await??;
+    let records = pool.execute(message).await?;
 
     Ok(HttpResponse::Ok().json(records))
 }
 
-async fn create(form: Json<Form>, pg: Pg, redis: Redis, user_id: UserId) -> Result<HttpResponse> {
+async fn create(
+    user_id: UserId,
+    form: Json<Form>,
+    pool: web::Data<ConnectionPool>,
+    redis: web::Data<Redis>,
+) -> Result<HttpResponse> {
     use serde_json::json;
 
     let data = form.into_inner().validate()?;
+    let id = pool.execute(CreateRecord::new(&data, user_id)).await?;
 
-    let id = Box::new(pg.send(CreateRecord::new(&data, user_id)))
-        .compat()
-        .await??;
-    increment_tags(user_id, data.tags, redis).await?;
+    increment_tags(user_id, data.tags, &redis).await?;
 
     Ok(HttpResponse::Ok().json(json!({ "id": id })))
 }
 
 async fn update(
-    params: Path<i32>,
-    form: Json<Form>,
-    db: Pg,
-    redis: Redis,
     user_id: UserId,
+    record_id: Path<i32>,
+    form: Json<Form>,
+    pool: web::Data<ConnectionPool>,
+    redis: web::Data<Redis>,
 ) -> Result<HttpResponse> {
-    let record_id = params.into_inner();
+    let record_id = record_id.into_inner();
     let data = form.into_inner().validate()?;
 
-    let record = Box::new(db.send(FindRecord::new(record_id, user_id)))
-        .compat()
-        .await??;
-    Box::new(db.send(UpdateRecord::new(record.id, &data, user_id)))
-        .compat()
-        .await??;
+    let record = pool.execute(FindRecord::new(record_id, user_id)).await?;
+    pool.execute(UpdateRecord::new(record.id, &data, user_id))
+        .await?;
 
-    decrement_tags(user_id, record.tags, redis.clone()).await?;
-    increment_tags(user_id, data.tags, redis).await?;
+    decrement_tags(user_id, record.tags, &redis).await?;
+    increment_tags(user_id, data.tags, &redis).await?;
 
     Ok(HttpResponse::Ok().json(""))
 }
@@ -71,33 +72,6 @@ async fn update(
 pub mod service {
     use super::*;
     use actix_web::dev::HttpServiceFactory;
-
-    fn __index(
-        params: Query<Params>,
-        pg: Pg,
-        user_id: UserId,
-    ) -> impl Future<Item = HttpResponse, Error = Error> {
-        index(params, pg, user_id).boxed().compat()
-    }
-
-    fn __create(
-        form: Json<Form>,
-        pg: Pg,
-        redis: Redis,
-        user_id: UserId,
-    ) -> impl Future<Item = HttpResponse, Error = Error> {
-        create(form, pg, redis, user_id).boxed().compat()
-    }
-
-    fn __update(
-        params: Path<i32>,
-        form: Json<Form>,
-        db: Pg,
-        redis: Redis,
-        user_id: UserId,
-    ) -> impl Future<Item = HttpResponse, Error = Error> {
-        update(params, form, db, redis, user_id).boxed().compat()
-    }
 
     pub struct Service;
 
@@ -109,58 +83,57 @@ pub mod service {
             };
 
             HttpServiceFactory::register(
-                Resource::new("/record-detail/")
-                    .guard(Get())
-                    .to_async(__index),
+                Resource::new("/record-detail/").guard(Get()).to(index),
                 config,
             );
             HttpServiceFactory::register(
-                Resource::new("/record-detail/")
-                    .guard(Post())
-                    .to_async(__create),
+                Resource::new("/record-detail/").guard(Post()).to(create),
                 config,
             );
             HttpServiceFactory::register(
                 Resource::new("/record-detail/{id}/")
                     .guard(Put())
-                    .to_async(__update),
+                    .to(update),
                 config,
             );
         }
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::service::Service;
-    use crate::{db::builders::UserBuilder, test_server, tests, tests::RequestJwtAuthExt as _};
-    use actix_http::http::Method;
-    use actix_http_test::TestServerRuntime;
-    use actix_web::http::StatusCode;
+    use crate::{
+        await_test_server,
+        db::builders::UserBuilder,
+        tests::{self, setup_env, RequestJwtAuthExt as _},
+    };
+    use actix_web::{
+        http::{Method, StatusCode},
+        test::{call_service, read_body, TestRequest},
+    };
     use bigdecimal::BigDecimal;
     use serde_json::{json, Value};
 
-    fn setup() -> TestServerRuntime {
-        tests::setup_env();
-        test_server!(Service)
-    }
+    #[actix_rt::test]
+    async fn index_when_no_records() {
+        setup_env();
 
-    #[test]
-    fn index_return_empty_list() {
         let session = tests::DbSession::new();
-        let mut srv = setup();
+        let mut service = await_test_server!(Service);
 
         let user = session.create_user(UserBuilder::default().tags(vec!["foo"]));
+        let request = TestRequest::with_uri("/record-detail/")
+            .jwt_auth(user.id)
+            .to_request();
 
-        let request = srv.get("/record-detail/").jwt_auth(user.id).send();
+        let response = call_service(&mut service, request).await;
 
-        let mut response = srv.block_on(request).expect("failed to send request");
-        let response_body = srv
-            .block_on(response.json::<Value>())
-            .expect("failed to parse response");
+        assert!(response.status().is_success(), "response is not success");
 
-        assert_eq!(StatusCode::OK, response.status(), "wrong status code");
+        let response_body = read_body(response).await;
+        let response_body = serde_json::from_slice::<Value>(&response_body)
+            .expect(&format!("Failed to deserialize: {:?}", response_body));
 
         assert_eq!(
             json!({"total": 0, "results": [], "next": false, "previous": false}),
@@ -168,31 +141,83 @@ mod tests {
         );
     }
 
-    #[test]
-    fn create_happy_path() {
+    #[actix_rt::test]
+    async fn index_requires_auth() {
+        setup_env();
+
+        let mut service = await_test_server!(Service);
+        let request = TestRequest::with_uri("/record-detail/").to_request();
+        let response = call_service(&mut service, request).await;
+
+        assert_eq!(
+            StatusCode::UNAUTHORIZED,
+            response.status(),
+            "wrong status code"
+        );
+    }
+
+    #[actix_rt::test]
+    async fn update_requires_auth() {
+        setup_env();
+
+        let mut service = await_test_server!(Service);
+        let request = TestRequest::with_uri("/record-detail/123/")
+            .method(Method::PUT)
+            .to_request();
+        let response = call_service(&mut service, request).await;
+
+        assert_eq!(
+            StatusCode::UNAUTHORIZED,
+            response.status(),
+            "wrong status code"
+        );
+    }
+
+    #[actix_rt::test]
+    async fn create_requires_auth() {
+        setup_env();
+
+        let mut service = await_test_server!(Service);
+        let request = TestRequest::with_uri("/record-detail/")
+            .method(Method::POST)
+            .to_request();
+        let response = call_service(&mut service, request).await;
+
+        assert_eq!(
+            StatusCode::UNAUTHORIZED,
+            response.status(),
+            "wrong status code"
+        );
+    }
+
+    #[actix_rt::test]
+    async fn create_happy_path() {
+        setup_env();
+
         let session = tests::DbSession::new();
-        let mut srv = setup();
+        let mut service = await_test_server!(Service);
 
         let user = session.create_user(UserBuilder::default());
 
         let payload = json!({
             "amount": {"amount": 999.12, "currency": { "code": "CAD", "name": "Canadian Dollar" }},
             "transaction_type": "EXP",
-            "tags": ["foo"],
+            "tags": ["foo", "bar"],
         });
 
-        let request = srv
-            .post("/record-detail/")
+        let request = TestRequest::with_uri("/record-detail/")
+            .method(Method::POST)
             .jwt_auth(user.id)
-            .send_json(&payload);
+            .set_json(&payload)
+            .to_request();
 
-        let mut response = srv.block_on(request).expect("failed to send request");
+        let response = call_service(&mut service, request).await;
 
         assert_eq!(StatusCode::OK, response.status(), "wrong status code");
 
-        let response_body = srv
-            .block_on(response.json::<Value>())
-            .expect("failed to parse response");
+        let response_body = read_body(response).await;
+        let response_body = serde_json::from_slice::<Value>(&response_body)
+            .expect(&format!("Failed to deserialize: {:?}", response_body));
 
         // make sure that record was created properly
         let new_record_id = response_body.get("id").unwrap().as_i64().unwrap() as i32;
@@ -200,13 +225,15 @@ mod tests {
 
         assert_eq!(BigDecimal::from(999.12), updated_record.amount);
         assert_eq!("EXP", updated_record.transaction_type);
-        assert_eq!(vec!["foo"], updated_record.tags);
+        assert_eq!(vec!["foo", "bar"], updated_record.tags);
     }
 
-    #[test]
-    fn update_happy_path() {
+    #[actix_rt::test]
+    async fn update_happy_path() {
+        setup_env();
+
         let mut session = tests::DbSession::new();
-        let mut srv = setup();
+        let mut service = await_test_server!(Service);
 
         let user = session.create_user(UserBuilder::default());
         let record = session.create_record2(user.id);
@@ -217,18 +244,19 @@ mod tests {
             "tags": ["foo"],
         });
 
-        let request = srv
-            .put(format!("/record-detail/{}/", record.id))
+        let request = TestRequest::with_uri(&format!("/record-detail/{}/", record.id))
+            .method(Method::PUT)
+            .set_json(&payload)
             .jwt_auth(user.id)
-            .send_json(&payload);
+            .to_request();
 
-        let mut response = srv.block_on(request).expect("failed to send request");
+        let response = call_service(&mut service, request).await;
 
         assert_eq!(StatusCode::OK, response.status(), "wrong status code");
 
-        let response_body = srv
-            .block_on(response.json::<Value>())
-            .expect("failed to parse response");
+        let response_body = read_body(response).await;
+        let response_body = serde_json::from_slice::<Value>(&response_body)
+            .expect(&format!("Failed to deserialize: {:?}", response_body));
 
         assert_eq!(json!(""), response_body);
 
@@ -238,45 +266,5 @@ mod tests {
         assert_eq!(BigDecimal::from(999), updated_record.amount);
         assert_eq!("INC", updated_record.transaction_type);
         assert_eq!(vec!["foo"], updated_record.tags);
-    }
-
-    #[test]
-    fn index_requires_auth() {
-        let mut srv = setup();
-        let request = srv.get("/record-detail/").send();
-        let response = srv.block_on(request).expect("failed to send request");
-
-        assert_eq!(
-            StatusCode::UNAUTHORIZED,
-            response.status(),
-            "wrong status code"
-        );
-    }
-
-    #[test]
-    fn update_requires_auth() {
-        let mut srv = setup();
-        let url = srv.url("/record-detail/123/");
-        let request = srv.request(Method::PUT, url).send_json(&json!({}));
-        let response = srv.block_on(request).expect("failed to send request");
-
-        assert_eq!(
-            StatusCode::UNAUTHORIZED,
-            response.status(),
-            "wrong status code"
-        );
-    }
-
-    #[test]
-    fn create_requires_auth() {
-        let mut srv = setup();
-        let request = srv.post("/record-detail/").send_json(&json!({}));
-        let response = srv.block_on(request).expect("failed to send request");
-
-        assert_eq!(
-            StatusCode::UNAUTHORIZED,
-            response.status(),
-            "wrong status code"
-        );
     }
 }

@@ -6,25 +6,24 @@ version = "0.1.0"
 
 [dependencies]
 actix = "*"
-actix-web = { version = "1.0", default_features = false }
-actix-service = "0.4"
-actix-http = "0.2"
-actix-files = "0.1"
+actix-web = { version = "2.0", default_features = false }
+actix-rt = "1.0"
+actix-http = "*"
+actix-files = "*"
 dotenv = "0.13"
 env_logger = "0.6"
 failure = "0.1"
-futures = { package = "futures", version = "0.1" }
-futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
+futures = "0.3"
 lazy_static = "1.1"
 serde = { version = "1", features = ["derive"] }
 url = "1"
 log = "0.4"
 r2d2 = "*"
-octo-redis = { path = "../octo-redis" }
 models = { path = "../models" }
+redis = "0.14"
 
 [dependencies.bigdecimal]
-version = "0.0.14" # must match version of diesel dependency
+version = "0.1.0" # must match version of diesel dependency
 features = ["serde"]
 
 [dependencies.chrono]
@@ -50,5 +49,4 @@ version = "1.0"
 
 [dev-dependencies]
 actix-http-test = "0.2"
-redis = "*"
-bytes = "0.4"
+bytes = "0.5"

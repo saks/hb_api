@@ -1,20 +1,17 @@
-use std::result;
-
-use actix::{Handler, Message};
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{Datelike, Local, NaiveDate};
 use diesel::prelude::*;
-use failure::Error;
 
 use crate::apps::index_response::Data;
 use crate::db::{
     models::{Budget, SerializedBudget},
     pagination::*,
     schema::budgets_budget,
-    DbExecutor,
+    DatabaseQuery, PooledConnection,
 };
+use crate::errors::DbResult;
 
-pub type GetBudgetsResult = result::Result<Data<SerializedBudget>, Error>;
+pub type GetBudgetsResult = DbResult<Data<SerializedBudget>>;
 
 #[derive(Clone)]
 pub struct GetBudgets {
@@ -23,20 +20,15 @@ pub struct GetBudgets {
     pub per_page: i64,
 }
 
-impl Message for GetBudgets {
-    type Result = GetBudgetsResult;
-}
+impl DatabaseQuery for GetBudgets {
+    type Data = Data<SerializedBudget>;
 
-impl Handler<GetBudgets> for DbExecutor {
-    type Result = GetBudgetsResult;
-
-    fn handle(&mut self, msg: GetBudgets, _: &mut Self::Context) -> Self::Result {
-        let connection = &self.pool.get()?;
-        handle(&msg, &*connection)
+    fn execute(&self, connection: PooledConnection) -> GetBudgetsResult {
+        handle(self, &connection)
     }
 }
 
-fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Error> {
+fn budget_spent(budget: &Budget, connection: &PooledConnection) -> DbResult<BigDecimal> {
     use crate::db::schema::records_record;
     use diesel::dsl::{not, sum};
 
@@ -55,11 +47,11 @@ fn budget_spent(budget: &Budget, conn: &PgConnection) -> Result<BigDecimal, Erro
     let query_result = match budget.tags_type.as_str() {
         "INCL" => query
             .filter(records_record::tags.overlaps_with(&budget.tags))
-            .first::<(Option<BigDecimal>)>(conn)?,
+            .first::<Option<BigDecimal>>(connection)?,
         "EXCL" => query
             .filter(not(records_record::tags.overlaps_with(&budget.tags)))
-            .first::<(Option<BigDecimal>)>(conn)?,
-        _ => query.first::<(Option<BigDecimal>)>(conn)?,
+            .first::<Option<BigDecimal>>(connection)?,
+        _ => query.first::<Option<BigDecimal>>(connection)?,
     };
 
     Ok(query_result.unwrap_or_else(BigDecimal::zero).with_scale(2))
@@ -82,7 +74,7 @@ fn ndays_in_the_current_month(today: NaiveDate) -> u32 {
 }
 
 // TODO: add tests
-fn serialize_budget(budget: Budget, conn: &PgConnection) -> Result<SerializedBudget, Error> {
+fn serialize_budget(budget: Budget, conn: &PooledConnection) -> DbResult<SerializedBudget> {
     use bigdecimal::ToPrimitive;
 
     let mut res = SerializedBudget::default();
@@ -110,7 +102,7 @@ fn serialize_budget(budget: Budget, conn: &PgConnection) -> Result<SerializedBud
     Ok(res)
 }
 
-fn get_page_of_budgets(msg: &GetBudgets, conn: &PgConnection) -> Result<(Vec<Budget>, i64), Error> {
+fn get_page_of_budgets(msg: &GetBudgets, conn: &PooledConnection) -> DbResult<(Vec<Budget>, i64)> {
     let query = budgets_budget::table
         .select(budgets_budget::all_columns)
         .filter(budgets_budget::user_id.eq(msg.user_id))
@@ -127,14 +119,14 @@ fn get_page_of_budgets(msg: &GetBudgets, conn: &PgConnection) -> Result<(Vec<Bud
     Ok((results, total))
 }
 
-fn handle(msg: &GetBudgets, conn: &PgConnection) -> GetBudgetsResult {
+fn handle(msg: &GetBudgets, conn: &PooledConnection) -> GetBudgetsResult {
     let (results, total) = get_page_of_budgets(&msg, conn)?;
     let total_pages = (total as f64 / msg.per_page as f64).ceil() as i64;
 
     let results = results
         .into_iter()
         .map(|budget| serialize_budget(budget, conn))
-        .collect::<Result<Vec<SerializedBudget>, Error>>()?;
+        .collect::<DbResult<Vec<SerializedBudget>>>()?;
 
     let previous = msg.page > 1;
     let next = msg.page < total_pages;

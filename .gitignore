@@ -3,3 +3,4 @@ target
 .idea
 Session.vim
 release_build
+node_modules

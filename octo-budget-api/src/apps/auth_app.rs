@@ -1,21 +1,20 @@
-use actix_web::{web::Json, Error, HttpResponse, Result};
-use futures::Future;
-use futures03::{compat::Future01CompatExt as _, FutureExt as _, TryFutureExt as _};
+use actix_web::{
+    web::{self, Json},
+    HttpResponse, Result,
+};
 
 use self::utils::generate_token;
-use super::forms::auth::Form;
-use crate::db::{messages::FindUserByName, Pg};
+use super::forms::auth::{self, Form};
+use crate::db::{queries::FindUserByName, ConnectionPool};
 
 mod response_data;
 mod utils;
 
-async fn create(form: Json<Form>, db: Pg) -> Result<HttpResponse> {
-    let data = form.into_inner().validate()?;
-    let user = Box::new(db.send(FindUserByName(data.username)))
-        .compat()
-        .await??;
+async fn create(form: Json<Form>, pool: web::Data<ConnectionPool>) -> Result<HttpResponse> {
+    let auth::Data { username, password } = form.into_inner().validate()?;
+    let user = pool.execute(FindUserByName::new(username)).await?;
 
-    Form::validate_password(&user, &data.password)?;
+    Form::validate_password(&user, &password)?;
 
     Ok(HttpResponse::Ok().json(generate_token(&user)))
 }
@@ -26,21 +25,13 @@ pub mod service {
 
     pub struct Service;
 
-    fn __create(form: Json<Form>, db: Pg) -> impl Future<Item = HttpResponse, Error = Error> {
-        create(form, db).boxed().compat()
-    }
-
     impl HttpServiceFactory for Service {
         fn register(self, config: &mut actix_web::dev::AppService) {
             use actix_web::{guard::Post, Resource};
 
-            HttpServiceFactory::register(
-                Resource::new("/create/").guard(Post()).to_async(__create),
-                config,
-            )
+            HttpServiceFactory::register(Resource::new("/create/").guard(Post()).to(create), config)
         }
     }
-
 }
 
 #[cfg(test)]

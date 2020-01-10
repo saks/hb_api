@@ -1,16 +1,10 @@
-use std::result;
-
-use actix::{Handler, Message};
 use bigdecimal::BigDecimal;
 use chrono::{NaiveDateTime, Utc};
-use failure::Error;
 use octo_budget_lib::auth_token::UserId;
 
 use crate::apps::forms::record::FormData;
-use crate::db::models::Record;
-use crate::db::DbExecutor;
-
-pub type CreateRecordResult = result::Result<i32, Error>;
+use crate::db::{models::Record, DatabaseQuery, PooledConnection};
+use crate::errors::DbResult;
 
 pub struct CreateRecord {
     amount: BigDecimal,
@@ -37,30 +31,24 @@ impl CreateRecord {
     }
 }
 
-impl Message for CreateRecord {
-    type Result = CreateRecordResult;
-}
+impl DatabaseQuery for CreateRecord {
+    type Data = i32;
 
-impl Handler<CreateRecord> for DbExecutor {
-    type Result = CreateRecordResult;
-
-    fn handle(&mut self, msg: CreateRecord, _: &mut Self::Context) -> Self::Result {
+    fn execute(&self, connection: PooledConnection) -> DbResult<i32> {
         use crate::db::schema::records_record::dsl::*;
         use diesel::prelude::*;
         use diesel::*;
 
-        let connection = &self.pool.get()?;
-
         let record: Record = insert_into(records_record)
             .values((
-                amount.eq(msg.amount),
-                amount_currency.eq(msg.amount_currency),
-                created_at.eq(msg.created_at),
-                tags.eq(msg.tags),
-                transaction_type.eq(msg.transaction_type),
-                user_id.eq(msg.user_id),
+                amount.eq(&self.amount),
+                amount_currency.eq(&self.amount_currency),
+                created_at.eq(self.created_at),
+                tags.eq(&self.tags),
+                transaction_type.eq(&self.transaction_type),
+                user_id.eq(self.user_id),
             ))
-            .get_result(connection)?;
+            .get_result(&connection)?;
 
         Ok(record.id)
     }

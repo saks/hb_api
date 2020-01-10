@@ -23,14 +23,34 @@ jobs:
         ports:
           - 6379:6379
 
+    env:
+      DIESEL_CLI_VERSION: 1.4.0
+
     steps:
     - uses: actions/checkout@v1
     - name: install deps
       run: sudo apt-get -yqq install libpq-dev
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo build
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache diesel_cli
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/bin/diesel
+        key: ${{ runner.os }}-cargo-index-${{ env.DIESEL_CLI_VERSION }}
+    - name: debug cargo bin files
+      run: ls -lah ~/.cargo/bin/
     - name: Build
       run: cargo build --verbose
     - name: install diesel_cli
-      run: cargo install diesel_cli --no-default-features --features postgres || echo "already installed"
+      run: cargo install diesel_cli --version $DIESEL_CLI_VERSION --no-default-features --features postgres || echo "already installed"
     - name: setup test db
       env:
         DATABASE_URL: "postgres://pg-user:pg-pass@localhost:${{ job.services.postgres.ports[5432] }}/pg-db-name"

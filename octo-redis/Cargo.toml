@@ -11,7 +11,11 @@ tokio = "*"
 actix = "*"
 redis = "*"
 futures = "*"
-futures03 = { package = "futures-preview", version = "0.3.0-alpha.16", features = ["compat"] }
+futures03 = { package = "futures-preview", version = "0.3.0-alpha.19", features = ["compat"] }
+backoff = "*"
+tokio-codec = "*"
+tokio-io = "*"
+tokio-tcp = "*"
 failure = "*"
 actix-http = "0.2"
 log = "*"

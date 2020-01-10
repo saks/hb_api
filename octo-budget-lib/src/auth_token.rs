@@ -7,7 +7,7 @@ use failure::Error;
 use futures::future::{err, ok, Future};
 use log::error;
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
+use std::{fmt, pin::Pin};
 
 const DEFAULT_EXPIRE_IN_HOURS: i64 = 24;
 
@@ -77,7 +77,7 @@ impl UserId {
     }
 }
 
-#[derive(Default, Debug)] // TODO: do I need Default
+#[derive(Default, Debug)]
 pub struct ApiJwtTokenAuthConfig {
     secret: &'static [u8],
 }
@@ -90,12 +90,12 @@ impl ApiJwtTokenAuthConfig {
 
 impl FromRequest for UserId {
     type Error = actix_web::Error;
-    type Future = Box<dyn Future<Item = Self, Error = Self::Error>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
     type Config = ApiJwtTokenAuthConfig;
 
     #[inline]
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        Box::new(match UserId::auth(req) {
+        Box::pin(match UserId::auth(req) {
             Ok(user_id) => ok(user_id),
             Err(e) => err(e),
         })

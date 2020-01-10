@@ -9,4 +9,9 @@ impl Data {
     pub fn from_token(token: String) -> Self {
         Self { token }
     }
+
+    #[cfg(test)]
+    pub fn token(&self) -> &str {
+        &self.token
+    }
 }
