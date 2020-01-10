@@ -3,6 +3,7 @@ use std::env::{self, var};
 use std::fmt::Display;
 
 const REDIS_URL_ENV_VAR: &str = "REDIS_URL";
+const REDIS_PASSWORD_ENV_VAR: &str = "REDIS_PASSWORD";
 const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
 const REDIS_PORT: &str = "6379";
 const PG_PORT: &str = "5432";
@@ -63,12 +64,24 @@ fn get_database_url() -> String {
 }
 
 fn get_redis_url() -> String {
-    var(REDIS_URL_ENV_VAR).unwrap_or_else(|_| {
+    let url = var(REDIS_URL_ENV_VAR).unwrap_or_else(|_| {
         helpers::docker_compose_start("redis");
 
         let redis_host = helpers::docker_compose_service_port("redis", REDIS_PORT);
         format!("redis://{}", redis_host.trim())
-    })
+    });
+
+    let mut url =
+        url::Url::parse(&url).unwrap_or_else(|_| panic!("Failed to parse redis url: {:?}", url));
+
+    var(REDIS_PASSWORD_ENV_VAR).iter().for_each(|pass| {
+        url.set_password(Some(&pass))
+            .expect("Failed to set redis password");
+        url.set_username("redis")
+            .expect("Failed to set redis username");
+    });
+
+    url.to_string()
 }
 
 macro_rules! config_env_var {
@@ -107,12 +120,23 @@ mod tests {
 
     #[test]
     fn get_redis_url_from_env_var() {
-        let url = "redis://redis:password@127.0.0.1:6379";
+        let url = "redis://redis:password@127.0.0.1:6379/";
         env::set_var(REDIS_URL_ENV_VAR, url);
 
         assert_eq!(get_redis_url(), url);
 
         env::remove_var(REDIS_URL_ENV_VAR);
+    }
+
+    #[test]
+    fn get_redis_url_from_env_var_with_password() {
+        env::set_var(REDIS_URL_ENV_VAR, "redis://127.0.0.1:6379/");
+        env::set_var(REDIS_PASSWORD_ENV_VAR, "password");
+
+        assert_eq!(get_redis_url(), "redis://redis:password@127.0.0.1:6379/");
+
+        env::remove_var(REDIS_URL_ENV_VAR);
+        env::remove_var(REDIS_PASSWORD_ENV_VAR);
     }
 
     #[test]
