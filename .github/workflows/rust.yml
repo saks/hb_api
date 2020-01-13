@@ -35,18 +35,18 @@ jobs:
       with:
         path: ~/.cargo/git
         key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo build
+    - name: Cache cargo check
       uses: actions/cache@v1
       with:
         path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-check-target-${{ hashFiles('**/Cargo.lock') }}
     - name: Cache dev tools
       uses: actions/cache@v1
       with:
         path: ext_bin
-        key: ${{ runner.os }}-cargo-index-${{ env.DIESEL_CLI_VERSION }}
-    - name: Build
-      run: cargo build --verbose
+        key: ${{ runner.os }}-cargo-dev-tools-${{ env.DIESEL_CLI_VERSION }}
+    - name: Check
+      run: cargo check --verbose
     - name: install diesel_cli
       run: ./bin/install_diesel_cli.sh
     - name: setup test db
