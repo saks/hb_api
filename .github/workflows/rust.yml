@@ -56,6 +56,6 @@ jobs:
     - name: install diesel_cli
       run: ./bin/install_diesel_cli.sh
     - name: setup test db
-      run: diesel database setup
+      run: ./ext_bin/diesel database setup
     - name: Run tests
       run: cargo test --verbose

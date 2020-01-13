@@ -2,7 +2,7 @@
 
 set -e
 
-FILE=~/.cargo/bin/diesel
+FILE=./ext_bin/diesel
 
 if [ -f "$FILE" ]
 then
