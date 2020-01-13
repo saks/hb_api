@@ -40,17 +40,17 @@ jobs:
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache diesel_cli
+    - name: Cache dev tools
       uses: actions/cache@v1
       with:
-        path: ~/.cargo/bin/diesel
+        path: ext_bin
         key: ${{ runner.os }}-cargo-index-${{ env.DIESEL_CLI_VERSION }}
     - name: debug cargo bin files
       run: ls -lah ~/.cargo/bin/
     - name: Build
       run: cargo build --verbose
     - name: install diesel_cli
-      run: cargo install diesel_cli --version $DIESEL_CLI_VERSION --no-default-features --features postgres || echo "already installed"
+      run: ./bin/install_diesel_cli.sh
     - name: setup test db
       env:
         DATABASE_URL: "postgres://pg-user:pg-pass@localhost:${{ job.services.postgres.ports[5432] }}/pg-db-name"
