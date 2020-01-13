@@ -34,33 +34,42 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+
     - name: install deps
       run: sudo apt-get -yqq install libpq-dev
+
     - name: Cache cargo registry
       uses: actions/cache@v1
       with:
         path: ~/.cargo/registry
         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-v2-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Cache cargo check
       uses: actions/cache@v1
       with:
         path: target
         key: ${{ runner.os }}-cargo-check-target-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Cache dev tools
       uses: actions/cache@v1
       with:
         path: ext_bin
         key: ${{ runner.os }}-cargo-dev-tools-${{ env.DIESEL_CLI_VERSION }}
-    - name: Check
-      run: cargo check --verbose
+
     - name: install diesel_cli
       run: ./bin/install_diesel_cli.sh
+
     - name: setup test db
       run: ./ext_bin/diesel database setup
-    - name: Run tests
-      run: cargo test --verbose
+
+    - name: check build
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --all --bins --examples --tests
+
+    - name: tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all --all-features --no-fail-fast -- --nocapture
