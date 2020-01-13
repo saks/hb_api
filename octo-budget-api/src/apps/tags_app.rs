@@ -1,4 +1,4 @@
-use actix_web::{web, web::Json, HttpResponse, Result};
+use actix_web::{get, put, web, web::Json, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 
 use super::helpers::sort_tags;
@@ -19,6 +19,7 @@ fn ordered_tags(user_tags: Vec<String>, redis_tags: Vec<String>) -> Data {
     Data { tags }
 }
 
+#[get("/")]
 async fn index(
     user_id: UserId,
     redis: web::Data<Redis>,
@@ -30,6 +31,7 @@ async fn index(
     Ok(HttpResponse::Ok().json(ordered_tags(user_tags, redis_tags)))
 }
 
+#[put("/")]
 async fn update(
     user_id: UserId,
     data: Json<Data>,
@@ -51,13 +53,8 @@ pub mod service {
 
     impl HttpServiceFactory for Service {
         fn register(self, config: &mut actix_web::dev::AppService) {
-            use actix_web::{
-                guard::{Get, Put},
-                Resource,
-            };
-
-            HttpServiceFactory::register(Resource::new("/").guard(Put()).to(update), config);
-            HttpServiceFactory::register(Resource::new("/").guard(Get()).to(index), config);
+            HttpServiceFactory::register(index, config);
+            HttpServiceFactory::register(update, config);
         }
     }
 }

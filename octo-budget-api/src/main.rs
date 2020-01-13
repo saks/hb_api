@@ -6,13 +6,12 @@ mod config;
 mod db;
 mod errors;
 mod redis;
+mod routes;
 
-#[cfg(test)]
-mod tests;
-
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{middleware::Logger, App, HttpServer};
 use dotenv::dotenv;
 use octo_budget_lib::auth_token::ApiJwtTokenAuthConfig;
+use routes::init_routes;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -32,17 +31,7 @@ async fn main() -> std::io::Result<()> {
                 config::is_force_https(),
             ))
             .wrap(Logger::default())
-            .service(apps::frontend_app::index)
-            .service(
-                web::scope("/public")
-                    .wrap(middlewares::pwa_cache_headers::PwaCacheHeaders)
-                    .service(actix_files::Files::new("/", "./reactapp/build")),
-            )
-            .service(web::scope("/auth/jwt").service(apps::AuthService))
-            .service(web::scope("/api/tags").service(apps::TagsService))
-            .service(web::scope("/api/user").service(apps::users_app::show))
-            .service(web::scope("/api/records").service(apps::RecordsService))
-            .service(web::scope("/api/budgets").service(apps::BudgetsService))
+            .configure(init_routes)
     })
     .bind(format!(
         "{}:{}",
@@ -52,3 +41,6 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+#[cfg(test)]
+mod tests;

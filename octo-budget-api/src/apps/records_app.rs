@@ -1,4 +1,5 @@
 use actix_web::{
+    get, post, put,
     web::{self, Json, Path, Query},
     HttpResponse, Result,
 };
@@ -15,6 +16,7 @@ use crate::redis::{
     Redis,
 };
 
+#[get("/record-detail/")]
 async fn index(
     user_id: UserId,
     params: Query<Params>,
@@ -33,6 +35,7 @@ async fn index(
     Ok(HttpResponse::Ok().json(records))
 }
 
+#[post("/record-detail/")]
 async fn create(
     user_id: UserId,
     form: Json<Form>,
@@ -49,6 +52,7 @@ async fn create(
     Ok(HttpResponse::Ok().json(json!({ "id": id })))
 }
 
+#[put("/record-detail/{id}/")]
 async fn update(
     user_id: UserId,
     record_id: Path<i32>,
@@ -77,25 +81,9 @@ pub mod service {
 
     impl HttpServiceFactory for Service {
         fn register(self, config: &mut actix_web::dev::AppService) {
-            use actix_web::{
-                guard::{Get, Post, Put},
-                Resource,
-            };
-
-            HttpServiceFactory::register(
-                Resource::new("/record-detail/").guard(Get()).to(index),
-                config,
-            );
-            HttpServiceFactory::register(
-                Resource::new("/record-detail/").guard(Post()).to(create),
-                config,
-            );
-            HttpServiceFactory::register(
-                Resource::new("/record-detail/{id}/")
-                    .guard(Put())
-                    .to(update),
-                config,
-            );
+            HttpServiceFactory::register(index, config);
+            HttpServiceFactory::register(create, config);
+            HttpServiceFactory::register(update, config);
         }
     }
 }
