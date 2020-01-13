@@ -36,7 +36,7 @@
         "jest": "24.9.0",
         "jest-pnp-resolver": "*",
         "jest-resolve": "*",
-        "jquery": "^3.3.1",
+        "jquery": "^3.4.0",
         "mini-css-extract-plugin": "0.4.3",
         "moment-timezone": "^0.5.23",
         "optimize-css-assets-webpack-plugin": "5.0.1",
