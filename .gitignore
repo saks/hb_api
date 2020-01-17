@@ -4,3 +4,4 @@ target
 Session.vim
 release_build
 node_modules
+coverage

@@ -1,6 +1,5 @@
 mod create_record;
 mod find_record;
-// mod find_user_by_id;
 mod find_user_by_name;
 mod get_budgets;
 mod get_records;
@@ -10,7 +9,6 @@ mod update_record;
 
 pub use create_record::CreateRecord;
 pub use find_record::FindRecord;
-// pub use find_user_by_id::FindUserById;
 pub use find_user_by_name::FindUserByName;
 pub use get_budgets::GetBudgets;
 pub use get_records::GetRecords;
