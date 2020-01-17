@@ -51,7 +51,7 @@ impl DatabaseQuery for UpdateRecord {
 
         match result {
             Ok(1) => Ok(()),
-            Ok(0) => Err(DbError::RecordNotUpdated("records_record", self.id)),
+            Ok(0) => Err(DbError::NotUpdated("records_record", self.id)),
             Ok(_) => Err(DbError::UnexpectedResult("More than one record updated")),
             Err(err) => Err(DbError::Unknown(err)),
         }

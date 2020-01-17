@@ -38,7 +38,7 @@ pub enum Error {
     // UserNotFound(UserId),
     //
     // #[fail(display = "Cannot find record")]
-    // RecordNotFound,
+    // NotFound,
     //
     // #[fail(display = "Unknown database error {}", _0)]
     // UnknownDb(#[cause] diesel::result::Error),
@@ -56,8 +56,8 @@ pub enum DbError {
     #[fail(display = "Thread pool is gone")]
     ThreadPoolIsGone,
 
-    #[fail(display = "Cannot find record")]
-    RecordNotFound,
+    #[fail(display = "Cannot find database record")] // TODO: add model name and search query
+    NotFound,
 
     #[fail(display = "Cannot get database connection: {}", _0)]
     NoConnection(#[cause] r2d2::Error),
@@ -66,7 +66,7 @@ pub enum DbError {
     Unknown(#[cause] diesel::result::Error),
 
     #[fail(display = "Cannot update {} with id: `{}'", _0, _1)]
-    RecordNotUpdated(&'static str, i32),
+    NotUpdated(&'static str, i32),
 
     #[fail(display = "Unexpected query result: {}", _0)]
     UnexpectedResult(&'static str),
@@ -85,7 +85,7 @@ impl From<diesel::result::Error> for DbError {
         use diesel::result::Error as DieselError;
 
         match error {
-            DieselError::NotFound => Self::RecordNotFound,
+            DieselError::NotFound => Self::NotFound,
             _ => Self::Unknown(error),
         }
     }
@@ -94,7 +94,7 @@ impl From<diesel::result::Error> for DbError {
 impl actix_web::error::ResponseError for DbError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            DbError::RecordNotFound => HttpResponse::new(StatusCode::NOT_FOUND),
+            DbError::NotFound => HttpResponse::new(StatusCode::NOT_FOUND),
             _ => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR),
         }
     }
@@ -129,7 +129,7 @@ impl From<actix::MailboxError> for Error {
 // impl From<diesel::result::Error> for Error {
 //     fn from(error: diesel::result::Error) -> Self {
 //         match error {
-//             diesel::result::Error::NotFound => Error::RecordNotFound,
+//             diesel::result::Error::NotFound => Error::NotFound,
 //             err => Error::UnknownDb(err),
 //         }
 //     }

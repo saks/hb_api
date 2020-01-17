@@ -24,15 +24,24 @@ impl DbSession {
         }
     }
 
+    // pub fn from_pool(pool: ConnectionPool) -> Self {
+    //     let pooled_conn = pool.conn();
+    //
+    //     DbSession {
+    //         with_transaction: false,
+    //         pooled_conn,
+    //     }
+    // }
+
     pub fn conn(&self) -> &PooledConnection {
         &self.pooled_conn
     }
 
-    pub fn count_records(&self) -> i64 {
-        use crate::db::schema::records_record::table as records;
-
-        records.count().first(&self.pooled_conn).unwrap()
-    }
+    // pub fn count_records(&self) -> i64 {
+    //     use crate::db::schema::records_record::table as records;
+    //
+    //     records.count().first(&self.pooled_conn).unwrap()
+    // }
 
     pub fn create_budget(&mut self, budget: Budget) {
         use crate::db::schema::budgets_budget::dsl::*;

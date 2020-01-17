@@ -31,9 +31,11 @@ mod tests {
 
     #[actix_rt::test]
     async fn not_found_err() {
-        let result = find_by_name("foo".to_string()).await;
+        let error = find_by_name("foo".to_string())
+            .await
+            .expect_err("Is not expected to find anything");
 
-        assert_eq!("Err(RecordNotFound)", format!("{:?}", result));
+        assert_eq!("Cannot find database record", error.to_string());
     }
 
     #[actix_rt::test]
