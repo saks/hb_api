@@ -42,7 +42,7 @@ mod test {
 
     #[actix_rt::test]
     async fn find_by_user_id() {
-        let mut session = DbSession::new();
+        let session = DbSession::new();
 
         let user = session.create_user(UserBuilder::default());
         let record = session.create_record2(user.id);
@@ -56,7 +56,7 @@ mod test {
 
     #[actix_rt::test]
     async fn does_not_return_record_of_other_user() {
-        let mut session = DbSession::new();
+        let session = DbSession::new();
 
         let owner = session.create_user(UserBuilder::default().username("foo"));
         let other_user = session.create_user(UserBuilder::default().username("bar"));
@@ -74,7 +74,7 @@ mod test {
 
     #[actix_rt::test]
     async fn filters_by_id() {
-        let mut session = DbSession::new();
+        let session = DbSession::new();
 
         let owner = session.create_user(UserBuilder::default().username("foo"));
         let record = session.create_record2(owner.id);

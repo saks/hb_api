@@ -92,7 +92,7 @@ impl From<r2d2::Error> for DbError {
 impl From<diesel::result::Error> for DbError {
     fn from(error: diesel::result::Error) -> Self {
         match error {
-            DieselError::NotFound => Self::NotFound("Unspecified table".into()),
+            DieselError::NotFound => Self::NotFound("Unspecified table"),
             _ => Self::Unknown(error),
         }
     }

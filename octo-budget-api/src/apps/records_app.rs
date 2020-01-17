@@ -220,7 +220,7 @@ mod tests {
     async fn update_happy_path() {
         setup_env();
 
-        let mut session = tests::DbSession::new();
+        let session = tests::DbSession::new();
         let mut service = await_test_server!(Service);
 
         let user = session.create_user(UserBuilder::default());

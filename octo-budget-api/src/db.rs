@@ -42,6 +42,11 @@ impl ConnectionPool {
             .get()
             .expect("failed to get connection from the pool")
     }
+
+    #[cfg(test)]
+    pub fn start_session(&self) -> crate::tests::DbSession {
+        crate::tests::DbSession::from_pool(self)
+    }
 }
 
 fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
@@ -51,7 +56,7 @@ fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
 
     Pool::builder()
         .min_idle(Some(1))
-        .max_size(1) // max pool size
+        .max_size(3) // max pool size
         .build(manager)
         .expect("Failed to create database connection pool.")
 }

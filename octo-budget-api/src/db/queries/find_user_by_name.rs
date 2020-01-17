@@ -28,11 +28,13 @@ impl DatabaseQuery for FindUserByName {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::builders::UserBuilder;
+    use crate::db::{builders::UserBuilder, ConnectionPool};
 
     #[actix_rt::test]
     async fn not_found_err() {
-        let error = find_by_name("foo".to_string())
+        let pool = ConnectionPool::new();
+        let error = pool
+            .execute(FindUserByName::new("foo".to_string()))
             .await
             .expect_err("Is not expected to find anything");
 
@@ -44,19 +46,15 @@ mod tests {
 
     #[actix_rt::test]
     async fn found() {
-        let session = crate::tests::DbSession::new();
+        let pool = ConnectionPool::new();
+        let session = pool.start_session();
         let user = session.create_user(UserBuilder::default());
 
-        let result = find_by_name(user.username.to_owned()).await;
+        let result = pool
+            .execute(FindUserByName::new(user.username.to_owned()))
+            .await;
 
         assert!(result.is_ok(), "failed to find user");
         assert_eq!(user, result.unwrap());
-    }
-
-    async fn find_by_name(username: String) -> DbResult<AuthUser> {
-        let conn_pool = crate::db::ConnectionPool::new();
-        let query = FindUserByName::new(username);
-
-        conn_pool.execute(query).await
     }
 }

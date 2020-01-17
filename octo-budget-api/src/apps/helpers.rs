@@ -1,4 +1,4 @@
-pub fn sort_tags(redis_tags: &Vec<String>, user_tags: &Vec<String>) -> Vec<String> {
+pub fn sort_tags(redis_tags: &[String], user_tags: &[String]) -> Vec<String> {
     let mut result = Vec::with_capacity(user_tags.len());
 
     if user_tags.is_empty() {

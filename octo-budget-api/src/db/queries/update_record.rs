@@ -63,7 +63,6 @@ impl DatabaseQuery for UpdateRecord {
 mod tests {
     use super::*;
     use crate::db::builders::UserBuilder;
-    use crate::tests::DbSession;
 
     #[actix_rt::test]
     async fn no_record_updated() {
@@ -89,7 +88,8 @@ mod tests {
     #[actix_rt::test]
     async fn happy_path() {
         let conn_pool = crate::db::ConnectionPool::new();
-        let session = DbSession::new();
+        let session = conn_pool.start_session();
+
         let user = session.create_user(UserBuilder::default().password("dummy password"));
         let records = session.create_records2(user.id, 1);
 
@@ -113,7 +113,8 @@ mod tests {
         use crate::db::queries::GetRecords;
 
         let conn_pool = crate::db::ConnectionPool::new();
-        let mut session = DbSession::new();
+        let session = conn_pool.start_session();
+
         let user = session.create_user(UserBuilder::default().password("dummy password"));
         let record = session.create_record2(user.id);
 

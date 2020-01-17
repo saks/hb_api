@@ -14,7 +14,7 @@ pub struct Data {
     tags: Vec<String>,
 }
 
-fn ordered_tags(user_tags: &Vec<String>, redis_tags: &Vec<String>) -> Data {
+fn ordered_tags(user_tags: &[String], redis_tags: &[String]) -> Data {
     let tags = sort_tags(redis_tags, user_tags);
     Data { tags }
 }

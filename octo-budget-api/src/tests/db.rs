@@ -24,14 +24,14 @@ impl DbSession {
         }
     }
 
-    // pub fn from_pool(pool: ConnectionPool) -> Self {
-    //     let pooled_conn = pool.conn();
-    //
-    //     DbSession {
-    //         with_transaction: false,
-    //         pooled_conn,
-    //     }
-    // }
+    pub fn from_pool(pool: &ConnectionPool) -> Self {
+        let pooled_conn = pool.conn();
+
+        DbSession {
+            with_transaction: false,
+            pooled_conn,
+        }
+    }
 
     pub fn conn(&self) -> &PooledConnection {
         &self.pooled_conn
@@ -60,7 +60,7 @@ impl DbSession {
             .unwrap();
     }
 
-    pub fn create_record2(&mut self, id_of_the_user: i32) -> Record {
+    pub fn create_record2(&self, id_of_the_user: i32) -> Record {
         use crate::db::schema::records_record::dsl::*;
         use diesel::*;
         let tags_list: Vec<String> = vec![];
