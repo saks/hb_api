@@ -2,6 +2,7 @@ use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use failure::Fail;
 // use octo_budget_lib::auth_token::UserId;
+use diesel::result::Error as DieselError;
 use serde::{Serialize, Serializer};
 
 #[derive(Fail, Debug, Clone, Copy, PartialEq)]
@@ -56,8 +57,9 @@ pub enum DbError {
     #[fail(display = "Thread pool is gone")]
     ThreadPoolIsGone,
 
-    #[fail(display = "Cannot find database record")] // TODO: add model name and search query
-    NotFound,
+    // TODO: add search query
+    #[fail(display = "Failed to find record from table {}", _0)]
+    NotFound(&'static str),
 
     #[fail(display = "Cannot get database connection: {}", _0)]
     NoConnection(#[cause] r2d2::Error),
@@ -72,6 +74,13 @@ pub enum DbError {
     UnexpectedResult(&'static str),
 }
 
+pub fn add_table_name(table_name: &'static str) -> impl Fn(DieselError) -> DbError {
+    move |error: DieselError| match error {
+        DieselError::NotFound => DbError::NotFound(table_name),
+        _ => DbError::Unknown(error),
+    }
+}
+
 pub type DbResult<T> = Result<T, DbError>;
 
 impl From<r2d2::Error> for DbError {
@@ -82,10 +91,8 @@ impl From<r2d2::Error> for DbError {
 
 impl From<diesel::result::Error> for DbError {
     fn from(error: diesel::result::Error) -> Self {
-        use diesel::result::Error as DieselError;
-
         match error {
-            DieselError::NotFound => Self::NotFound,
+            DieselError::NotFound => Self::NotFound("Unspecified table".into()),
             _ => Self::Unknown(error),
         }
     }
@@ -94,7 +101,7 @@ impl From<diesel::result::Error> for DbError {
 impl actix_web::error::ResponseError for DbError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            DbError::NotFound => HttpResponse::new(StatusCode::NOT_FOUND),
+            DbError::NotFound(_n) => HttpResponse::new(StatusCode::NOT_FOUND),
             _ => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR),
         }
     }

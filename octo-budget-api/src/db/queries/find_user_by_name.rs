@@ -1,4 +1,4 @@
-use crate::errors::DbResult;
+use crate::errors::{add_table_name, DbResult};
 use diesel::prelude::*;
 use std::convert::Into;
 
@@ -18,7 +18,8 @@ impl DatabaseQuery for FindUserByName {
     fn execute(&self, connection: PooledConnection) -> DbResult<Self::Data> {
         let user = auth_user::table
             .filter(auth_user::username.eq(&self.0))
-            .first(&connection)?;
+            .first(&connection)
+            .map_err(add_table_name("auth_user"))?;
 
         Ok(user)
     }
@@ -35,7 +36,10 @@ mod tests {
             .await
             .expect_err("Is not expected to find anything");
 
-        assert_eq!("Cannot find database record", error.to_string());
+        assert_eq!(
+            "Failed to find record from table auth_user",
+            error.to_string()
+        );
     }
 
     #[actix_rt::test]

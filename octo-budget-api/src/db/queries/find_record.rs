@@ -1,5 +1,5 @@
 use crate::db::{models::Record, DatabaseQuery, PooledConnection};
-use crate::errors::DbResult;
+use crate::errors::{add_table_name, DbResult};
 use octo_budget_lib::auth_token::UserId;
 
 pub struct FindRecord {
@@ -25,7 +25,8 @@ impl DatabaseQuery for FindRecord {
         let record = records_record
             .filter(user_id.eq(owner_user_id))
             .filter(id.eq(self.id))
-            .first(&connection)?;
+            .first(&connection)
+            .map_err(add_table_name("records_record"))?;
 
         Ok(record)
     }
@@ -65,7 +66,10 @@ mod test {
             .await
             .expect_err("Is not expected to find anything");
 
-        assert_eq!("Cannot find database record", error.to_string());
+        assert_eq!(
+            "Failed to find record from table records_record",
+            error.to_string()
+        );
     }
 
     #[actix_rt::test]
@@ -79,7 +83,10 @@ mod test {
             .await
             .expect_err("Is not expected to find anything");
 
-        assert_eq!("Cannot find database record", error.to_string());
+        assert_eq!(
+            "Failed to find record from table records_record",
+            error.to_string()
+        );
     }
 
     async fn find(id: i32, user_id: UserId) -> DbResult<Record> {
