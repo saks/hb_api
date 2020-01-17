@@ -29,7 +29,9 @@ pub fn greet() {
 
 #[wasm_bindgen]
 pub fn calc(text: &str) -> Option<String> {
-    eval(text)
+    let text = text.replace(",", ".");
+
+    eval(&text)
         .ok()
         .and_then(|value| value.as_f64())
         .map(|number| format!("{:.2}", number))
