@@ -23,3 +23,13 @@ fn with_floats() {
 fn with_floats_devided_by_comma() {
     assert_eq!("123.00", calc("122,5 + 0,5").unwrap());
 }
+
+#[wasm_bindgen_test]
+fn add_5_percent() {
+    assert_eq!("105.00", add_percent("100", 5).unwrap());
+}
+
+#[wasm_bindgen_test]
+fn add_12_percent() {
+    assert_eq!("112.00", add_percent("50 + 50", 12).unwrap());
+}

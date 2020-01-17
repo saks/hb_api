@@ -140,6 +140,38 @@ export default class RecordForm extends Component<Props, State> {
         )
     }
 
+    addFivePercent() {
+        this.setState(
+            (prevState: State): State => {
+                const newState: State = { ...prevState }
+                // TODO: annotate types for rust code
+                const amount = wasmModule.rust.add_percent(prevState.amount, 5)
+
+                if (undefined !== amount) {
+                    newState.amount = amount
+                }
+
+                return newState
+            }
+        )
+    }
+
+    addTwelvePercent() {
+        this.setState(
+            (prevState: State): State => {
+                const newState: State = { ...prevState }
+                // TODO: annotate types for rust code
+                const amount = wasmModule.rust.add_percent(prevState.amount, 12)
+
+                if (undefined !== amount) {
+                    newState.amount = amount
+                }
+
+                return newState
+            }
+        )
+    }
+
     componentDidMount() {
         this.focus()
     }
@@ -176,14 +208,41 @@ export default class RecordForm extends Component<Props, State> {
                                 autoComplete="off"
                                 autoFocus
                             />
-                            <span className="input-group-btn">
-                                <button
-                                    onClick={this.calculateAmount.bind(this)}
-                                    className="btn btn-default"
-                                    type="button"
-                                >
-                                    calculate
-                                </button>
+                            <span
+                                class="btn-toolbar"
+                                role="toolbar"
+                                aria-label="Toolbar with button groups"
+                            >
+                                <span className="input-group-btn">
+                                    <button
+                                        onClick={this.addFivePercent.bind(this)}
+                                        className="btn btn-default"
+                                        type="button"
+                                        style={{ 'padding-left': '5px', 'padding-right': '5px' }}
+                                    >
+                                        <i class="material-icons" style={{ 'font-size': 'small' }}>
+                                            +5%
+                                        </i>
+                                    </button>
+                                    <button
+                                        onClick={this.addTwelvePercent.bind(this)}
+                                        className="btn btn-default"
+                                        type="button"
+                                        style={{ 'padding-left': '5px', 'padding-right': '5px' }}
+                                    >
+                                        <i class="material-icons" style={{ 'font-size': 'small' }}>
+                                            +12%
+                                        </i>
+                                    </button>
+                                    <button
+                                        onClick={this.calculateAmount.bind(this)}
+                                        className="btn btn-default"
+                                        type="button"
+                                        style={{ 'padding-left': '5px', 'padding-right': '5px' }}
+                                    >
+                                        calculate
+                                    </button>
+                                </span>
                             </span>
                         </div>
                     </div>

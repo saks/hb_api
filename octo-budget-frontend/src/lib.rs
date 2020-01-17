@@ -27,12 +27,20 @@ pub fn greet() {
     alert("Hello, octo-budget-frontend!");
 }
 
-#[wasm_bindgen]
-pub fn calc(text: &str) -> Option<String> {
+fn js_eval(text: &str) -> Option<f64> {
     let text = text.replace(",", ".");
 
-    eval(&text)
-        .ok()
-        .and_then(|value| value.as_f64())
+    eval(&text).ok().and_then(|value| value.as_f64())
+}
+
+#[wasm_bindgen]
+pub fn calc(text: &str) -> Option<String> {
+    js_eval(text).map(|number| format!("{:.2}", number))
+}
+
+#[wasm_bindgen]
+pub fn add_percent(text: &str, percent: usize) -> Option<String> {
+    js_eval(text)
+        .map(|value| value + (value / 100.0 * (percent as f64)))
         .map(|number| format!("{:.2}", number))
 }
