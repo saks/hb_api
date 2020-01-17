@@ -14,7 +14,7 @@ pub struct Data {
     tags: Vec<String>,
 }
 
-fn ordered_tags(user_tags: Vec<String>, redis_tags: Vec<String>) -> Data {
+fn ordered_tags(user_tags: &Vec<String>, redis_tags: &Vec<String>) -> Data {
     let tags = sort_tags(redis_tags, user_tags);
     Data { tags }
 }
@@ -28,7 +28,7 @@ async fn index(
     let redis_tags = read_redis_tags(user_id, &redis).await?;
     let user_tags = pool.execute(GetUserTags::new(user_id)).await?;
 
-    Ok(HttpResponse::Ok().json(ordered_tags(user_tags, redis_tags)))
+    Ok(HttpResponse::Ok().json(ordered_tags(&user_tags, &redis_tags)))
 }
 
 #[put("/")]
@@ -42,7 +42,7 @@ async fn update(
     let redis_tags = read_redis_tags(user_id, &redis).await?;
     let user_tags = pool.execute(SetUserTags::new(user_id, tags)).await?;
 
-    Ok(HttpResponse::Ok().json(ordered_tags(user_tags, redis_tags)))
+    Ok(HttpResponse::Ok().json(ordered_tags(&*user_tags, &redis_tags)))
 }
 
 pub mod service {

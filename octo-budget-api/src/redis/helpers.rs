@@ -159,7 +159,7 @@ mod tests {
             .await
             .expect("failed to get tags");
         let user_tags = tags_vec!["foo", "xxx", "zzz"];
-        let sorted = sort_tags(redis_tags, user_tags);
+        let sorted = sort_tags(&redis_tags, &user_tags);
 
         assert_eq!(vec!["zzz", "xxx", "foo"], sorted);
     }
