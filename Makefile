@@ -36,8 +36,12 @@ docker_release_pr:
 prod_logs:
 	snap run heroku logs -t -a octo-budget
 
+cov:
+	@./bin/coverage.sh
+
 test: test_db_prepare
 	@./run.sh cargo test
+	@cd ./octo-budget-frontend && wasm-pack test --node
 
 test_db_prepare:
 	@./run.sh diesel database setup
