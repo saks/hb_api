@@ -75,5 +75,5 @@ jobs:
         command: test
         args: --all --all-features --no-fail-fast -- --nocapture
 
-    # - name: wasm tests
-    #   run: cd ./octo-budget-frontend && ./../ext_bin/wasm-pack test --node
+    - name: wasm tests
+      run: cd ./octo-budget-frontend && ./../ext_bin/wasm-pack test --node
