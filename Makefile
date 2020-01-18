@@ -10,6 +10,18 @@ build_server:
 build_client:
 	cd reactapp && yarn install && yarn build
 
+ext_cli: ext_bin/diesel ext_bin/wasm-pack
+
+ext_bin/diesel:
+	echo "installing diesel_cli ${DIESEL_CLI_VERSION}"
+	cargo install diesel_cli --version ${DIESEL_CLI_VERSION} --no-default-features --features postgres
+	cp ~/.cargo/bin/diesel ./ext_bin/
+
+ext_bin/wasm-pack:
+	echo "installing wasm-pack ${WASM_PACK_CLI_VERSION}"
+	cargo install wasm-pack --version ${WASM_PACK_CLI_VERSION}
+	cp ~/.cargo/bin/wasm-pack ./ext_bin/
+
 prepare_release:
 	rm -rf ${RELEASE_BUILD_DIR}
 	mkdir -p ${RELEASE_BUILD_DIR}/reactapp
@@ -47,7 +59,7 @@ test_db_prepare:
 	@./run.sh diesel database setup
 
 server:
-	@./run.sh cargo run --bin octo-budget-api
+	@RUST_LOG=debug RUST_BACKTRACE=1 ./run.sh cargo run --bin octo-budget-api
 
 psql:
 	@docker-compose exec db psql -U rustapp test
