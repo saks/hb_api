@@ -26,6 +26,7 @@ jobs:
     env:
       RUST_TEST_THREADS: 1
       DIESEL_CLI_VERSION: 1.4.0
+      WASM_PACK_CLI_VERSION: 0.8.1
       POSTGRES_USER: pg-user
       POSTGRES_PASSWORD: pg-pass
       POSTGRES_DB: pg-db-name
@@ -54,10 +55,10 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ext_bin
-        key: ${{ runner.os }}-cargo-dev-tools-${{ env.DIESEL_CLI_VERSION }}
+        key: ${{ runner.os }}-cargo-dev-tools-${{ env.DIESEL_CLI_VERSION }}-${{ env.WASM_PACK_CLI_VERSION }}
 
-    - name: install diesel_cli
-      run: ./bin/install_diesel_cli.sh
+    - name: install ext CLIs
+      run: make ext_cli
 
     - name: setup test db
       run: ./ext_bin/diesel database setup
@@ -73,3 +74,6 @@ jobs:
       with:
         command: test
         args: --all --all-features --no-fail-fast -- --nocapture
+
+    # - name: wasm tests
+    #   run: cd ./octo-budget-frontend && ./../ext_bin/wasm-pack test --node
