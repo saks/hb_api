@@ -45,6 +45,9 @@ docker_release_pr:
 	heroku run diesel database setup --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
 	heroku run './db_seed 2>-' --app octo-budget-pr-${TRAVIS_PULL_REQUEST}
 
+db_seed:
+	@./run.sh cargo r --bin db_seed
+
 prod_logs:
 	snap run heroku logs -t -a octo-budget
 
@@ -67,4 +70,4 @@ psql:
 redis_cli:
 	@docker-compose exec redis redis-cli
 
-.PHONY: test server docker_release_pr
+.PHONY: test server docker_release_pr db_seed
