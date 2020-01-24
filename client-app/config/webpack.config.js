@@ -28,6 +28,7 @@ const typescriptFormatter = require('react-dev-utils/typescriptFormatter');
 const postcssNormalize = require('postcss-normalize');
 
 const appPackageJson = require(paths.appPackageJson);
+const wasm = require('./wasm');
 
 // Source maps are resource heavy and can cause out of memory issue for large source files.
 const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false';
@@ -51,6 +52,8 @@ const sassModuleRegex = /\.module\.(scss|sass)$/;
 module.exports = function(webpackEnv) {
     const isEnvDevelopment = webpackEnv === 'development';
     const isEnvProduction = webpackEnv === 'production';
+    const wasmPluginForTest = wasm.pluginFor(webpackEnv, 'nodejs');
+    const wasmPluginForProd = wasm.pluginFor(webpackEnv, 'browser');
 
     // Variable used for enabling profiling in Production
     // passed into alias object. Uses a flag if passed into the build command
@@ -339,6 +342,10 @@ module.exports = function(webpackEnv) {
                     // match the requirements. When no loader matches it will fall
                     // back to the "file" loader at the end of the loader list.
                     oneOf: [
+                        {
+                            test: /\.wasm$/,
+                            type: 'webassembly/experimental',
+                        },
                         // "url" loader works like "file" loader except that it embeds assets
                         // smaller than specified limit in bytes as data URLs to avoid requests.
                         // A missing `test` is equivalent to a match.
@@ -525,6 +532,8 @@ module.exports = function(webpackEnv) {
                         : undefined
                 )
             ),
+            wasmPluginForTest,
+            wasmPluginForProd,
             // Inlines the webpack runtime script. This script is too small to warrant
             // a network request.
             // https://github.com/facebook/create-react-app/issues/5358
