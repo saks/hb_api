@@ -1,17 +1,11 @@
 import React from 'react';
-import {
-    AppBar,
-    Typography,
-    Toolbar,
-    Button,
-    BottomNavigation,
-    BottomNavigationAction,
-} from '@material-ui/core';
+import { Route, Link, Redirect, useLocation } from 'react-router-dom';
+import { BottomNavigation, BottomNavigationAction } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import {
-    LocationOn as LocationOnIcon,
-    Restore as RestoreIcon,
-    Favorite as FavoriteIcon,
+    BarChart as BudgetsIcon,
+    FormatListBulleted as RecordsIcon,
+    LocalOfferOutlined as TagsIcon,
 } from '@material-ui/icons';
 
 import './App.css';
@@ -34,34 +28,48 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const App = () => {
+    const [currentPath, setCurrentPath] = React.useState('/');
+    const currentLocation = useLocation();
+    React.useEffect(
+        () => {
+            setCurrentPath(currentLocation.pathname);
+        },
+        [currentLocation]
+    );
     const classes = useStyles();
+    console.log('render...');
 
     return (
         <div className={classes.root}>
-            <AppBar position="static">
-                <Toolbar>
-                    {/* <IconButton */}
-                    {/*     edge="start" */}
-                    {/*     className={classes.menuButton} */}
-                    {/*     color="inherit" */}
-                    {/*     aria-label="menu"> */}
-                    {/*     <MenuIcon /> */}
-                    {/* </IconButton> */}
-                    <Typography variant="h6" className={classes.title}>
-                        Octo Budget
-                    </Typography>
-                    <Button color="inherit">Login</Button>
-                </Toolbar>
-            </AppBar>
-            <BottomNavigation className={classes.stickToBottom}>
-                <BottomNavigationAction label="Recents" value="recents" icon={<RestoreIcon />} />
+            <BottomNavigation
+                className={classes.stickToBottom}
+                value={currentPath}
+                onChange={(_event, newPath) => {
+                    setCurrentPath(newPath);
+                }}>
                 <BottomNavigationAction
-                    label="Favorites"
-                    value="favorites"
-                    icon={<FavoriteIcon />}
+                    component={Link}
+                    to="/records"
+                    label="Records"
+                    value="/records"
+                    icon={<RecordsIcon />}
                 />
-                <BottomNavigationAction label="Nearby" value="nearby" icon={<LocationOnIcon />} />
+                <BottomNavigationAction
+                    component={Link}
+                    to="/budgets"
+                    label="Budgets"
+                    value="/budgets"
+                    icon={<BudgetsIcon />}
+                />
+                <BottomNavigationAction
+                    component={Link}
+                    to="/tags"
+                    label="Tags"
+                    value="/tags"
+                    icon={<TagsIcon />}
+                />
             </BottomNavigation>
+            <Route exact path="/" render={() => <Redirect to="/records" />} />
         </div>
     );
 };
