@@ -148,7 +148,7 @@ fn amount_aggregation_with_excluding_tags() {
         .transaction_type("EXP");
 
     let test_data = [(1.0, "foo"), (3.0, "foo"), (2.0, "bar"), (4.0, "bar")];
-    for (amount, tag) in test_data.into_iter() {
+    for (amount, tag) in test_data.iter() {
         let rec = record.clone().amount(*amount).tags(vec![tag]).finish();
         session.create_record(rec);
     }
