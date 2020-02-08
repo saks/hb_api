@@ -26,7 +26,7 @@ jobs:
     env:
       RUST_TEST_THREADS: 1
       DIESEL_CLI_VERSION: 1.4.0
-      WASM_PACK_CLI_VERSION: 0.8.1
+      WASM_PACK_CLI_VERSION: 0.9.1
       POSTGRES_USER: pg-user
       POSTGRES_PASSWORD: pg-pass
       POSTGRES_DB: pg-db-name
