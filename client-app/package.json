@@ -71,35 +71,18 @@
         "extends": "react-app"
     },
     "browserslist": {
-        "production": [
-            ">0.2%",
-            "not dead",
-            "not op_mini all"
-        ],
-        "development": [
-            "last 1 chrome version",
-            "last 1 firefox version",
-            "last 1 safari version"
-        ]
+        "production": [">0.2%", "not dead", "not op_mini all"],
+        "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
     },
     "devDependencies": {
         "@wasm-tool/wasm-pack-plugin": "^1.1.0",
-        "flow-bin": "^0.116.1"
+        "flow-bin": "^0.118.0"
     },
     "jest": {
-        "roots": [
-            "<rootDir>/src"
-        ],
-        "collectCoverageFrom": [
-            "src/**/*.{js,jsx,ts,tsx}",
-            "!src/**/*.d.ts"
-        ],
-        "setupFiles": [
-            "react-app-polyfill/jsdom"
-        ],
-        "setupFilesAfterEnv": [
-            "<rootDir>/src/setupTests.js"
-        ],
+        "roots": ["<rootDir>/src"],
+        "collectCoverageFrom": ["src/**/*.{js,jsx,ts,tsx}", "!src/**/*.d.ts"],
+        "setupFiles": ["react-app-polyfill/jsdom"],
+        "setupFilesAfterEnv": ["<rootDir>/src/setupTests.js"],
         "testMatch": [
             "<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}",
             "<rootDir>/src/**/*.{spec,test}.{js,jsx,ts,tsx}"
@@ -131,14 +114,9 @@
             "jsx",
             "node"
         ],
-        "watchPlugins": [
-            "jest-watch-typeahead/filename",
-            "jest-watch-typeahead/testname"
-        ]
+        "watchPlugins": ["jest-watch-typeahead/filename", "jest-watch-typeahead/testname"]
     },
     "babel": {
-        "presets": [
-            "react-app"
-        ]
+        "presets": ["react-app"]
     }
 }
