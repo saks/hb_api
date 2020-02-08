@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Link, Redirect, useLocation } from 'react-router-dom';
+import { Switch, Route, Link, Redirect, useLocation } from 'react-router-dom';
 import { BottomNavigation, BottomNavigationAction } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import {
@@ -7,6 +7,8 @@ import {
     FormatListBulleted as RecordsIcon,
     LocalOfferOutlined as TagsIcon,
 } from '@material-ui/icons';
+
+import Records from './components/Records';
 
 import './App.css';
 
@@ -41,12 +43,26 @@ const App = () => {
 
     return (
         <div className={classes.root}>
+            <Route exact path="/tags" render={() => '...tags page'} />
+            <Route exact path="/records" render={() => <Records />} />
+            <Route exact path="/budgets" render={() => '...budgets page'} />
+            <Switch>
+                <Route path="/records/new" render={() => '...new record page'} />
+                <Route
+                    path="/records/:recordId"
+                    render={({ match }) => {
+                        const id = parseInt(match.params.recordId, 10);
+                        return `...record ${id} page`;
+                    }}
+                />
+            </Switch>
             <BottomNavigation
                 className={classes.stickToBottom}
                 value={currentPath}
                 onChange={(_event, newPath) => {
                     setCurrentPath(newPath);
-                }}>
+                }}
+            >
                 <BottomNavigationAction
                     component={Link}
                     to="/records"
