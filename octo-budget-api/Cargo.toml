@@ -10,17 +10,17 @@ actix-web = { version = "2.0", default_features = false }
 actix-rt = "1.0"
 actix-http = "*"
 actix-files = "*"
-dotenv = "0.13"
-env_logger = "0.6"
+dotenv = "0.15"
+env_logger = "0.7"
 failure = "0.1"
 futures = "0.3"
 lazy_static = "1.1"
 serde = { version = "1", features = ["derive"] }
-url = "1"
+url = "2"
 log = "0.4"
 r2d2 = "*"
 models = { path = "../models" }
-redis = "0.14"
+redis = "0.15"
 
 [dependencies.bigdecimal]
 version = "0.1.0" # must match version of diesel dependency
