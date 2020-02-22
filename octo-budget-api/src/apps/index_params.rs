@@ -47,13 +47,13 @@ impl ValidationErrors {
     }
 }
 
+#[cfg_attr(test, derive(Debug))]
 pub struct Data {
     pub page: i64,
     pub per_page: i64,
 }
 
 impl Params {
-    // TODO: add tests
     pub fn validate(&self) -> Result<Data, ValidationErrors> {
         let Self { page, per_page } = self;
         let mut errors = ValidationErrors::default();
@@ -76,5 +76,44 @@ impl Params {
         } else {
             Err(errors)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn errors_json(params: Params) -> String {
+        serde_json::to_string(&params.validate().unwrap_err()).expect("Failed to convert to json")
+    }
+
+    #[test]
+    fn it_is_ok_when_valid() {
+        let params = Params { page: 0, per_page: 10 };
+
+        assert!(params.validate().is_ok());
+    }
+
+    #[test]
+    fn data_is_correct_when_valid() {
+        let params = Params { page: 3, per_page: 10 };
+        let data = params.validate().expect("is expected to be valid");
+
+        assert_eq!(3, data.page);
+        assert_eq!(10, data.per_page);
+    }
+
+    #[test]
+    fn invalid_when_page_number_is_negative() {
+        let params = Params { page: -1, per_page: 123 };
+
+        assert_eq!("{\"page\":[\"Must be a positive number\"]}", errors_json(params));
+    }
+
+    #[test]
+    fn invalid_when_per_page_is_negative() {
+        let params = Params { page: 0, per_page: -1 };
+
+        assert_eq!("{\"per_page\":[\"Must be a positive number\"]}", errors_json(params));
     }
 }
