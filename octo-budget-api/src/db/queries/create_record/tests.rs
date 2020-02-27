@@ -20,6 +20,7 @@ async fn find_by_user_id() {
     let transaction_type = "EXP".to_string();
 
     let query = CreateRecord {
+        comment: String::new(),
         amount: amount.to_owned(),
         amount_currency: amount_currency.to_owned(),
         created_at,
