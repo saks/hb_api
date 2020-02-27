@@ -1,6 +1,8 @@
 import React from 'react';
 import { Switch, Route, Link, Redirect, useLocation } from 'react-router-dom';
-import { BottomNavigation, BottomNavigationAction } from '@material-ui/core';
+import MenuIcon from '@material-ui/icons/Menu';
+import { AppBar, IconButton, Toolbar, Box, Table, Typography } from '@material-ui/core';
+import { Container, BottomNavigation, BottomNavigationAction } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import {
     BarChart as BudgetsIcon,
@@ -9,6 +11,8 @@ import {
 } from '@material-ui/icons';
 
 import Records from './components/Records';
+import Budgets from './components/Budgets';
+import Tags from './components/Tags';
 
 import './App.css';
 
@@ -30,6 +34,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const App = () => {
+    const [currentTitle, setTitle] = React.useState('Octo Budget');
     const [currentPath, setCurrentPath] = React.useState('/');
     const currentLocation = useLocation();
     React.useEffect(
@@ -39,23 +44,45 @@ const App = () => {
         [currentLocation]
     );
     const classes = useStyles();
-    console.log('render...');
 
     return (
         <div className={classes.root}>
-            <Route exact path="/tags" render={() => '...tags page'} />
-            <Route exact path="/records" render={() => <Records />} />
-            <Route exact path="/budgets" render={() => '...budgets page'} />
-            <Switch>
-                <Route path="/records/new" render={() => '...new record page'} />
-                <Route
-                    path="/records/:recordId"
-                    render={({ match }) => {
-                        const id = parseInt(match.params.recordId, 10);
-                        return `...record ${id} page`;
-                    }}
-                />
-            </Switch>
+            <AppBar position="static">
+                <Toolbar>
+                    <IconButton
+                        edge="start"
+                        className={classes.menuButton}
+                        color="inherit"
+                        aria-label="menu"
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                    <Typography variant="h6" className={classes.title}>
+                        {currentTitle}
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+            <Container maxWidth="sm">
+                <Route exact path="/tags">
+                    <Tags setTitle={setTitle} />
+                </Route>
+                <Route exact path="/records">
+                    <Records setTitle={setTitle} />
+                </Route>
+                <Route exact path="/budgets">
+                    <Budgets setTitle={setTitle} />
+                </Route>
+                <Switch>
+                    <Route path="/records/new" render={() => '...new record page'} />
+                    <Route
+                        path="/records/:recordId"
+                        render={({ match }) => {
+                            const id = parseInt(match.params.recordId, 10);
+                            return `...record ${id} page`;
+                        }}
+                    />
+                </Switch>
+            </Container>
             <BottomNavigation
                 className={classes.stickToBottom}
                 value={currentPath}
