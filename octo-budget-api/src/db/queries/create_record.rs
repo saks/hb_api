@@ -12,6 +12,7 @@ pub struct CreateRecord {
     created_at: NaiveDateTime,
     tags: Vec<String>,
     transaction_type: String,
+    comment: String,
     user_id: i32,
 }
 
@@ -25,6 +26,7 @@ impl CreateRecord {
             amount_currency: data.amount_currency.clone(),
             tags: data.tags.clone(),
             transaction_type: data.transaction_type.clone(),
+            comment: data.comment.clone(),
             user_id,
             created_at,
         }
@@ -47,6 +49,7 @@ impl DatabaseQuery for CreateRecord {
                 tags.eq(&self.tags),
                 transaction_type.eq(&self.transaction_type),
                 user_id.eq(self.user_id),
+                comment.eq(&self.comment),
             ))
             .get_result(&connection)?;
 

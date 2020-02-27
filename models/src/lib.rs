@@ -35,6 +35,7 @@ pub struct Record {
     pub tags: Vec<String>,
     pub transaction_type: String,
     pub user_id: i32,
+    pub comment: Option<String>,
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq, Insertable)]

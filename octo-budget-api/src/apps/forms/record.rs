@@ -8,6 +8,7 @@ pub struct Form {
     tags: Vec<String>,
     transaction_type: String,
     amount: Amount,
+    comment: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -28,6 +29,7 @@ pub struct FormData {
     pub tags: Vec<String>,
     pub amount: BigDecimal,
     pub amount_currency: String,
+    pub comment: String,
 }
 
 #[derive(Debug, Fail, Serialize, Default)]
@@ -59,11 +61,13 @@ impl ValidationErrors {
 }
 
 impl Form {
+    // TODO: validate comment field
     pub fn validate(self) -> Result<FormData, ValidationErrors> {
         let Self {
             transaction_type,
             tags,
             amount,
+            comment,
         } = self;
         let mut errors = ValidationErrors::default();
 
@@ -91,10 +95,13 @@ impl Form {
                 .push(format!("\"{}\" is not a valid choice.", other)),
         };
 
+        let comment = comment.unwrap_or_default();
+
         if errors.is_empty() {
             Ok(FormData {
                 transaction_type,
                 tags,
+                comment,
                 amount: amount_number,
                 amount_currency: amount.currency.code,
             })

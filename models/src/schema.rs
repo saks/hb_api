@@ -116,6 +116,7 @@ table! {
         tags -> Array<Text>,
         transaction_type -> Varchar,
         user_id -> Int4,
+        comment -> Nullable<Text>,
 
         // id -> Int4,
         // tags -> Array<Varchar>,

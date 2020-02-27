@@ -50,6 +50,7 @@ pub struct RecordBuilder {
     pub id: i32,
     pub tags: Vec<String>,
     pub transaction_type: String,
+    pub comment: String,
     pub user_id: i32,
 }
 
@@ -83,6 +84,7 @@ impl RecordBuilder {
             tags: self.tags,
             transaction_type: self.transaction_type,
             user_id: self.user_id,
+            comment: Some(self.comment),
         }
     }
 }
