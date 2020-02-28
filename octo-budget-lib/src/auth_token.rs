@@ -124,12 +124,13 @@ impl AuthToken {
     }
 
     pub fn encrypt(&self, secret: &[u8]) -> String {
-        use jsonwebtoken::{encode, Header};
+        use jsonwebtoken::{encode, Header, EncodingKey};
 
+        let secret = EncodingKey::from_secret(secret);
         let headers = &Header::default();
         let data = self.data();
 
-        encode(headers, &data, secret).expect("Failed to generate token")
+        encode(headers, &data, &secret).expect("Failed to generate token")
     }
 
     pub fn expire_in_hours(mut self, n: i64) -> Self {
@@ -138,20 +139,19 @@ impl AuthToken {
     }
 
     pub fn from(token: &str, secret: &[u8]) -> Result<Self, Error> {
-        use jsonwebtoken::{decode, Validation};
+        use jsonwebtoken::{decode, Validation, DecodingKey};
 
-        let token_data = decode::<Data>(token, secret, &Validation::default())?;
+        let secret = DecodingKey::from_secret(secret);
+        let token_data = decode::<Data>(token, &secret, &Validation::default())?;
         let user_id = token_data.claims.user_id;
 
         Ok(Self::new(user_id))
     }
 
     pub fn data(&self) -> Data {
-        use time::{now_utc, Duration};
+        use time::{OffsetDateTime, Duration};
 
-        let exp = (now_utc() + Duration::hours(self.expire_in_hours))
-            .to_timespec()
-            .sec;
+        let exp = (OffsetDateTime::now() + Duration::hours(self.expire_in_hours)).timestamp();
 
         Data {
             exp,
