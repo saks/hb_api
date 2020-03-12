@@ -22,6 +22,29 @@ cfg_if! {
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
+
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+#[wasm_bindgen]
+pub async fn greet2() -> Result<String, String> {
+    use models::SerializedBudget;
+    let r = reqwest::Client::new()
+        .get("https://api.github.com/repos/rustwasm/wasm-bindgen/branches/master")
+        .send()
+        .await.expect("failed to send request");
+
+    let s = format!("response: {:?}", r);
+    log(&s);
+
+    let x = SerializedBudget::default();
+    let s = format!("budget is: {}", serde_json::to_string(&x).unwrap());
+    alert(&s);
+
+    Ok(String::new())
 }
 
 #[wasm_bindgen]

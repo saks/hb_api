@@ -14,4 +14,4 @@ pub use tags_app::service::Service as TagsService;
 pub mod forms;
 pub mod helpers;
 pub mod index_params;
-pub mod index_response;
+pub use octo_budget_shared::types::index_response;

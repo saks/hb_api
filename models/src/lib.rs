@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 #[macro_use]
 extern crate diesel;
 
@@ -6,11 +7,14 @@ use chrono::{NaiveDate, NaiveDateTime};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod schema;
+#[cfg(not(target_arch = "wasm32"))]
 use schema::{auth_user, budgets_budget, records_record};
 
-#[derive(Queryable, Serialize, Debug, Clone, PartialEq, Insertable)]
-#[table_name = "auth_user"]
+#[derive(Serialize, Debug, Clone, PartialEq)]
+#[cfg_attr(not(target_arch = "wasm32"), table_name = "auth_user")]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Queryable, Insertable))]
 pub struct AuthUser {
     pub date_joined: NaiveDateTime,
     pub email: String,
@@ -25,8 +29,9 @@ pub struct AuthUser {
     pub username: String,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Insertable)]
-#[table_name = "records_record"]
+#[cfg_attr(not(target_arch = "wasm32"), table_name = "records_record")]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Queryable, Insertable))]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Record {
     pub amount: BigDecimal,
     pub amount_currency: String,
@@ -38,8 +43,9 @@ pub struct Record {
     pub comment: Option<String>,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Insertable)]
-#[table_name = "budgets_budget"]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(not(target_arch = "wasm32"), table_name = "budgets_budget")]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Queryable, Insertable))]
 pub struct Budget {
     pub amount: BigDecimal,
     pub amount_currency: String,

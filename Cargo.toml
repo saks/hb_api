@@ -7,4 +7,5 @@ members = [
     "middlewares",
     "db_seed",
     "models",
+    "octo-budget-shared",
 ]

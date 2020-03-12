@@ -20,6 +20,7 @@ url = "2"
 log = "0.4"
 r2d2 = "*"
 models = { path = "../models" }
+octo-budget-shared = { path = "../octo-budget-shared" }
 redis = "0.15"
 
 [dependencies.bigdecimal]

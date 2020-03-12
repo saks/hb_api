@@ -11,9 +11,14 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-cfg-if = "0.1.2"
+cfg-if = "0.1"
 wasm-bindgen = "*"
+wasm-bindgen-futures = "*"
 js-sys = "*"
+octo-budget-shared = { path = "../octo-budget-shared" }
+models = { path = "../models" }
+serde_json = "*"
+reqwest = "*"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
