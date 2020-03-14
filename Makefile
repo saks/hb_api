@@ -1,6 +1,12 @@
 all: test
 
-RELEASE_BUILD_DIR=./release_build/
+RELEASE_BUILD_DIR = ./release_build/
+CARGO_BIN_PATH = ${CARGO_HOME}/bin
+DIESEL_CLI_PATH = ${CARGO_BIN_PATH}/diesel
+WASM_PACK_CLI_PATH = ${CARGO_BIN_PATH}/wasm-pack
+
+DIESEL_CLI_VERSION ?= `grep 'DIESEL_CLI_VERSION:' .github/workflows/rust.yml | cut -d ':' -f 2`
+WASM_PACK_CLI_VERSION ?= `grep 'WASM_PACK_CLI_VERSION:' .github/workflows/rust.yml | cut -d ':' -f 2`
 
 build: build_client build_server
 
@@ -14,21 +20,15 @@ ext_cli: ext_bin/diesel ext_bin/wasm-pack
 
 ext_bin/diesel:
 	echo "installing diesel_cli ${DIESEL_CLI_VERSION}"
-	cargo install diesel_cli --version ${DIESEL_CLI_VERSION} --no-default-features --features postgres
-	cp ~/.cargo/bin/diesel ./ext_bin/
+	[ -f ${DIESEL_CLI_VERSION} ] || cargo install diesel_cli --version ${DIESEL_CLI_VERSION} --no-default-features --features postgres
+	cp ${DIESEL_CLI_PATH} ./ext_bin/
 
 ext_bin/wasm-pack:
 	echo "installing wasm-pack ${WASM_PACK_CLI_VERSION}"
-	cargo install wasm-pack --version ${WASM_PACK_CLI_VERSION}
-	cp ~/.cargo/bin/wasm-pack ./ext_bin/
+	[ -f ${WASM_PACK_CLI_PATH} ] || cargo install wasm-pack --version ${WASM_PACK_CLI_VERSION}
+	cp ${WASM_PACK_CLI_PATH} ./ext_bin/
 
-prepare_release:
-	rm -rf ${RELEASE_BUILD_DIR}
-	mkdir -p ${RELEASE_BUILD_DIR}/reactapp
-	cp ./target/release/octo-budget-api ${RELEASE_BUILD_DIR}
-	cp -r ./reactapp/build ${RELEASE_BUILD_DIR}/reactapp/
-
-release: build prepare_release
+release: build ext_cli
 	snap run heroku container:push web -a octo-budget
 	snap run heroku container:release web -a octo-budget
 
@@ -62,7 +62,7 @@ test_db_prepare:
 	@./run.sh diesel database setup
 
 server:
-	@RUST_LOG=debug RUST_BACKTRACE=1 ./run.sh cargo run --bin octo-budget-api
+	@RUST_LOG=debug RUST_BACKTRACE=1 ./run.sh cargo run --bin octo-budget-api-server
 
 psql:
 	@docker-compose exec db psql -U rustapp test

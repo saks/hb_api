@@ -1,4 +1,5 @@
 target
+ext_bin
 **/*.rs.bk
 .idea
 Session.vim
