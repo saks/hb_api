@@ -11,10 +11,10 @@ ENV DATABASE_POOL_SIZE 1
 ENV LISTEN_IP 0.0.0.0
 ENV PORT 8088
 
+ADD ./ext_bin/diesel /usr/local/bin/
 ADD ./target/release/db_seed .
+ADD ./migrations ./migrations
 ADD ./target/release/octo-budget-api-server .
 ADD ./reactapp/build/ ./reactapp/build
-ADD ./migrations ./migrations
-ADD ./ext_bin/diesel /usr/local/bin/
 
 CMD ["./octo-budget-api-server"]
