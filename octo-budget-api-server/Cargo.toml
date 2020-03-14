@@ -1,0 +1,17 @@
+[package]
+name = "octo-budget-api-server"
+version = "0.1.0"
+authors = ["Aliaksandr Rahalevich <saksmlz@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = { version = "2.0", default_features = false }
+actix-rt = "1.0"
+env_logger = "0.7"
+dotenv = "0.15"
+
+octo-budget-api = { path = "../octo-budget-api" }
+octo-budget-lib = { path = "../octo-budget-lib" }
+middlewares = { path = "../middlewares" }

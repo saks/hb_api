@@ -2,6 +2,7 @@
 
 members = [
     "octo-budget-api",
+    "octo-budget-api-server",
     "octo-budget-lib",
     "octo-budget-frontend",
     "middlewares",
