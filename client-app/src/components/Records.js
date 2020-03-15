@@ -1,14 +1,14 @@
-import React from 'react';
-import createPersistedState from 'use-persisted-state';
-import { Box, Grid } from '@material-ui/core';
-import Pagination from '@material-ui/lab/Pagination';
+import React from 'react'
+import createPersistedState from 'use-persisted-state'
+import { Box, Grid } from '@material-ui/core'
+import Pagination from '@material-ui/lab/Pagination'
 
-const useCurrentPageState = createPersistedState('records_current_page');
+const useCurrentPageState = createPersistedState('records_current_page')
 
 const Records = props => {
-    props.setTitle('Records');
+    props.setTitle('Records')
 
-    const [currentPage, setCurrentPage] = useCurrentPageState(0);
+    const [currentPage, setCurrentPage] = useCurrentPageState(0)
     return (
         <Box>
             <p>
@@ -19,6 +19,6 @@ const Records = props => {
                 <Pagination count={5} size="large" />
             </Grid>
         </Box>
-    );
-};
-export default Records;
+    )
+}
+export default Records

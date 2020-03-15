@@ -1,20 +1,20 @@
-import React from 'react';
-import { Switch, Route, Link, Redirect, useLocation } from 'react-router-dom';
-import MenuIcon from '@material-ui/icons/Menu';
-import { AppBar, IconButton, Toolbar, Box, Table, Typography } from '@material-ui/core';
-import { Container, BottomNavigation, BottomNavigationAction } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
+import React from 'react'
+import { Switch, Route, Link, Redirect, useLocation } from 'react-router-dom'
+import MenuIcon from '@material-ui/icons/Menu'
+import { AppBar, IconButton, Toolbar, Box, Table, Typography } from '@material-ui/core'
+import { Container, BottomNavigation, BottomNavigationAction } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import {
     BarChart as BudgetsIcon,
     FormatListBulleted as RecordsIcon,
     LocalOfferOutlined as TagsIcon,
-} from '@material-ui/icons';
+} from '@material-ui/icons'
 
-import Records from './components/Records';
-import Budgets from './components/Budgets';
-import Tags from './components/Tags';
+import Records from './components/Records'
+import Budgets from './components/Budgets'
+import Tags from './components/Tags'
 
-import './App.css';
+import './App.css'
 
 const useStyles = makeStyles(theme => ({
     stickToBottom: {
@@ -31,19 +31,16 @@ const useStyles = makeStyles(theme => ({
     title: {
         flexGrow: 1,
     },
-}));
+}))
 
 const App = () => {
-    const [currentTitle, setTitle] = React.useState('Octo Budget');
-    const [currentPath, setCurrentPath] = React.useState('/');
-    const currentLocation = useLocation();
-    React.useEffect(
-        () => {
-            setCurrentPath(currentLocation.pathname);
-        },
-        [currentLocation]
-    );
-    const classes = useStyles();
+    const [currentTitle, setTitle] = React.useState('Octo Budget')
+    const [currentPath, setCurrentPath] = React.useState('/')
+    const currentLocation = useLocation()
+    React.useEffect(() => {
+        setCurrentPath(currentLocation.pathname)
+    }, [currentLocation])
+    const classes = useStyles()
 
     return (
         <div className={classes.root}>
@@ -77,8 +74,8 @@ const App = () => {
                     <Route
                         path="/records/:recordId"
                         render={({ match }) => {
-                            const id = parseInt(match.params.recordId, 10);
-                            return `...record ${id} page`;
+                            const id = parseInt(match.params.recordId, 10)
+                            return `...record ${id} page`
                         }}
                     />
                 </Switch>
@@ -87,7 +84,7 @@ const App = () => {
                 className={classes.stickToBottom}
                 value={currentPath}
                 onChange={(_event, newPath) => {
-                    setCurrentPath(newPath);
+                    setCurrentPath(newPath)
                 }}
             >
                 <BottomNavigationAction
@@ -114,7 +111,7 @@ const App = () => {
             </BottomNavigation>
             <Route exact path="/" render={() => <Redirect to="/records" />} />
         </div>
-    );
-};
+    )
+}
 
-export default App;
+export default App

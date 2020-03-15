@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 import {
     makeStyles,
     TextField,
@@ -7,13 +7,13 @@ import {
     IconButton,
     Table,
     Typography,
-} from '@material-ui/core';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableContainer from '@material-ui/core/TableContainer';
-import TableRow from '@material-ui/core/TableRow';
-import Paper from '@material-ui/core/Paper';
-import AddIcon from '@material-ui/icons/Add';
+} from '@material-ui/core'
+import TableBody from '@material-ui/core/TableBody'
+import TableCell from '@material-ui/core/TableCell'
+import TableContainer from '@material-ui/core/TableContainer'
+import TableRow from '@material-ui/core/TableRow'
+import Paper from '@material-ui/core/Paper'
+import AddIcon from '@material-ui/icons/Add'
 
 const useStyles = makeStyles(theme => ({
     root: {
@@ -25,15 +25,15 @@ const useStyles = makeStyles(theme => ({
     title: {
         flexGrow: 1,
     },
-}));
-const rows = ['Foo', 'Bar'];
+}))
+const rows = ['Foo', 'Bar']
 
 const Tags = props => {
-    props.setTitle('Tags');
-    const classes = useStyles();
+    props.setTitle('Tags')
+    const classes = useStyles()
 
-    const handleClickShowPassword = () => {};
-    const handleMouseDownPassword = () => {};
+    const handleClickShowPassword = () => {}
+    const handleMouseDownPassword = () => {}
 
     return (
         <div>
@@ -62,6 +62,6 @@ const Tags = props => {
                 </Table>
             </TableContainer>
         </div>
-    );
-};
-export default Tags;
+    )
+}
+export default Tags
