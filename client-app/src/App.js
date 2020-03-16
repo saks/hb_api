@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { Suspense, useState } from 'react'
 import { Switch, Route, Link, Redirect, useLocation } from 'react-router-dom'
 import MenuIcon from '@material-ui/icons/Menu'
-import { AppBar, IconButton, Toolbar, Box, Table, Typography } from '@material-ui/core'
+import { AppBar, IconButton, Toolbar, Typography } from '@material-ui/core'
 import { Container, BottomNavigation, BottomNavigationAction } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import {
@@ -13,8 +13,11 @@ import {
 import Records from './components/Records'
 import Budgets from './components/Budgets'
 import Tags from './components/Tags'
-
+import AuthDialog from './components/AuthDialog'
+import { fetchUserData } from './lib/http_client'
 import './App.css'
+
+const resource = fetchUserData()
 
 const useStyles = makeStyles(theme => ({
     stickToBottom: {
@@ -34,8 +37,9 @@ const useStyles = makeStyles(theme => ({
 }))
 
 const App = () => {
-    const [currentTitle, setTitle] = React.useState('Octo Budget')
-    const [currentPath, setCurrentPath] = React.useState('/')
+    const [authToken, setAuthToken] = useState(null)
+    const [currentTitle, setTitle] = useState('Octo Budget')
+    const [currentPath, setCurrentPath] = useState('/')
     const currentLocation = useLocation()
     React.useEffect(() => {
         setCurrentPath(currentLocation.pathname)
@@ -57,17 +61,20 @@ const App = () => {
                     <Typography variant="h6" className={classes.title}>
                         {currentTitle}
                     </Typography>
+                    <AuthDialog setAuthToken={setAuthToken} authToken={authToken} />
                 </Toolbar>
             </AppBar>
             <Container maxWidth="sm">
                 <Route exact path="/tags">
-                    <Tags setTitle={setTitle} />
+                    <Tags setTitle={setTitle} resource={resource.tags} />
                 </Route>
                 <Route exact path="/records">
-                    <Records setTitle={setTitle} />
+                    <Suspense fallback={<h1>Loading records...</h1>}>
+                        <Records setTitle={setTitle} resource={resource.records} />
+                    </Suspense>
                 </Route>
                 <Route exact path="/budgets">
-                    <Budgets setTitle={setTitle} />
+                    <Budgets setTitle={setTitle} resource={resource.budgets} />
                 </Route>
                 <Switch>
                     <Route path="/records/new" render={() => '...new record page'} />

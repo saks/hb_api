@@ -1,12 +1,13 @@
 {
     "name": "client-app",
     "version": "0.1.0",
+    "proxy": "http://localhost:8088/",
     "private": true,
     "dependencies": {
         "@babel/core": "7.8.4",
-        "@material-ui/core": "^4.9.1",
+        "@material-ui/core": "^4.9.5",
         "@material-ui/icons": "^4.9.1",
-        "@material-ui/lab": "^4.0.0-alpha.42",
+        "@material-ui/lab": "^4.0.0-alpha.45",
         "@svgr/webpack": "4.3.3",
         "@testing-library/jest-dom": "^4.2.4",
         "@testing-library/react": "^9.3.2",
@@ -20,6 +21,7 @@
         "babel-preset-react-app": "^9.1.1",
         "camelcase": "^5.3.1",
         "case-sensitive-paths-webpack-plugin": "2.3.0",
+        "clsx": "^1.1.0",
         "css-loader": "3.4.2",
         "dotenv": "8.2.0",
         "dotenv-expand": "5.1.0",
@@ -79,8 +81,8 @@
         "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
     },
     "devDependencies": {
-        "@wasm-tool/wasm-pack-plugin": "^1.1.0",
-        "flow-bin": "^0.118.0"
+        "@wasm-tool/wasm-pack-plugin": "^1.2.0",
+        "flow-bin": "^0.120.1"
     },
     "jest": {
         "roots": ["<rootDir>/src"],

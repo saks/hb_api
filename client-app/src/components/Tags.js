@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
     makeStyles,
     TextField,
@@ -29,8 +29,12 @@ const useStyles = makeStyles(theme => ({
 const rows = ['Foo', 'Bar']
 
 const Tags = props => {
-    props.setTitle('Tags')
     const classes = useStyles()
+    const setTitle = props.setTitle
+
+    useEffect(() => {
+        setTitle('Tags')
+    }, [setTitle])
 
     const handleClickShowPassword = () => {}
     const handleMouseDownPassword = () => {}
