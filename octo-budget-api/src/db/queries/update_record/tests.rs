@@ -11,6 +11,7 @@ async fn no_record_updated() {
         transaction_type: "INC".into(),
         user_id: 1.into(),
         id: 1,
+        comment: String::new(),
     };
 
     let res = conn_pool.execute(query).await;
@@ -37,6 +38,7 @@ async fn happy_path() {
         transaction_type: "INC".into(),
         user_id: user.id.into(),
         id: records[0].id,
+        comment: "".into(),
     };
 
     let res = conn_pool.execute(query).await;
@@ -62,6 +64,7 @@ async fn check_update_result() {
         transaction_type: "INC".into(),
         user_id: user.id.into(),
         id: record.id,
+        comment: "".into(),
     };
 
     let res = conn_pool.execute(query).await;

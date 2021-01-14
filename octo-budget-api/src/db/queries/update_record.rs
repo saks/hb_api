@@ -12,6 +12,7 @@ pub struct UpdateRecord {
     transaction_type: String,
     user_id: UserId,
     id: i32,
+    comment: String,
 }
 
 impl UpdateRecord {
@@ -21,6 +22,7 @@ impl UpdateRecord {
             amount_currency: data.amount_currency.clone(),
             tags: data.tags.clone(),
             transaction_type: data.transaction_type.clone(),
+            comment: data.comment.clone(),
             user_id,
             id,
         }
@@ -46,6 +48,7 @@ impl DatabaseQuery for UpdateRecord {
                 amount_currency.eq(&self.amount_currency),
                 tags.eq(&self.tags),
                 transaction_type.eq(&self.transaction_type),
+                comment.eq(&self.comment),
             ))
             .execute(&connection);
 

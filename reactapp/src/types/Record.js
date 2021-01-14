@@ -8,6 +8,7 @@ export type Attrs = {
     tags: Array<string>,
     amount: { amount: number, currency: { code: string, name: string } },
     transaction_type: string,
+    comment: string,
     created_at: number,
 }
 

@@ -107,6 +107,7 @@ impl Serialize for Record {
         state.serialize_field("tags", &self.tags)?;
         state.serialize_field("transaction_type", &self.transaction_type)?;
         state.serialize_field("user_id", &self.user_id)?;
+        state.serialize_field("comment", &self.comment)?;
         state.end()
     }
 }
