@@ -124,7 +124,7 @@ impl AuthToken {
     }
 
     pub fn encrypt(&self, secret: &[u8]) -> String {
-        use jsonwebtoken::{encode, Header, EncodingKey};
+        use jsonwebtoken::{encode, EncodingKey, Header};
 
         let secret = EncodingKey::from_secret(secret);
         let headers = &Header::default();
@@ -139,7 +139,7 @@ impl AuthToken {
     }
 
     pub fn from(token: &str, secret: &[u8]) -> Result<Self, Error> {
-        use jsonwebtoken::{decode, Validation, DecodingKey};
+        use jsonwebtoken::{decode, DecodingKey, Validation};
 
         let secret = DecodingKey::from_secret(secret);
         let token_data = decode::<Data>(token, &secret, &Validation::default())?;
@@ -149,9 +149,10 @@ impl AuthToken {
     }
 
     pub fn data(&self) -> Data {
-        use time::{OffsetDateTime, Duration};
+        use time::{Duration, OffsetDateTime};
 
-        let exp = (OffsetDateTime::now() + Duration::hours(self.expire_in_hours)).timestamp();
+        let exp =
+            (OffsetDateTime::now_utc() + Duration::hours(self.expire_in_hours)).unix_timestamp();
 
         Data {
             exp,
