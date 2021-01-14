@@ -1,7 +1,7 @@
 all: test
 
 RELEASE_BUILD_DIR = ./release_build/
-CARGO_BIN_PATH = ${CARGO_HOME}/bin
+CARGO_BIN_PATH = ${HOME}/.cargo/bin
 DIESEL_CLI_PATH = ${CARGO_BIN_PATH}/diesel
 WASM_PACK_CLI_PATH = ${CARGO_BIN_PATH}/wasm-pack
 
