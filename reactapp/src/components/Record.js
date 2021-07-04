@@ -43,6 +43,10 @@ export default class Record extends Component<Props, void> {
         return momentObject.toDate().toLocaleString('en', DATETIME_FORMAT_OPTIONS)
     }
 
+    get comment(): string {
+        return this.props.model.comment
+    }
+
     edit(): void {
         if (this.props.model.id) {
             this.props.history.push(`/records/${this.props.model.id}`)
@@ -58,6 +62,9 @@ export default class Record extends Component<Props, void> {
                         <small className="date">{this.date}</small>
                         <span className="tags badge badge-info float-right">{this.tags}</span>
                     </h5>
+                    <small className="comment float-left text-center font-weight-light">
+                        {this.comment}
+                    </small>
                 </div>
             </div>
         )
