@@ -41,6 +41,7 @@ export default class RecordForm extends Component<Props, State> {
 
         this.state = initState(this.props)
         this.amountInput = React.createRef()
+        this.commentInput = React.createRef()
     }
 
     get record(): RecordModel {
@@ -100,6 +101,15 @@ export default class RecordForm extends Component<Props, State> {
         const amount = event.target.value
         this.setState(prevState => {
             return { ...prevState, amount }
+        })
+    }
+
+    handleCommentChange(event: SyntheticInputEvent<HTMLInputElement>): void {
+        const value = event.target.value
+        this.setState(prevState => {
+            const record = prevState.record.clone()
+            record.comment = value
+            return { ...prevState, record }
         })
     }
 
@@ -209,7 +219,7 @@ export default class RecordForm extends Component<Props, State> {
                                 autoFocus
                             />
                             <span
-                                class="btn-toolbar"
+                                className="btn-toolbar"
                                 role="toolbar"
                                 aria-label="Toolbar with button groups"
                             >
@@ -218,9 +228,9 @@ export default class RecordForm extends Component<Props, State> {
                                         onClick={this.addFivePercent.bind(this)}
                                         className="btn btn-default"
                                         type="button"
-                                        style={{ 'padding-left': '5px', 'padding-right': '5px' }}
+                                        style={{ paddingLeft: '5px', paddingRight: '5px' }}
                                     >
-                                        <i class="material-icons" style={{ 'font-size': 'small' }}>
+                                        <i className="material-icons" style={{ fontSize: 'small' }}>
                                             +5%
                                         </i>
                                     </button>
@@ -228,9 +238,9 @@ export default class RecordForm extends Component<Props, State> {
                                         onClick={this.addTwelvePercent.bind(this)}
                                         className="btn btn-default"
                                         type="button"
-                                        style={{ 'padding-left': '5px', 'padding-right': '5px' }}
+                                        style={{ paddingLeft: '5px', paddingRight: '5px' }}
                                     >
-                                        <i class="material-icons" style={{ 'font-size': 'small' }}>
+                                        <i className="material-icons" style={{ fontSize: 'small' }}>
                                             +12%
                                         </i>
                                     </button>
@@ -238,7 +248,7 @@ export default class RecordForm extends Component<Props, State> {
                                         onClick={this.calculateAmount.bind(this)}
                                         className="btn btn-default"
                                         type="button"
-                                        style={{ 'padding-left': '5px', 'padding-right': '5px' }}
+                                        style={{ paddingLeft: '5px', paddingRight: '5px' }}
                                     >
                                         calculate
                                     </button>
@@ -250,6 +260,22 @@ export default class RecordForm extends Component<Props, State> {
                         <label className="bmd-label-static">Tags</label>
                         <div id="tagsContainer" className="border border-light">
                             {this.tags}
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="comment" className="bmd-label-static">
+                            Comment
+                        </label>
+                        <div className="input-group">
+                            <input
+                                type="text"
+                                className="form-control"
+                                autoComplete="off"
+                                ref={this.commentInput}
+                                name="comment"
+                                value={this.state.record.comment}
+                                onChange={this.handleCommentChange.bind(this)}
+                            />
                         </div>
                     </div>
                     <div className="form-group">

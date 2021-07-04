@@ -218,3 +218,7 @@ body {
     bottom: 1em;
     left: auto;
 }
+
+.comment {
+    margin-bottom: -21px;
+}

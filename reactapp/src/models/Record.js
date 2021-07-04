@@ -21,6 +21,7 @@ export default class RecordModel {
     transaction_type: string
     tags: Set<string>
     created_at: number
+    comment: string
 
     static from(attrs: Attrs): RecordModel {
         const record = new RecordModel()
@@ -35,6 +36,7 @@ export default class RecordModel {
         record.transaction_type = attrs.transaction_type
         record.tags = new Set(attrs.tags)
         record.created_at = attrs.created_at
+        record.comment = attrs.comment || ''
 
         return record
     }
@@ -50,6 +52,7 @@ export default class RecordModel {
             },
             transaction_type: EXP,
             created_at: 0,
+            comment: '',
         }
 
         const record = RecordModel.from(attrs)
