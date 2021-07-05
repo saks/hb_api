@@ -89,14 +89,20 @@ mod tests {
 
     #[test]
     fn it_is_ok_when_valid() {
-        let params = Params { page: 0, per_page: 10 };
+        let params = Params {
+            page: 0,
+            per_page: 10,
+        };
 
         assert!(params.validate().is_ok());
     }
 
     #[test]
     fn data_is_correct_when_valid() {
-        let params = Params { page: 3, per_page: 10 };
+        let params = Params {
+            page: 3,
+            per_page: 10,
+        };
         let data = params.validate().expect("is expected to be valid");
 
         assert_eq!(3, data.page);
@@ -105,15 +111,27 @@ mod tests {
 
     #[test]
     fn invalid_when_page_number_is_negative() {
-        let params = Params { page: -1, per_page: 123 };
+        let params = Params {
+            page: -1,
+            per_page: 123,
+        };
 
-        assert_eq!("{\"page\":[\"Must be a positive number\"]}", errors_json(params));
+        assert_eq!(
+            "{\"page\":[\"Must be a positive number\"]}",
+            errors_json(params)
+        );
     }
 
     #[test]
     fn invalid_when_per_page_is_negative() {
-        let params = Params { page: 0, per_page: -1 };
+        let params = Params {
+            page: 0,
+            per_page: -1,
+        };
 
-        assert_eq!("{\"per_page\":[\"Must be a positive number\"]}", errors_json(params));
+        assert_eq!(
+            "{\"per_page\":[\"Must be a positive number\"]}",
+            errors_json(params)
+        );
     }
 }

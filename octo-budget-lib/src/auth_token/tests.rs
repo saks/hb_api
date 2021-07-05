@@ -1,5 +1,5 @@
 use super::*;
-use jsonwebtoken::{decode, Validation, DecodingKey};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 
 const TEST_SECRET: &[u8] = b"foo-bar-secret";
 const TEST_USER_ID: i32 = 112233;
@@ -21,7 +21,12 @@ fn create_token() {
 #[should_panic(expected = "InvalidSignature")]
 fn create_token_with_invalid_secret() {
     let token = AuthToken::new(TEST_USER_ID).encrypt(TEST_SECRET);
-    decode::<Data>(&token, &DecodingKey::from_secret(b"wrong secret"), &Validation::default()).unwrap();
+    decode::<Data>(
+        &token,
+        &DecodingKey::from_secret(b"wrong secret"),
+        &Validation::default(),
+    )
+    .unwrap();
 }
 
 #[test]
