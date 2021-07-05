@@ -1,4 +1,4 @@
-on: [push, pull_request]
+on: [push]
 name: Clippy (new version test, don't use it!)
 jobs:
   clippy_check_ng:
