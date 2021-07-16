@@ -9,3 +9,7 @@ members = [
     "db_seed",
     "models",
 ]
+
+[profile.release.package.octo-budget-frontend]
+# Tell `rustc` to optimize for small code size.
+opt-level = 's'

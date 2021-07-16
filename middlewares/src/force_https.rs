@@ -1,50 +1,19 @@
-use std::task::{Context, Poll};
-
-use actix_service::{Service, Transform};
+use actix_web::dev::{Service, Transform};
 use futures::future::{ok, Either, Ready};
+use std::task::{Context, Poll};
 
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{header, uri::PathAndQuery, Uri};
-use actix_web::{error, HttpResponse, Result};
+use actix_web::{error, Error, HttpResponse, Result};
 
 const HTTPS_SCHEME: &str = "https";
 
-#[derive(Default, Clone, Copy)]
-pub struct ForceHttps {
-    is_enabled: bool,
-}
-
-impl ForceHttps {
-    pub fn new(is_enabled: bool) -> Self {
-        Self { is_enabled }
-    }
-}
-
-impl<S> Transform<S> for ForceHttps
-where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse>,
-{
-    type Request = ServiceRequest;
-    type Response = ServiceResponse;
-    type Error = S::Error;
-    type InitError = ();
-    type Transform = ForceSslService<S>;
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
-
-    fn new_transform(&self, service: S) -> Self::Future {
-        ok(ForceSslService {
-            service,
-            is_enabled: self.is_enabled,
-        })
-    }
-}
-
-pub struct ForceSslService<S> {
+pub struct ForceHttpsService<S> {
     service: S,
     is_enabled: bool,
 }
 
-impl<S> ForceSslService<S> {
+impl<S> ForceHttpsService<S> {
     fn redirect_url(&self, req: &ServiceRequest) -> Option<Result<Uri>> {
         let connection_info = req.connection_info();
 
@@ -79,12 +48,12 @@ impl<S> ForceSslService<S> {
     }
 }
 
-impl<S> Service for ForceSslService<S>
+impl<S, B> Service for ForceHttpsService<S>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse>,
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
 {
     type Request = ServiceRequest;
-    type Response = ServiceResponse;
+    type Response = ServiceResponse<B>;
     type Error = S::Error;
     type Future = Either<S::Future, Ready<Result<Self::Response, Self::Error>>>;
 
@@ -92,7 +61,7 @@ where
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+    fn call(&mut self, req: S::Request) -> Self::Future {
         if let Some(uri_res) = self.redirect_url(&req) {
             let resp = match uri_res {
                 Ok(uri) => HttpResponse::MovedPermanently()
@@ -109,6 +78,36 @@ where
     }
 }
 
+#[derive(Default, Clone, Copy)]
+pub struct ForceHttpsTransform {
+    is_enabled: bool,
+}
+
+impl ForceHttpsTransform {
+    pub fn new(is_enabled: bool) -> Self {
+        Self { is_enabled }
+    }
+}
+
+impl<S, B> Transform<S> for ForceHttpsTransform
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type InitError = ();
+    type Transform = ForceHttpsService<S>;
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(ForceHttpsService {
+            service,
+            is_enabled: self.is_enabled,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,7 +118,7 @@ mod tests {
     async fn test_wrap() {
         let mut app = init_service(
             App::new()
-                .wrap(ForceHttps::new(false))
+                .wrap(ForceHttpsTransform::new(false))
                 .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
         )
         .await;
@@ -133,7 +132,7 @@ mod tests {
     async fn test_redirect_http_request() {
         let mut app = init_service(
             App::new()
-                .wrap(ForceHttps::new(true))
+                .wrap(ForceHttpsTransform::new(true))
                 .service(web::resource("/v1/something/").to(|| HttpResponse::Ok())),
         )
         .await;
